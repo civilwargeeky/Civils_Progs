@@ -1,4 +1,4 @@
-Civils_Progs
+Civil's Programs
 ============
 
-All of my useful programs
+These are all of my useful programs. Feel (mostly) free to use them for whatever you want.
