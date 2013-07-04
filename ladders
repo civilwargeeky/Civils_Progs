@@ -1,0 +1,52 @@
+--Version 1.0.0
+term.clear()
+term.setCursorPos(1,1)
+print("This program will place ladders straight down on the block it's facing")
+print("")
+print("It will also attempt to fill gaps with a material")
+print("")
+print("Place fuel in the bottom right")
+print("Place ladders in the top left")
+print("And place building material beside the ladders")
+print("Press any key when ready or press o to quit")
+key = os.pullEvent("char")
+if key ~= "o" then
+term.clear()
+term.setCursorPos(1,1)
+ladders = turtle.getItemCount(1)
+blocks = turtle.getItemCount(2)
+Nfuel = turtle.getItemCount(16)
+fuel = turtle.getFuelLevel()
+dist = 0
+
+turtle.forward()
+turtle.turnRight()
+turtle.turnRight()
+turtle.back()
+while turtle.down() and ladders ~= 0 do
+dist = dist + 1
+turtle.select(1)
+if turtle.place() == false and dist > 2 then
+if not turtle.detect() then
+turtle.forward()
+turtle.select(2)
+turtle.place()
+turtle.back()
+turtle.place()
+end
+end
+ladders = ladders - 1
+end
+for i=1, dist do
+turtle.up()
+end
+if ladders == 0 then
+turtle.up()
+end
+turtle.forward()
+turtle.forward()
+turtle.turnRight()
+turtle.turnRight()
+else
+print("Goodbye")
+end

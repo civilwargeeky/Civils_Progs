@@ -1,0 +1,144 @@
+--Made for version 3.0.4
+--Remember to release an FTB compatible version that removes the sendMsg after receives
+--In the future, rewrite this all to make it make more sense. As of now the whole scheme does not
+--E.g. Keep a record of what line it is on, have different messages for all the items.
+--Maybe have each item in a table with a table.display value that changes based on screenX and screenY
+--Make multiple colors if supported by the monitor :)
+--I'll just put this here: Make a shell program that can automate quarries and start this program automatically. Really cool.
+--Note, to end, use a return instead of an error()
+tArgs = {...}
+sides = {front = "front", back = "back", left = "left", right = "right", top = "top", bottom = "bottom"}
+local xScale, yScale = 0,0
+local screenX, screenY = term.getSize()
+if screenX >= 7 then xScale = 1 end
+if screenX >= 18 then xScale = 2 end
+if screenX >= 29 then xScale = 3 end
+if screenY >= 5 then yScale = 1 end
+if screenY >= 12 then yScale = 2 end
+assert(yScale >= 1 and xScale >= 1, "Screen Size too small: "..tostring(screenX).." by "..tostring(screenY))
+if screenX >= 35 and screenY >= 10 then local fullscreen = true else local fullscreen = false end
+--X scale of 3 and Y scale of 2 is fullscreen
+
+local interval = 1
+if not term.isColor() then
+term.setTextColor = function() return false end
+term.setBackgroundColor = function() return false end; end
+local function output(text,xPos,yPos,doClear)
+term.setCursorPos(xPos,yPos); if doClear then term.clearLine() end
+io.write(text); return #text+2 end
+local function screenLine(x,y)
+term.setCursorPos(x,y); term.clearLine() end
+local errorMessage = "Improper Side"
+term.clear(); term.setCursorPos(1,1)
+if tArgs[1] then
+modemSide = assert(sides[tArgs[1]], errorMessage )
+else
+print("Modem Side?")
+modemSide = assert(sides[read()], errorMessage)
+end
+modem = peripheral.wrap(modemSide)
+local sender
+if tonumber(tArgs[2]) then
+sender = tonumber(tArgs[2])
+else
+print("Receiving channel? (Check the turtle)")
+sender = assert(tonumber(io.read()))
+end
+assert(sender == math.floor(sender), "Channel cannot be a decimal")
+assert(sender < 65535 and sender > 0, "Channel cannot be below 1 or above 65535")
+modem.open(sender)
+
+local relayMessage = "Confirm"
+local origRelayMessage = relayMessage
+local replyChannel, startDist
+term.clear()
+term.setCursorPos(1,1)
+print("Welcome to the Quarry Receiver Program!")
+print("Waiting for a turtle to send initial message")
+repeat
+local event, modemSide, sendChannel, repChannel, message, distance = os.pullEvent("modem_message")
+startDist = distance
+replyChannel = repChannel
+until sendChannel == sender and textutils.unserialize(message)
+local function sendMsg(message) 
+modem.transmit(replyChannel, sender, message)
+end
+sendMsg(relayMessage)
+print("Now paired with turtle on Channel ",sender,". Sending back on Channel ",replyChannel)
+sleep(0.5)
+
+local function pullChar()
+while relayMessage ~= "stop" do
+sleep(0.5)
+output("Type Command\n",1,screenY-1,true)
+relayMessage = string.lower(io.read())
+end
+end
+
+local utils = {}
+if xScale == 3 then utils.percent = "Percent Complete: "
+elseif xScale == 2 then utils.percent = "Percent Done: "
+else utils.percent = "% " end
+if xScale == 3 then utils.x = "Length X-"; utils.z = "Rows-"; utils.y = "Layers-"
+elseif xScale == 2 then utils.x = "X:"; utils.z = "Z:"; utils.y = "Y:"; end
+
+local function main()
+local message
+term.clear()
+while message ~= "stop" do
+repeat
+local event, idCheck, sendChannel, _, locMessage, distance = os.pullEvent()
+message = locMessage
+until (event == "modem_message" and idCheck == modemSide and sendChannel == sender)
+sendMsg(relayMessage)
+message = textutils.unserialize(message) or "stop"
+relayMessage = origRelayMessage
+if message ~= "stop" then
+output(utils.percent..message.percent,1,1)
+if yScale == 2 then
+output("Dimensions: ",1,2,true)
+local a,b; if xScale == 1 then a,b = 4, 7 elseif xScale ==2 then a, b = 6, 11 else a,b = 18,30 end --To accomadate smaller screens, pos.
+output(utils.x..message.x,1,3,true); output(utils.z..message.z,a,3); output(utils.y..message.y,b,3)
+if xScale ==3 then
+output("Position in Row: "..message.xPos,1,4,true); output("Row this Layer: "..message.zPos,1,5,true); output("On Layer: "..math.ceil(message.yPos/3),1,6,true)
+elseif xScale == 2 then
+output("X:"..message.xPos.." Z:"..message.zPos.." Y:"..math.ceil(message.yPos/3),1,4,true)
+elseif xScale == 1 then
+output(message.xPos.." "..message.zPos.." "..math.ceil(message.yPos/3),1,4,true)
+end
+else
+if xScale >= 2 then 
+output("X:"..message.xPos.." Z:"..message.zPos.." Y:"..math.ceil(message.yPos/3),1,3,true)
+else
+output(message.xPos.." "..message.zPos.." "..math.ceil(message.yPos/3),1,3,true)
+end
+end
+local condition = (message.z == message.zPos) and (message.x == message.xPos) --At start of layer
+if xScale >= 2 and yScale == 2 then
+if  condition then output("Going 2 next layer",1,7) elseif message.isInPath then screenLine(1,7) end
+if message.y == math.ceil(message.yPos/3) and condition then output("Going back to start",1,8) elseif message.isInPath then screenLine(1,8) end
+if message.xPos == 0 then output("Calculating materials",1,9) else screenLine(1,9) end
+end
+if fullscreen then
+output("Type Command\n",1,screenY-1)
+end
+end
+end
+end
+
+local order
+if fullscreen then order = parallel.waitForAny(main, pullChar)
+else main(); order = 1 end
+modem.close(sender)
+term.setCursorPos(1,1)
+term.clear()
+local doneType
+if order == 1 then
+doneType = "Turtle Finished"
+messageT = textutils.unserialize(({os.pullEvent("modem_message")})[5])
+for i=1, #messageT do
+for a, b in pairs(messageT[i]) do
+print(a,b) end
+end
+else doneType = "Program Aborted" end
+error(doneType,0)
