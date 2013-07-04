@@ -3,13 +3,6 @@
 #Version 0.0.1
 saveFile = "Bank_Save"
 
-<<<<<<< HEAD
-
-#gonna make a change here
-=======
-#Git commit branch test
-
->>>>>>> refs/heads/master
 """Ideas:
 1. Every user will have the following functions:
   a. Deposit
