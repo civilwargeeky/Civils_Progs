@@ -1,4 +1,4 @@
-import Bank2 as bank
+import bank as bank
 from time import sleep
 
 #Bank is done :)
@@ -29,7 +29,8 @@ def UI_Test():
   printSleep(name_number)
   name, number = name_number.split(" ")
   printSleep(bank.getInfo(name.lower()+number),2) #If you have the name and number, you can do bank.getName by yourself
-
+if bank.getInfo[1] == 300:
+  UI_Test()
 print(bank.getInfo()) #Should be $300
 func("Depositing $300 Into Civil's Account",bank.deposit,bank.getNum("Civil"),300)
 print(bank.getInfo())

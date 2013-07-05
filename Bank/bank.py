@@ -1,6 +1,6 @@
 #Bank Program API
 #Made by civil
-#Version 0.0.1
+#Version 0.1.0
 saveFile = "Bank_Save"
 
 """Ideas:
