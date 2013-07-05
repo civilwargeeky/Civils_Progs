@@ -28,7 +28,9 @@ saveFile = "Bank_Save"
 def genBefFunc(account = "Default", num = 1): #Generic Before Function: Will handle interest rates, also checks for account and that num is > 0  
   """Idea: Interest rates will be calculated every time an account function is called,
   based on real time using an I = Pe^(rt) continous interest model """
-  return (account in master.accounts or account == "Default") and num > 0
+  return ((account in master.accounts) or account == "Default") and num > 0
+  
+exists = genBefFunc #So the user can check accounts
 
 def genAftFunc(amount = 0, account = None): #Generic After Function: Will handle transactions add and bank add to master
   master.balance += amount
@@ -55,15 +57,15 @@ master = InitMaster()
 #Main Bank Functions
 def getName(account,id):
   return account.lower().split(" ",1)[0]+"%04d" % id
-  
+
 def getNum(name):
   name = name.lower()
   if name in master.names:
     return getName(name,master.names[name])
   
-def register(name = "Default", startingBalance = 0, rate = master.depositRate, transactions = 0):
-  if not (isinstance(startingBalance,int)) or startingBalance < 0 or name.lower()[:5] == "master": #last check is so no error on checkName
-    return False
+def register(name, startingBalance = 0, rate = master.depositRate, transactions = 0):
+  if not (isinstance(startingBalance,float)) or startingBalance < 0 or name.lower()[:5] == "master": #last check is so no error on checkName
+    return False, 0
   master.accounts[getName(name,master.idNum)] = [name,startingBalance,rate,transactions] #The account name is the lowercase first word of their name concatenated with the current 4-digit id number
   master.names[getName(name,0)[:-4]] = master.idNum
   master.idNum += 1
