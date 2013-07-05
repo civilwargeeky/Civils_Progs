@@ -1,0 +1,4 @@
+#Just igonore python compiled libraries
+#######################################
+
+__pycache__/
