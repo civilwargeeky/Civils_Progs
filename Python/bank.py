@@ -12,7 +12,7 @@ saveFile = "Bank_Save"
   e. Check balance
 2. Put a current loan number in master for loan assignment  """
 """The way each account works (in order of number):
-0. Full Name (Dict location is first name, maybe concatenate an id number?)
+0. Full Name
 1. Balance
 2. Interest rate
 3. Transactions
@@ -64,7 +64,7 @@ def getNum(name):
     return getName(name,master.names[name])
   
 def register(name, startingBalance = 0, rate = master.depositRate, transactions = 0):
-  if not (isinstance(startingBalance,float)) or startingBalance < 0 or name.lower()[:5] == "master": #last check is so no error on checkName
+  if not (isinstance(startingBalance,float)) or startingBalance < 0 or name.lower()[:5] == "master" or len(name) < 3:
     return False, 0
   master.accounts[getName(name,master.idNum)] = [name,startingBalance,rate,transactions] #The account name is the lowercase first word of their name concatenated with the current 4-digit id number
   master.names[getName(name,0)[:-4]] = master.idNum
@@ -88,9 +88,9 @@ def withdraw(account = "Default", amount = 0):
 def getInfo(account = "Master"):
   if not (genBefFunc(account) or account == "Master"): return False
   if account == "Master":
-    return account, master.balance, master.depositRate, master.transactions
+    return (account, master.balance, master.depositRate, master.transactions)
   a = master.accounts[account] #To save typing and copy/paste
-  return a[0], a[1], a[2], a[3]
+  return tuple(master.accounts[account])
   
 def newLoan(account = "Default", amount = 0,rate = master.loanRate):
   if not genBefFunc(account,amount): return False
