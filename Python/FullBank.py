@@ -67,10 +67,21 @@ def welcome(): #Will repeat this until user data is proper
   
 def header(): #At top of screen
   print("-----Current Account: %s  |  Balance: %d  -----" % (bank.getInfo(account)[0], bank.getInfo(account)[1]))
-  
+
+def payLoan(): #To long for lambda
+  print(account)
+  for a, b in enumerate(bank.master.loans): 
+    if bank.master.loans[a][0] == bank.master.accounts[account]:
+      return bank.payLoan(account,inputInt("Invalid LoanID","What is your LoanID"),inputInt("Invalid amount","What amount would you like to pay off?"))
+  print("You have no loans outstanding")
+  return False
+
 menu = [] #Form is: text, function | All functions must return true or false
 menu.append(["Check Account Info", lambda: print("Balance: %d, Account Interest Rate: %.2f, # of Transactions %d" % (bank.getInfo(account)[1:4])) or True])
 menu.append(["Deposit Money", lambda: bank.deposit(account, inputInt("Invalid Number","How much money would you like to deposit?"))])
+menu.append(["Withdraw Money", lambda: (bank.withdraw(account, inputInt("Invalid Number","How much money would you like to withdraw?")))[0]])
+menu.append(["Apply for Loan", lambda: print("Your loan number is %d" % bank.newLoan(account,inputInt("Invalid Number","How much is this loan? "))) or True ] )
+menu.append(["Pay off Loan", payLoan])
 menu.append(["Sign Out", lambda: "Signing Out"])
 
 while True: #Actual program loop
@@ -96,7 +107,8 @@ while True: #Actual program loop
         pass
       if isinstance(item, int):
         break
-    print("Task Succeeded: %r" % (menu[item][1]())) #Calls menu item, and tells if succeeded
+    if 0 <= item < len(menu):
+      print("Task Succeeded: %r" % (menu[item][1]())) #Calls menu item, and tells if succeeded
     if item == len(menu) - 1: #If they selected "Sign Out"
       cls()
       break

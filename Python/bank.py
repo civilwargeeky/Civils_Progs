@@ -47,7 +47,7 @@ class InitMaster(object): #This is so I can use lua-like arrays with objects
     self.accounts = {} #All the names and data
     self.names = {} #Backups of names for easy finding
     self.loans = [] #Where all loan data is stored
-    self.loanNum = 1 #Current number of loans
+    self.loanID = 1 #Current number of loans
     self.idNum = 1 #Current Number of users
     self.depositRate = 0.05 #Member interest rate
     self.loanRate = 0.10 #Bank loan rate
@@ -89,8 +89,8 @@ def withdraw(account = "Default", amount = 0):
   if master.balance >= amount:
     if master.accounts[account][1] >= amount:
       master.accounts[account][1] -= amount
-      return genAftFunc(-amount, account)
-  return False, "Bank" if master.balance < amount else "Account" #This is pretty experimental  
+      return genAftFunc(-amount, account), "Good"
+  return False, ("Bank" if master.balance < amount else "Account") #This is pretty experimental  
   
 def getInfo(account = "Master"):
   if not (genBefFunc(account) or account == "Master"): return False
@@ -102,13 +102,15 @@ def getInfo(account = "Master"):
 def newLoan(account = "Default", amount = 0,rate = master.loanRate):
   if not genBefFunc(account,amount): return False
   if master.balance >= amount:
-    master.loans[master.loanID] = [master.accounts[account],amount,rate,amount]
+    master.loans.insert(master.loanID, [master.accounts[account],amount,rate,amount])
     master.loanID += 1
     genAftFunc(-amount, account)
     return master.loanID - 1
   return False
 
-def payLoan(account, amount, loanID):
+  
+#There are index out of range errors here, need to fix. I don't know why wrong one if being found...
+def payLoan(account, loanID, amount):
   if not (genBefFunc(account,amount) and master.loans[loanID]) or master.loans[loanID][1] == 0: return False
   if amount >= master.loans[loanID][1]: amount = master.loans[loanID][1]
   master.loans[loanID][1] -= amount
