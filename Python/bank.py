@@ -42,7 +42,7 @@ def genAftFunc(amount = 0, account = None): #Generic After Function: Will handle
 
 class InitMaster(object): #This is so I can use lua-like arrays with objects
   def __init__(self, bankStart = 0, transactions = 0, accounts = {}):
-    self.balance = bankStart #Bank Balance
+    self.balance = float(bankStart) #Bank Balance
     self.transactions = 0 #Total bank transactions
     self.accounts = {} #All the names and data
     self.names = {} #Backups of names for easy finding
@@ -62,11 +62,18 @@ def getNum(name):
   name = name.lower()
   if name in master.names:
     return getName(name,master.names[name])
+    
+def formatName(name):
+  if len(name) < 3 or not isinstance(name,str): return False
+  toRet = ""
+  for a in name.split(" "): toRet += a[0].upper() + a[1:].lower() + " "
+  return toRet[:-1]
+  
   
 def register(name, startingBalance = 0, rate = master.depositRate, transactions = 0):
   if not (isinstance(startingBalance,float)) or startingBalance < 0 or name.lower()[:5] == "master" or len(name) < 3:
     return False, 0
-  master.accounts[getName(name,master.idNum)] = [name,startingBalance,rate,transactions] #The account name is the lowercase first word of their name concatenated with the current 4-digit id number
+  master.accounts[getName(name,master.idNum)] = [formatName(name),float(startingBalance),rate,transactions] #The account name is the lowercase first word of their name concatenated with the current 4-digit id number
   master.names[getName(name,0)[:-4]] = master.idNum
   master.idNum += 1
   genAftFunc(startingBalance)
