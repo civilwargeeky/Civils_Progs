@@ -21,7 +21,7 @@ def inputInt(failText = "", initText = None): #Will keep asking for a number, pr
       print(failText)
   return toRet
 
-commandList = {"master":True, "new":True}
+commandList = {"master":True, "new":True, "master loans":True}
   
 def welcome(): #Will repeat this until user data is proper
   print("Welcome to the bank!")
@@ -29,15 +29,17 @@ def welcome(): #Will repeat this until user data is proper
   print("or type New to make a new account")
   name = input() #Get full name (not needed :P Just need first)
   try:
-    commandList[name.lower()] #Get the key error immediately
+    commandList[name.lower()] #Get the key error immediately to get extra functions
+    num = 0 #To prevent reference before assignment errors
     if name.lower() == "master": #Get bank stats
-      num = 0 #To prevent errors
       print("Master Balance: %.2f" % (bank.getInfo()[1]) )
       print("Total Transactions: %d" % (bank.getInfo()[3]) )
       tab = ">> "
       for _, a in bank.master.accounts.items(): #Super sneaky hax
         print("%sName: %s\n%s%sBalance: %.2f\n" % (tab, a[0],tab[:-1],tab, a[1]))
-      input("Press enter to continue...")
+    if name.lower() == "master loans":
+      for a, b in enumerate(bank.master.loans):
+        print("ID: %2d | Account Linked: %s | Outstanding: %.2f" % (a+1,b[0][0],b[1]))
     if name.lower() == "new":
       while True: #Repeat loop in case of invalid new name
         print("Ok, to start, what is your full name?")
@@ -58,7 +60,7 @@ def welcome(): #Will repeat this until user data is proper
           print("Invalid Name")
       print("Thank you, %s, your new bank number is %d" % (name, num))
       print("Keep this information somewhere you will remember")
-      input("Press Enter to continue...")
+    input("Press Enter to continue...") #This is out of loops, will run for all
   except KeyError:
     print("What is your bank ID number?") #Need ID number as well
     num = inputInt("Number not recognized, try again")
@@ -68,20 +70,45 @@ def welcome(): #Will repeat this until user data is proper
 def header(): #At top of screen
   print("-----Current Account: %s  |  Balance: %d  -----" % (bank.getInfo(account)[0], bank.getInfo(account)[1]))
 
-def payLoan(): #To long for lambda
-  print(account)
+def isNotFalse(input):
+  if input == False:
+    raise(AssertionError)
+  else:
+    return input
+
+def applyForLoan():
+    amnt = inputInt("Invalid Number","How much money would you like to borrow? ")
+    try:
+      return print("Thank you, your loan ID is: %d" % (isNotFalse(bank.newLoan(account,amnt)))) or True
+    except AssertionError:
+      print("Bank does not have that ammount, loan rejected")
+      return False
+      
+def payLoan(): #Too long for lambda
   for a, b in enumerate(bank.master.loans): 
     if bank.master.loans[a][0] == bank.master.accounts[account]:
       return bank.payLoan(account,inputInt("Invalid LoanID","What is your LoanID"),inputInt("Invalid amount","What amount would you like to pay off?"))
   print("You have no loans outstanding")
   return False
 
+def readAllLoans():
+  check = False
+  for a, b in enumerate(bank.master.loans):
+    if bank.master.loans[a][0] == bank.master.accounts[account]:
+      temp, check = bank.master.loans[a], True
+      print("Loan #%d: %.2f outstanding out of %.2f" % (a+1, temp[1], temp[3]))
+  if not check:
+    print("You have no loans")
+  return check
+  
+
 menu = [] #Form is: text, function | All functions must return true or false
 menu.append(["Check Account Info", lambda: print("Balance: %d, Account Interest Rate: %.2f, # of Transactions %d" % (bank.getInfo(account)[1:4])) or True])
 menu.append(["Deposit Money", lambda: bank.deposit(account, inputInt("Invalid Number","How much money would you like to deposit?"))])
 menu.append(["Withdraw Money", lambda: (bank.withdraw(account, inputInt("Invalid Number","How much money would you like to withdraw?")))[0]])
-menu.append(["Apply for Loan", lambda: print("Your loan number is %d" % bank.newLoan(account,inputInt("Invalid Number","How much is this loan? "))) or True ] )
+menu.append(["Apply for Loan", applyForLoan] )
 menu.append(["Pay off Loan", payLoan])
+menu.append(["Read Loan Info", readAllLoans])
 menu.append(["Sign Out", lambda: "Signing Out"])
 
 while True: #Actual program loop

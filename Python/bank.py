@@ -16,6 +16,7 @@ saveFile = "Bank_Save"
 1. Balance
 2. Interest rate
 3. Transactions
+4. ID number
 """
 """Master Loans section is like this:
 0. Pointer to account
@@ -73,7 +74,7 @@ def formatName(name):
 def register(name, startingBalance = 0, rate = master.depositRate, transactions = 0):
   if not (isinstance(startingBalance,float)) or startingBalance < 0 or name.lower()[:5] == "master" or len(name) < 3:
     return False, 0
-  master.accounts[getName(name,master.idNum)] = [formatName(name),float(startingBalance),rate,transactions] #The account name is the lowercase first word of their name concatenated with the current 4-digit id number
+  master.accounts[getName(name,master.idNum)] = [formatName(name),float(startingBalance),rate,transactions, master.idNum] #The account name is the lowercase first word of their name concatenated with the current 4-digit id number
   master.names[getName(name,0)[:-4]] = master.idNum
   master.idNum += 1
   genAftFunc(startingBalance)
@@ -99,18 +100,21 @@ def getInfo(account = "Master"):
   a = master.accounts[account] #To save typing and copy/paste
   return tuple(master.accounts[account])
   
-def newLoan(account = "Default", amount = 0,rate = master.loanRate):
+def getLoanInfo(account, loanID):
+  if not (genBefFunc(account)): return False
+  return master.loans[loanID-1]
+  
+def newLoan(account, amount = 0,rate = master.loanRate):
   if not genBefFunc(account,amount): return False
   if master.balance >= amount:
-    master.loans.insert(master.loanID, [master.accounts[account],amount,rate,amount])
+    master.loans.insert(master.loanID, [master.accounts[account],float(amount),rate,float(amount)])
     master.loanID += 1
     genAftFunc(-amount, account)
     return master.loanID - 1
   return False
-
   
-#There are index out of range errors here, need to fix. I don't know why wrong one if being found...
 def payLoan(account, loanID, amount):
+  loanID -= 1
   if not (genBefFunc(account,amount) and master.loans[loanID]) or master.loans[loanID][1] == 0: return False
   if amount >= master.loans[loanID][1]: amount = master.loans[loanID][1]
   master.loans[loanID][1] -= amount
