@@ -1,4 +1,7 @@
-#Just igonore python compiled libraries
-#######################################
-
+#Ignore python cached modules
 __pycache__/
+
+#Ignore my user-made accounts
+Accounts/
+
+

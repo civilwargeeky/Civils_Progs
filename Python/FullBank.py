@@ -1,12 +1,14 @@
 #This is the actual bank program that will do all the major banking stuff
 #E.G., not just a proof of concept
 #Made by civilwargeeky
-#Version 0.0.1
+#Version 1.0.1
+saveFile = "Accounts"
 
 print("Beginning bank... please wait")
 import bank
 from time import sleep
-from os import system
+from os import system, chdir, getcwd
+from sys import exit
 
 def cls():
   system("cls")
@@ -21,7 +23,7 @@ def inputInt(failText = "", initText = None): #Will keep asking for a number, pr
       print(failText)
   return toRet
 
-commandList = {"master":True, "new":True, "master loans":True}
+commandList = {"master":True, "new":True, "master loans":True, "quit":True}
   
 def welcome(): #Will repeat this until user data is proper
   print("Welcome to the bank!")
@@ -31,9 +33,12 @@ def welcome(): #Will repeat this until user data is proper
   try:
     commandList[name.lower()] #Get the key error immediately to get extra functions
     num = 0 #To prevent reference before assignment errors
+    if name.lower() == "quit": #Exit nicely
+      system("if exist Accounts (rd /q /s %s)" % saveFile)
+      exit()
     if name.lower() == "master": #Get bank stats
       print("Master Balance: %.2f" % (bank.getInfo()[1]) )
-      print("Total Transactions: %d" % (bank.getInfo()[3]) )
+      print("Total Transactions: %d\n" % (bank.getInfo()[3]) )
       tab = ">> "
       for _, a in bank.master.accounts.items(): #Super sneaky hax
         print("%sName: %s\n%s%sBalance: %.2f\n" % (tab, a[0],tab[:-1],tab, a[1]))
@@ -60,6 +65,7 @@ def welcome(): #Will repeat this until user data is proper
           print("Invalid Name")
       print("Thank you, %s, your new bank number is %d" % (name, num))
       print("Keep this information somewhere you will remember")
+      bankCard(name,num)
     input("Press Enter to continue...") #This is out of loops, will run for all
   except KeyError:
     print("What is your bank ID number?") #Need ID number as well
@@ -69,6 +75,28 @@ def welcome(): #Will repeat this until user data is proper
   
 def header(): #At top of screen
   print("-----Current Account: %s  |  Balance: %d  -----" % (bank.getInfo(account)[0], bank.getInfo(account)[1]))
+
+def bankCard(name, number): #Just for fun :D
+  fileName = "Account_%s_%04d.txt" % (name.replace(" ",""),number)
+  system("if not exist %s (mkdir %s)" % (saveFile,saveFile)) #To make a file with all the accounts in it, not clogging the system
+  originalPath = getcwd()
+  chdir(saveFile)
+  with open(fileName, "w") as file:
+    file.write("""
+/----------------------------------\\
+| ==FIRST NATIONAL BANK OF CIVIL== |
+|       Official Member Card       |
+|  ******************************* |
+|  Name: %25s |
+|  ******************************* |
+|                                  |
+|             Account Number: %04d |
+|                                  |
+\----------------------------------/
+""" % (name, number))
+  with open(fileName,"r") as file:
+    print(file.read())
+  chdir(originalPath)
 
 def isNotFalse(input):
   if input == False:
