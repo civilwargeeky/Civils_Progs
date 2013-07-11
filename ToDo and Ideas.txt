@@ -1,0 +1,25 @@
+Things to add for quarry version 3.1.2:
+
+  Cool Idea: Option to log mining runs. E.g. The size, blocks mined, and what type. File in human-readable format.
+  Store them in a folder and label them sequentially
+  
+  Consolidate Mining Loops
+  
+  Insert a sleep(0) in the loop for filesaving
+  Change the fs.open("w") to a "w+" so it can use the previous location if write fails.
+  
+  Add a GPS function that will try to record it's start position. If GPS enabled on startup, it will take its position from that.
+
+
+Things to add for next rednet version:
+
+Program will just register items to display on receive. It will then print them in order if there is room. Each element will be a table containing the original value, the short value, the medium value,
+ the long value, and a table containing the screenX required for all sizes. Maybe also have a priority (e.g. priority 1 will always disply, then priority two will display, then priority 3 will display if there is room.
+
+Plans for a tower program:
+Make a program that fills in an X x Z x Until it hits ground hole. Will turn around, go up a certain number, then back one, then down until hits bottom, back up, place a block, and go up. Repeat this until gets to x. If last point will end in a down then will go to the bottom and place up. Keeps track of coordinates to go back to start.
+
+Plans for a Rednet Control Station:
+Basically, make an api table that only has one function. This function returns an object that has all of the necessary methods for returning values and making new indexes. In the object, each numbered value will be a table that has paramaters for:
+Title, default redstone, "On" text, "Off" text, color of title, background color of title, pulse t/f, pulse duration, cable color, and a "current" value, which is just redstone true of false right now.
+The actual program will handle stuff like key presses, scrolling, adjusting redstone, and updating the screen.
