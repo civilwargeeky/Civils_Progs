@@ -12,16 +12,19 @@ from sys import exit
 
 def cls():
   system("cls")
-def inputInt(failText = "", initText = None): #Will keep asking for a number, printing failText if invalid number
+def genericInput(type, failText = "", initText = None):
   if initText:
     print(initText)
   toRet = None #Assign before reference
-  while not( isinstance(toRet,int)):
+  while not( isinstance(toRet,type)):
     try:
-      toRet = int(input())
+      toRet = type(input())
     except ValueError:
       print(failText)
   return toRet
+def inputInt(failText = "", initText = None): return genericInput(int,failText,initText)
+def inputFloat(failText = "", initText = None): return round(genericInput(float,failText,initText),2)
+
 
 commandList = {"master":True, "new":True, "master loans":True, "quit":True, "final":True}
   
@@ -47,7 +50,8 @@ def welcome(): #Will repeat this until user data is proper
         print("%sName: %s\n%s%sBalance: %.2f\n" % (tab, a[0],tab[:-1],tab, a[1]))
     if name.lower() == "master loans":
       for a, b in enumerate(bank.master.loans):
-        print("ID: %2d | Account Linked: %s | Outstanding: %.2f" % (a+1,b[0][0],b[1]))
+        if b[1] > 0:
+          print("ID: %2d | Account Linked: %s | Outstanding: %.2f" % (a+1,b[0][0],b[1]))
     if name.lower() == "new":
       while True: #Repeat loop in case of invalid new name
         print("Ok, to start, what is your full name?")
@@ -77,7 +81,7 @@ def welcome(): #Will repeat this until user data is proper
   return bank.exists(accountName,num), accountName #Returns that the account exists, as well as the account name (e.g. "default0001")
   
 def header(): #At top of screen
-  print("-----Current Account: %s  |  Balance: %d  -----" % (bank.getInfo(account)[0], bank.getInfo(account)[1]))
+  print("-----Current Account: %s  |  Balance: %.2f  -----" % (bank.getInfo(account)[0], bank.getInfo(account)[1]))
 
 def bankCard(name, number): #Just for fun :D
   fileName = "Account_%s_%04d.txt" % (name.replace(" ",""),number)
@@ -108,7 +112,7 @@ def isNotFalse(input):
     return input
 
 def applyForLoan():
-    amnt = inputInt("Invalid Number","How much money would you like to borrow? ")
+    amnt = inputFloat("Invalid Number","How much money would you like to borrow? ")
     try:
       return print("Thank you, your loan ID is: %d" % (isNotFalse(bank.newLoan(account,amnt)))) or True
     except AssertionError:
@@ -118,14 +122,14 @@ def applyForLoan():
 def payLoan(): #Too long for lambda
   for a, b in enumerate(bank.master.loans): 
     if bank.master.loans[a][0] == bank.master.accounts[account]:
-      return bank.payLoan(account,inputInt("Invalid LoanID","What is your LoanID"),inputInt("Invalid amount","What amount would you like to pay off?"))
+      return bank.payLoan(account,inputInt("Invalid LoanID","What is your LoanID"),inputFloat("Invalid amount","What amount would you like to pay off?"))
   print("You have no loans outstanding")
   return False
 
 def readAllLoans():
   check = False
   for a, b in enumerate(bank.master.loans):
-    if bank.master.loans[a][0] == bank.master.accounts[account]:
+    if b[0] == bank.master.accounts[account] and b[1] > 0:
       temp, check = bank.master.loans[a], True
       print("Loan #%d: %.2f outstanding out of %.2f" % (a+1, temp[1], temp[3]))
   if not check:

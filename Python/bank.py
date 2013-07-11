@@ -122,7 +122,10 @@ def newLoan(account, amount = 0,rate = master.loanRate):
   
 def payLoan(account, loanID, amount):
   loanID -= 1
-  if not (genBefFunc(account,amount) and master.loans[loanID]) or master.loans[loanID][1] == 0: return False
+  try:
+    if not (genBefFunc(account,amount) and master.loans[loanID]) or master.loans[loanID][1] == 0: return False
+  except IndexError:
+    return False
   if amount >= master.loans[loanID][1]: amount = master.loans[loanID][1]
   master.loans[loanID][1] -= amount
   return genAftFunc(amount,account)
