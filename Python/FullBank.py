@@ -1,8 +1,8 @@
 #This is the actual bank program that will do all the major banking stuff
 #E.G., not just a proof of concept
 #Made by civilwargeeky
-#Version 1.0.1
-saveFile = "Accounts"
+#Version 1.0.2
+saveFolder = "Accounts"
 
 print("Beginning bank... please wait")
 import bank
@@ -23,7 +23,7 @@ def inputInt(failText = "", initText = None): #Will keep asking for a number, pr
       print(failText)
   return toRet
 
-commandList = {"master":True, "new":True, "master loans":True, "quit":True}
+commandList = {"master":True, "new":True, "master loans":True, "quit":True, "final":True}
   
 def welcome(): #Will repeat this until user data is proper
   print("Welcome to the bank!")
@@ -33,8 +33,11 @@ def welcome(): #Will repeat this until user data is proper
   try:
     commandList[name.lower()] #Get the key error immediately to get extra functions
     num = 0 #To prevent reference before assignment errors
+    if name.lower() == "final": #Delete all files and exit
+      system("if exist Accounts (rd /q /s %s)" % saveFolder)
+      system("if exist %s (del /q %s)" % (bank.saveFile,bank.saveFile))
+      name = "quit" #Exit after delete
     if name.lower() == "quit": #Exit nicely
-      system("if exist Accounts (rd /q /s %s)" % saveFile)
       exit()
     if name.lower() == "master": #Get bank stats
       print("Master Balance: %.2f" % (bank.getInfo()[1]) )
@@ -78,9 +81,9 @@ def header(): #At top of screen
 
 def bankCard(name, number): #Just for fun :D
   fileName = "Account_%s_%04d.txt" % (name.replace(" ",""),number)
-  system("if not exist %s (mkdir %s)" % (saveFile,saveFile)) #To make a file with all the accounts in it, not clogging the system
+  system("if not exist %s (mkdir %s)" % (saveFolder,saveFolder)) #To make a file with all the accounts in it, not clogging the system
   originalPath = getcwd()
-  chdir(saveFile)
+  chdir(saveFolder)
   with open(fileName, "w") as file:
     file.write("""
 /----------------------------------\\

@@ -1,7 +1,7 @@
 #Bank Program API
 #Made by civil
 #Version 0.1.0
-saveFile = "Bank_Save"
+saveFile = "BankRestore.bank"
 
 """Ideas:
 1. Every user will have the following functions:
@@ -24,6 +24,9 @@ saveFile = "Bank_Save"
 2. Loan interest
 3. Original amount
 """
+import pickle #For file saving
+from os import system, path #For file handling
+
 
 #Generic Functions
 def genBefFunc(account = "Default", num = 1): #Generic Before Function: Will handle interest rates, also checks for account and that num is > 0  
@@ -37,6 +40,7 @@ def genAftFunc(amount = 0, account = None): #Generic After Function: Will handle
   master.balance += amount
   master.transactions += 1
   if account in master.accounts: master.accounts[account][3] += 1
+  pickle.dump(master,open(saveFile,"wb"))
   return True
   
 
@@ -54,6 +58,9 @@ class InitMaster(object): #This is so I can use lua-like arrays with objects
     self.loanRate = 0.10 #Bank loan rate
 
 master = InitMaster()
+if path.exists(saveFile):
+  with open(saveFile,"rb") as file:
+    master = pickle.load(file)
 
 #Main Bank Functions
 def getName(account,id):
