@@ -149,7 +149,7 @@ def payLoan(account, loanID, amount):
     return False
   if amount >= master.loans[loanID][1]:
     amount = master.loans[loanID][1] #Because genAftFunc handles master balance
-    del master.loans[loanID]  #If it is gone, it should be gone
+    master.loans[loanID] = [None,0.0,0.0,0.0] #Deleting screws up numbering system
   else: 
     master.loans[loanID][1] -= amount
   return genAftFunc(amount,account)
