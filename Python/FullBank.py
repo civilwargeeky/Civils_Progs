@@ -29,6 +29,7 @@ def inputFloat(failText = "", initText = None): return round(genericInput(float,
 commandList = {"master":True, "new":True, "master loans":True, "quit":True, "final":True}
   
 def welcome(): #Will repeat this until user data is proper
+  bank.update() #Loads file (so does bank.getInfo, but that is a side-effect)
   print("Welcome to the bank!")
   print("Please enter your name as it appears on your bank card (Just pretend),")
   print("or type New to make a new account")
@@ -75,7 +76,7 @@ def welcome(): #Will repeat this until user data is proper
       bankCard(name,num)
     input("Press Enter to continue...") #This is out of loops, will run for all
   except KeyError:
-    print("What is your bank ID number?") #Need ID number as well
+    print("What is your bank ID number? (type '0' to go back)") #Need ID number as well
     num = inputInt("Number not recognized, try again")
   accountName = bank.getName(name,num)
   return bank.exists(accountName,num), accountName #Returns that the account exists, as well as the account name (e.g. "default0001")
@@ -122,6 +123,7 @@ def applyForLoan():
 def payLoan(): #Too long for lambda
   for a, b in enumerate(bank.master.loans): 
     if bank.master.loans[a][0] == bank.master.accounts[account]:
+      readAllLoans()
       return bank.payLoan(account,inputInt("Invalid LoanID","What is your LoanID"),inputFloat("Invalid amount","What amount would you like to pay off?"))
   print("You have no loans outstanding")
   return False

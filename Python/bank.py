@@ -2,6 +2,7 @@
 #Made by civil
 #Version 0.1.0
 saveFile = "BankRestore.bank"
+multiUser = True
 
 """Ideas:
 1. Every user will have the following functions:
@@ -27,14 +28,19 @@ saveFile = "BankRestore.bank"
 import pickle #For file saving
 from os import system, path #For file handling
 
-
 #Generic Functions
 def genBefFunc(account = "Default", num = 1): #Generic Before Function: Will handle interest rates, also checks for account and that num is > 0  
+  global master
+  if multiUser:
+    if path.exists(saveFile):
+      with open(saveFile,"rb") as file:
+        master = pickle.load(file)
   """Idea: Interest rates will be calculated every time an account function is called,
   based on real time using an I = Pe^(rt) continous interest model """
   return ((account in master.accounts) or account == "Default") and num > 0
   
 exists = genBefFunc #So the user can check accounts
+update = lambda: genBefFunc() or True
 
 def genAftFunc(amount = 0, account = None): #Generic After Function: Will handle transactions add and bank add to master
   master.balance += amount
@@ -43,8 +49,6 @@ def genAftFunc(amount = 0, account = None): #Generic After Function: Will handle
   pickle.dump(master,open(saveFile,"wb"))
   return True
   
-
-
 class InitMaster(object): #This is so I can use lua-like arrays with objects
   def __init__(self, bankStart = 0, transactions = 0, accounts = {}):
     self.balance = float(bankStart) #Bank Balance
