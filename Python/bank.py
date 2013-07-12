@@ -27,16 +27,29 @@ multiUser = True
 """
 import pickle #For file saving
 from os import system, path #For file handling
+from time import time
+from math import exp
 
 #Generic Functions
+def calcInterest(principal, rate, time): 
+  return principal*exp(rate*time) #Interest = principal * e ^ (rate * time)
+
 def genBefFunc(account = "Default", num = 1): #Generic Before Function: Will handle interest rates, also checks for account and that num is > 0  
   global master
-  if multiUser:
+  if multiUser: #This will load the master from file every time anything is done.
     if path.exists(saveFile):
       with open(saveFile,"rb") as file:
         master = pickle.load(file)
+  master.newTime = time() #All of the below is for calculating interest
+  changedTime = (master.newTime-master.oldTime)/60/24 #We'll measure it in days, instead of years
+  master.oldTime = time()
+  for a in master.loans: #Calculate loans
+    a[1], a[3] = calcInterest(a[1],a[2],changedTime), calcInterest(a[3],a[2],changedTime)
+  for a, b in master.accounts.items(): #Calculates accounts
+    b[1] = calcInterest(b[1],b[2],changedTime)
   """Idea: Interest rates will be calculated every time an account function is called,
   based on real time using an I = Pe^(rt) continous interest model """
+  
   return ((account in master.accounts) or account == "Default") and num > 0
   
 exists = genBefFunc #So the user can check accounts
@@ -60,6 +73,8 @@ class InitMaster(object): #This is so I can use lua-like arrays with objects
     self.idNum = 1 #Current Number of users
     self.depositRate = 0.05 #Member interest rate
     self.loanRate = 0.10 #Bank loan rate
+    self.oldTime = time() #For interest calculation
+    self.newTime = time()
 
 master = InitMaster()
 if path.exists(saveFile):
@@ -130,16 +145,15 @@ def payLoan(account, loanID, amount):
     if not (genBefFunc(account,amount) and master.loans[loanID]) or master.loans[loanID][1] == 0: return False
   except IndexError:
     return False
-  if amount >= master.loans[loanID][1]: amount = master.loans[loanID][1]
-  master.loans[loanID][1] -= amount
+  if amount >= master.loans[loanID][1]: del master.loans[loanID]  #If it is gone, it should be gone
+  else: master.loans[loanID][1] -= amount
   return genAftFunc(amount,account)
   
 def setGenInterest(type,num):
   genBefFunc()
   if num > 1: num /= 100
   type = num
+  return type == num
 
-def setDepositInterest(num):
-  setGenInterest(master.depositRate,num)
-def setLoanInterest(num):
-  setGenInterest(master.loanRate,num)
+def setDepositInterest(num): return setGenInterest(master.depositRate,num)
+def setLoanInterest(num): return setGenInterest(master.loanRate,num)
