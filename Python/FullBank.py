@@ -51,8 +51,7 @@ def welcome(): #Will repeat this until user data is proper
         print("%sName: %s\n%s%sBalance: %.2f\n" % (tab, a[0],tab[:-1],tab, a[1]))
     if name.lower() == "master loans":
       for a, b in enumerate(bank.master.loans):
-        if b[1] > 0:
-          print("ID: %2d | Account Linked: %s | Outstanding: %.2f" % (a+1,b[0][0],b[1]))
+        print("ID: %2d | Account Linked: %s | Outstanding: %.2f" % (a+1,b[0][0],b[1]))
     if name.lower() == "new":
       while True: #Repeat loop in case of invalid new name
         print("Ok, to start, what is your full name?")
@@ -131,12 +130,10 @@ def payLoan(): #Too long for lambda
 def readAllLoans():
   check = False
   for a, b in enumerate(bank.master.loans):
-    if b[0] == bank.master.accounts[account] and b[1] > 0:
+    if b[0] == bank.master.accounts[account]:
       temp, check = bank.master.loans[a], True
       print("Loan #%d: %.2f outstanding out of %.2f" % (a+1, temp[1], temp[3]))
-  if not check:
-    print("You have no loans")
-  return check
+  return check or print("You have no loans") or False #If check is false, will print that and return false
   
 
 menu = [] #Form is: text, function | All functions must return true or false
