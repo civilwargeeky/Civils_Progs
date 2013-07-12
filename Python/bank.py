@@ -43,10 +43,12 @@ def genBefFunc(account = "Default", num = 1): #Generic Before Function: Will han
   master.newTime = time() #All of the below is for calculating interest
   changedTime = (master.newTime-master.oldTime)/60/24 #We'll measure it in days, instead of years
   master.oldTime = time()
-  for a in master.loans: #Calculate loans
+  for a in master.loans: #Calculate loan
     a[1], a[3] = calcInterest(a[1],a[2],changedTime), calcInterest(a[3],a[2],changedTime)
   for a, b in master.accounts.items(): #Calculates accounts
+    orig = b[1]
     b[1] = calcInterest(b[1],b[2],changedTime)
+    master.balance += (b[1] - orig) #Add in interest to balance
   """Idea: Interest rates will be calculated every time an account function is called,
   based on real time using an I = Pe^(rt) continous interest model """
   
@@ -145,8 +147,11 @@ def payLoan(account, loanID, amount):
     if not (genBefFunc(account,amount) and master.loans[loanID]) or master.loans[loanID][1] == 0: return False
   except IndexError:
     return False
-  if amount >= master.loans[loanID][1]: del master.loans[loanID]  #If it is gone, it should be gone
-  else: master.loans[loanID][1] -= amount
+  if amount >= master.loans[loanID][1]:
+    amount = master.loans[loanID][1] #Because genAftFunc handles master balance
+    del master.loans[loanID]  #If it is gone, it should be gone
+  else: 
+    master.loans[loanID][1] -= amount
   return genAftFunc(amount,account)
   
 def setGenInterest(type,num):
