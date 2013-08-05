@@ -49,7 +49,9 @@ printFont = pygame.font.SysFont(fontType, fontPixels)
 title = titleFont.render("Welcome to TTTClick!", False, (0,255,0))
 windowObj.blit(title, ((resX-title.get_size()[0])/2,0))
 pygame.display.update()
-sleep(2)
+while True:
+  if pygame.event.get(MOUSEBUTTONUP): #Waits for click
+    break
 
 player = False #Current player is a bit. False is X, True is O
 turn = 1 #Because updated at beginning of turn
