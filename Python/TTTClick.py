@@ -1,5 +1,7 @@
+print("LOADING")
+
 import pygame
-from pygame.locals import *
+from pygame.locals import * #Events in global
 from math import floor
 from random import randint
 from sys import exit
@@ -7,7 +9,7 @@ from time import sleep
 from os import path, chdir, getcwd
 startPath = getcwd()
 chdir("Resources") #Do note that this runs in resources
-print("LOADING")
+print("This screen is now the console and will print debug info")
 
 resX = 640
 resY = 480
@@ -20,6 +22,7 @@ images = {}
 for a, b in files.items():
   try: 
     images[a] = pygame.image.load(b)
+    print("Image %s Loaded" % (b))
   except:
     print("Image \"%s\" Not Found" % (b))
 multiplier = min(resX,resY) / (max(*images["board"].get_size()))
@@ -32,7 +35,7 @@ piecesPixels, borderPixels = max(*images["x"].get_size()), borderPixels * multip
 b = piecesPixels + borderPixels #Allotted space for a piece
 slotsPos = [ [(int(b*i),int(b*a)) for i in range(3)] for a in range(3)]
 slotsPos[0], slotsPos[2] = slotsPos[2], slotsPos[0] #This is for inverted.
-print(slotsPos)
+print("Image Positions: ",slotsPos)
 
 pygame.init()
 clockObj = pygame.time.Clock() #Creates a clock object to control fps
@@ -52,15 +55,16 @@ player = False #Current player is a bit. False is X, True is O
 turn = 1 #Because updated at beginning of turn
 slots = [0,0,0,0,0,0,0,0,0] #These are all board positions
 def update(slot,currPlayer):
-  if slots[slot-1] == 0:
+  if slots[slot] == 0:
     try:
-      slots[slot-1] = int(player) + 1
+      slots[slot] = int(currPlayer) + 1
+      global turn; turn += 1
+      print("Slot %d belongs to Player %d in turn %d" % (slot,currPlayer,turn-1)) #Debug
       return True
-    except:
+    except (IndexError, ValueError):
       pass
   return False
 def checkWin(): #If board full will raise assertion error
-
   for i in [1,2]:
    for a in range(3):
      b = a*3
@@ -70,7 +74,7 @@ def checkWin(): #If board full will raise assertion error
        return i
    if [slots[0],slots[4],slots[8]] == [i,i,i] or [slots[2],slots[4],slots[6]] == [i,i,i]:
      return i 
-   if not 0 in slots:
+  if not 0 in slots:
     raise(AssertionError)
 def userEvent(type, message):
   pygame.event.post(pygame.event.Event(USEREVENT, myType = type, message = message))
@@ -92,22 +96,25 @@ while True:
       print("KEY UP/DOWN")
       print(event.key)
       if event.key in list(range(K_1,K_9+1)) + list(range(K_KP1,K_KP9+1)):
-        if update(event.key-K_1+1 if event.key in range(K_1,K_9+1) else event.key-K_KP1+1,player): #Works because key - first number + 1. First is top numbers, second is keypad
+        if update(event.key-K_1 if event.key in range(K_1,K_9+1) else event.key-K_KP1,player): #Works because key - first number. First is top numbers, second is keypad
           player = not player
     if event.type in (MOUSEBUTTONUP,): #Mouse button up
       for a in range(3):
         for b in range(3):
           c = slotsPos[a][b] #For ease of use
           if not False in list((c[i]<=event.pos[i]<=c[i]+piecesPixels) for i in range(2)):
-            if update(a*3+b+1,player): #+1 because first slot is 1, not 0
+            if update(a*3+b,player): #+1 because first slot is 1, not 0
               player = not player
     if event.type == USEREVENT:
-      print(event.myType)
+      print(event.myType,"   ",event.message)
       windowObj.blit(printFont.render(event.message, False, (0,0,0)), (images["board"].get_size()[0],0))
       toQuit = True
     if event.type == QUIT:
       break
 
+  windowObj.blit(printFont.render("Player %d" % (int(player)+1), False, (0,0,0)), (images["board"].get_size()[0],25))
+  windowObj.blit(printFont.render("Turn %d" % turn, False, (0,0,0)), (images["board"].get_size()[0],50))
+  
   try: #Checking for winner
     winner = checkWin()
     if winner:
