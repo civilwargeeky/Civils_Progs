@@ -60,8 +60,7 @@ def update(slot,currPlayer):
       pass
   return False
 def checkWin(): #If board full will raise assertion error
-  if not 0 in slots:
-    raise(AssertionError)
+
   for i in [1,2]:
    for a in range(3):
      b = a*3
@@ -70,7 +69,9 @@ def checkWin(): #If board full will raise assertion error
      if [slots[a],slots[a+3],slots[a+6]] == [i,i,i]:
        return i
    if [slots[0],slots[4],slots[8]] == [i,i,i] or [slots[2],slots[4],slots[6]] == [i,i,i]:
-     return i
+     return i 
+   if not 0 in slots:
+    raise(AssertionError)
 def userEvent(type, message):
   pygame.event.post(pygame.event.Event(USEREVENT, myType = type, message = message))
 
