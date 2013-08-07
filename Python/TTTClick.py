@@ -112,7 +112,7 @@ while True:
       windowObj.blit(printFont.render(event.message, False, (0,0,0)), (images["board"].get_size()[0],0))
       toQuit = True
     if event.type == QUIT:
-      break
+      toQuit = True
 
   windowObj.blit(printFont.render("Player %d" % (int(player)+1), False, (0,0,0)), (images["board"].get_size()[0],25))
   windowObj.blit(printFont.render("Turn %d" % turn, False, (0,0,0)), (images["board"].get_size()[0],50))

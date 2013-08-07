@@ -601,15 +601,15 @@ while not forward(not outOfPath) do
     sleep(0.2)
   end
   if count > 50 then 
-    ran, bool = pcall(function() return turtle.getFuelLevel() > 0 end) --This is done to avoid errors
-    if ran and bool == true then                                       --When fuel is infinite
+    ran, bool = pcall(function() return turtle.getFuelLevel() > 0 end) --This is done to avoid errors. Not just "returns unlimited"
+    if ran and bool == true then  --When fuel is not infinite
       if yPos > (startY-7) then --If it is near bedrock
         bedrock()
-      else --Otherwise just sleep for a bit
+      else --Otherwise just sleep for a bit to avoid sheeps
         sleep(1)
       end
     else
-      error("No Fuel",0)
+      error("No Fuel/Unexpected Error",0)
     end
   end
 end
@@ -641,7 +641,7 @@ elseif facing == 3 then
   tab.zPos = zPos - 1
 end
 saveProgress(tab)
-isInPath = (not outOfPath)
+isInPath = (not outOfPath) --For rednet
 if doCheckInv and careAboutResources then
 if moved%invCheckFreq == 0 then
  if isFull(16-keepOpen) then dropOff() end

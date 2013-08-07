@@ -10,6 +10,9 @@ Things to add for quarry version 3.1.2:
   
   Add a GPS function that will try to record it's start position. If GPS enabled on startup, it will take its position from that.
 
+  Do something about how attack compensates for invert off the bat, but Move is compensated for in the implementation.
+  
+  Change fuel checking from a pcall to check if returns "unlimited" instead
 
 Things to add for next rednet version:
 
@@ -23,3 +26,6 @@ Plans for a Rednet Control Station:
 Basically, make an api table that only has one function. This function returns an object that has all of the necessary methods for returning values and making new indexes. In the object, each numbered value will be a table that has paramaters for:
 Title, default redstone, "On" text, "Off" text, color of title, background color of title, pulse t/f, pulse duration, cable color, and a "current" value, which is just redstone true of false right now.
 The actual program will handle stuff like key presses, scrolling, adjusting redstone, and updating the screen.
+
+Ideas for minecraft word:
+  Completely seperate the data from the visual. The data will conatain all of the lines (seperated by line breaks), and the visual will handle printing it in a formatted way for reading.
