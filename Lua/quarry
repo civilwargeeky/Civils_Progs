@@ -1,5 +1,5 @@
 --[[ 
-Version 3.1.1
+Version 3.1.2
 Recent Changes:
 1. Now has session persistence! Just type "quarry -restore"
    and your turtle will pick up where it left off
@@ -29,6 +29,7 @@ keepOpen = 1 --How many inventory slots it will attempt to keep open at all time
 fuelSafety = "moderate" --How much fuel it will ask for: safe, moderate, and loose [Default moderate]
 saveFile = "Civil_Quarry_Restore" --Where it saves restore data [Default "Civil_Quarry_Restore"]
 doBackup = true --If it will keep backups for session persistence [Default true]
+gpsEnabled = false -- If option is enabled, will attempt to find position via GPS api
 --Standard number slots for fuel (you shouldn't care)
 fuelTable = { --Will add in this amount of fuel to requirement.
 safe = 1000,
@@ -59,6 +60,7 @@ local help_paragraph = [[
 -doBackup: [t/f] Whether or not the turtle will backup its current position to a file.
 -restore: Turtle will check for a save file. If found will ignore all other arguments.
 -fuelSafety: [safe/moderate/loose] How much extra fuel the turtle will request at startup
+-GPS: [t/f] If true, will attempt to connect to GPS and record its location from that.
 Examples [1]:
  The minimum amount necessary to start a turtle automatically would be one of these two
  ---------
@@ -168,6 +170,7 @@ screen(1,1)
 print("----- Welcome to Quarry! -----")
 print("")
 
+--Hmm, this section seems like I was just playing with different text formatting options...
 local sides = {top = "top", right = "right", left = "left", bottom = "bottom", front = "front"} --Used to whitelist sides
 local errorT = {num = "Numbers not recognized", zero = "Variable is out of range", word = "String failed assertion" }
 local changedT = {}
@@ -183,8 +186,7 @@ for i=1, #tArgs do tArgs.checkStart(i) end
 if not turtle then
   print("This is not a turtle, you must be looking for the \"Companion Rednet Program\" \nCheck My forum thread for that")
   print("Press 'q' to quit, or any other key to start help ")
-  local _, key = os.pullEvent("char")
-  if key ~= "q" then tArgs.help = true else error("",0) end
+  if {os.pullEvent("char")}[2] ~= "q" then tArgs.help = true else error("",0) end
 end
 
 
@@ -216,6 +218,19 @@ if tArgs["-restore"] then
 restoreFound = fs.exists(saveFile)
 if restoreFound then
 os.run(getfenv(1),saveFile)
+if gpsEnabled then --If it had saved gps coordinates
+  print("Found GPS Start Coordinates")
+  local currLoc = {gps.locate()}
+  if #currLoc > 0 then
+    print("GPS Position Successfully Read")
+    if currLoc[1] == gpsPos[1] and currLoc[3] == gpsPos[3] then
+      xPos, yPos, zPos = 0,0,0
+    --
+    --Work on logic. Figure out how to say "If is in this quadrant, then pos...
+    --
+  else
+    print("GPS Locate Failed, Using Standard Methods")
+  end    
 print("Restore File read successfully. Starting in 3"); sleep(3)
 end
 end
@@ -252,6 +267,10 @@ if supportsRednet then
 if tArgs["-rednet"] then 
 rednetEnabled = (string.lower(string.sub(tArgs[tArgs["-rednet"]+1] or "",1,1)) == "t")
 else term.write("Rednet? "); rednetEnabled = (string.lower(string.sub(io.read(),1,1)) == "y")
+if tArgs["-GPS"] then
+gpsPos = {gps.locate()} --Stores position in array
+gpsEnabled = #gpsStartPos > 0 --Checks if location received properly
+end
 end
 changedT.new("Rednet Enabled", rednetEnabled)
 if tArgs["-sendChannel"] then
