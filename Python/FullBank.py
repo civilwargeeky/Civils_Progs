@@ -26,7 +26,8 @@ def inputInt(failText = "", initText = None): return genericInput(int,failText,i
 def inputFloat(failText = "", initText = None): return round(genericInput(float,failText,initText),2)
 
 
-commandList = {"master":True, "new":True, "master loans":True, "quit":True, "final":True}
+commandList = {"master":True, "new":True, "master loans":True, "quit":True, "final":True
+  , "help":True}
   
 def welcome(): #Will repeat this until user data is proper
   bank.update() #Loads file (so does bank.getInfo, but that is a side-effect)
@@ -37,6 +38,11 @@ def welcome(): #Will repeat this until user data is proper
   try:
     commandList[name.lower()] #Get the key error immediately to get extra functions
     num = 0 #To prevent reference before assignment errors
+    if name.lower() == "help":
+      print("")
+      for a, b in commandList.items():
+        print(a[0].upper()+a[1:])
+      print("")
     if name.lower() == "final": #Delete all files and exit
       system("if exist Accounts (rd /q /s %s)" % saveFolder)
       system("if exist %s (del /q %s)" % (bank.saveFile,bank.saveFile))

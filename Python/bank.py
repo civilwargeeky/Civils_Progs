@@ -3,6 +3,7 @@
 #Version 0.1.0
 saveFile = "BankRestore.bank"
 multiUser = True
+magicInterest = True #Whether or not interest money comes out of thin air and added to master
 
 """Ideas:
 1. Every user will have the following functions:
@@ -45,13 +46,11 @@ def genBefFunc(account = "Default", num = 1): #Generic Before Function: Will han
   master.oldTime = time()
   for a in master.loans: #Calculate loan
     a[1], a[3] = calcInterest(a[1],a[2],changedTime), calcInterest(a[3],a[2],changedTime)
-  for a, b in master.accounts.items(): #Calculates accounts
-    orig = b[1]
-    b[1] = calcInterest(b[1],b[2],changedTime)
-    master.balance += (b[1] - orig) #Add in interest to balance
-  """Idea: Interest rates will be calculated every time an account function is called,
-  based on real time using an I = Pe^(rt) continous interest model """
-  
+  if magicInterest: #Will add money from nowhere to interest
+    for a, b in master.accounts.items(): #Calculates accounts
+      orig = b[1]
+      b[1] = calcInterest(b[1],b[2],changedTime)
+      master.balance += (b[1] - orig) #Add in interest to balance
   return ((account in master.accounts) or account == "Default") and num > 0
   
 exists = genBefFunc #So the user can check accounts
