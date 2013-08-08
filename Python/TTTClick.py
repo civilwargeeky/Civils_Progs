@@ -5,7 +5,7 @@ from pygame.locals import * #Events in global
 from math import floor
 from random import randint
 from sys import exit
-from time import sleep
+from time import sleep, time
 from os import path, chdir, getcwd
 startPath = getcwd()
 chdir("Resources") #Do note that this runs in resources
@@ -17,7 +17,7 @@ fontPixels = int(resY/20) #Height of Pixels
 fontType = "Comic Sans" #Font
 borderPixels = 10 #Width between pieces
 
-files = { "icon": "Icon.png", "board": "Board.png", "x": "X.png", "o": "O.png" }
+files = { "board": "Board.png", "x": "X.png", "o": "O.png" }
 images = {}
 for a, b in files.items():
   try: 
@@ -29,8 +29,6 @@ multiplier = min(resX,resY) / (max(*images["board"].get_size()))
 for a, b in images.items():
   images[a] = pygame.transform.scale(images[a], tuple(int(i * multiplier) for i in images[a].get_size()))
 piecesPixels, borderPixels = max(*images["x"].get_size()), borderPixels * multiplier
-
-
 
 b = piecesPixels + borderPixels #Allotted space for a piece
 slotsPos = [ [(int(b*i),int(b*a)) for i in range(3)] for a in range(3)]
@@ -44,14 +42,6 @@ pygame.display.set_caption("TicTacToe")
 
 titleFont = pygame.font.SysFont(fontType, int(fontPixels*3))
 printFont = pygame.font.SysFont(fontType, fontPixels)
-
-#Title Sequence
-title = titleFont.render("Welcome to TTTClick!", False, (0,255,0))
-windowObj.blit(title, ((resX-title.get_size()[0])/2,0))
-pygame.display.update()
-while True:
-  if pygame.event.get(MOUSEBUTTONUP): #Waits for click
-    break
 
 player = False #Current player is a bit. False is X, True is O
 turn = 1 #Because updated at beginning of turn
@@ -80,6 +70,23 @@ def checkWin(): #If board full will raise assertion error
     raise(AssertionError)
 def userEvent(type, message):
   pygame.event.post(pygame.event.Event(USEREVENT, myType = type, message = message))
+def waitForGeneric(event, timeout = 1E100):
+  startTime = time()
+  while True:
+    a = pygame.event.get(event)
+    pygame.event.clear() #Remove all stored events from list to tidy up
+    if a:
+      return a
+    if time() >= startTime + timeout:
+      return False
+def waitForClick(timeout = None): return waitForGeneric(MOUSEBUTTONUP, timeout)
+def waitForKey(timeout = None): return waitForGeneric([KEYUP],timeout)
+  
+#Title Sequence
+title = titleFont.render("Welcome to TTTClick!", False, (0,255,0))
+windowObj.blit(title, ((resX-title.get_size()[0])/2,0))
+pygame.display.update()
+waitForGeneric([KEYUP,MOUSEBUTTONUP],3)
 
 toQuit = False #Quit Flag
 
@@ -130,5 +137,5 @@ while True:
     sleep(2)
     break
 
-pygame.quit()
 exit()
+pygame.quit()
