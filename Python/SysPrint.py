@@ -12,13 +12,10 @@ def init(font, pageHeight, lines, color = data["color"], antiAlias = data["antiA
   maxLines, data["size"] = lines, int(pageHeight / lines) or 1
   fontObj = pygame.font.SysFont(data["font"],data["size"])
 
-def print(surfObj, toPrint):
+def print(surfObj, toPrint, orientation = "left"):
   global currLine
   surfObj.blit(fontObj.render(toPrint if isinstance(toPrint,str) else repr(toPrint),data["antiAlias"], data["color"]),(0, (currLine-1) * data["size"] + data["buffer"]))
   currLine = currLine + 1 if currLine < maxLines else 1
-
-def printCenter(surfObj, toPrint, startX = 0):
-  pass
 
 def setLine(line = 1):
   pass

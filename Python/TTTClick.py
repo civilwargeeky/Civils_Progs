@@ -18,7 +18,6 @@ fontType = "Comic Sans" #Font
 borderPixels = 10 #Width between pieces
 
 files = { "board": "Board.png", "x": "X.png", "o": "O.png" }
-images = {}
 for a, b in files.items():
   try: 
     images[a] = pygame.image.load(b)
@@ -38,7 +37,7 @@ print("Image Positions: ",slotsPos)
 pygame.init()
 clockObj = pygame.time.Clock() #Creates a clock object to control fps
 windowObj = pygame.display.set_mode((resX,resY)) #Opens window at given resolution
-pygame.display.set_caption("TicTacToe")
+pygame.display.set_caption("TicTacToe") #Sets the windows caption
 
 titleFont = pygame.font.SysFont(fontType, int(fontPixels*3))
 printFont = pygame.font.SysFont(fontType, fontPixels)
@@ -137,5 +136,5 @@ while True:
     sleep(2)
     break
 
-exit()
 pygame.quit()
+exit()
