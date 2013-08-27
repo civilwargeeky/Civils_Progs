@@ -1,5 +1,5 @@
 --[[ 
-Version 3.1.2
+Version 3.2.0
 Recent Changes:
 1. Now has session persistence! Just type "quarry -restore"
    and your turtle will pick up where it left off
@@ -30,6 +30,7 @@ fuelSafety = "moderate" --How much fuel it will ask for: safe, moderate, and loo
 saveFile = "Civil_Quarry_Restore" --Where it saves restore data [Default "Civil_Quarry_Restore"]
 doBackup = true --If it will keep backups for session persistence [Default true]
 gpsEnabled = false -- If option is enabled, will attempt to find position via GPS api
+gpsTimeout = 3 --The number of seconds the program will wait to get GPS coords
 --Standard number slots for fuel (you shouldn't care)
 fuelTable = { --Will add in this amount of fuel to requirement.
 safe = 1000,
@@ -186,11 +187,11 @@ for i=1, #tArgs do tArgs.checkStart(i) end
 if not turtle then
   print("This is not a turtle, you must be looking for the \"Companion Rednet Program\" \nCheck My forum thread for that")
   print("Press 'q' to quit, or any other key to start help ")
-  if {os.pullEvent("char")}[2] ~= "q" then tArgs.help = true else error("",0) end
+  if ({os.pullEvent("char")})[2] ~= "q" then tArgs.help = true else error("",0) end
 end
 
 
-if tArgs["help"] or tArgs["-help"] or tArgs["-?"] then
+if tArgs["help"] or tArgs["-help"] or tArgs["-?"] or tArgs["?"] then
 print("You have selected help, press any key to continue"); print("Use arrow keys to naviate, q to quit"); os.pullEvent("key")
 local pos = 1
 local key = 0
@@ -214,28 +215,54 @@ if tArgs["doBackup"] then doBackup = (string.lower(string.sub(tArgs[tArgs["doBac
 if tArgs["saveFile"] then saveFile = tArgs[tArgs["saveFile"]+1] or saveFile end
 
 local restoreFound = false
-if tArgs["-restore"] then
+if tArgs["-restore"] or tArgs["-resume"] then
 restoreFound = fs.exists(saveFile)
 if restoreFound then
 os.run(getfenv(1),saveFile)
 if gpsEnabled then --If it had saved gps coordinates
-  print("Found GPS Start Coordinates")
-  local currLoc = {gps.locate()}
-  if #currLoc > 0 then
+  print("Found GPS Start Coordinates") 
+  local currLoc = {gps.locate(3)}
+  if #currLoc > 0 and #gpsStartPos > 0 and #gpsSecondPos > 0 then --Cover all the different positions I'm using
     print("GPS Position Successfully Read")
-    if currLoc[1] == gpsPos[1] and currLoc[3] == gpsPos[3] then
-      xPos, yPos, zPos = 0,0,0
-    --
-    --Work on logic. Figure out how to say "If is in this quadrant, then pos...
-    --
+    if currLoc[1] == gpsStartPos[1] and currLoc[3] == gpsStartPos[3] then --X coord, z coord, y coord in that order
+      xPos, yPos, zPos = 0,1,1
+    else
+      if inverted then --yPos setting
+      ------------------------------------------------FIX THIS
+      end
+      local a, b = gpsStartPos, gpsSecondPos --For convenience
+      if b[2] - a[2] == -1 then--If went north (-Z)
+        xPos, zPos = -currLoc[2] + b[2], currLoc[1] + -b[1]
+      end
+      if b[1] - a[1] == 1 then--If went east (+X)
+        xPos, zPos = currLoc[1] + -b[1], currLoc[2] + -b[2]
+      end
+      if b[2] - a[2] == 1 then--If went south (+Z)
+        xPos, zPos = currLoc[2] + b[2], -currLoc[1] + b[2]
+      end
+      if b[1] - a[1] == -1 then--If went west (-X)
+        xPos, zPos = -currLoc[1] + b[1], -currLoc[2] + b[2]
+      else
+        error("Improper coordinates",0)
+      end
+    end
+    print("X Pos: ",xPos)
+    print("Y Pos: ",yPos)
+    print("Z Pos: ",zPos)
+    print("Facing: ",facing)
+    os.pullEvent("key")
   else
     print("GPS Locate Failed, Using Standard Methods")
   end    
 print("Restore File read successfully. Starting in 3"); sleep(3)
 end
 end
+end
 
-if not (tArgs["-DEFAULT"] or restoreFound) then
+if not (tArgs["-DEFAULT"] or restoreFound) then 
+  --Just a note, the whole error checking section here was more of an
+  --experiment than anything else. If its ever changed in the future,
+  --it would probably be for the better.
 local section = "Dimensions"
 --Dimesnions
 if tArgs["-dim"] then local num = tArgs["-dim"];
@@ -268,7 +295,7 @@ if tArgs["-rednet"] then
 rednetEnabled = (string.lower(string.sub(tArgs[tArgs["-rednet"]+1] or "",1,1)) == "t")
 else term.write("Rednet? "); rednetEnabled = (string.lower(string.sub(io.read(),1,1)) == "y")
 if tArgs["-GPS"] then
-gpsPos = {gps.locate()} --Stores position in array
+gpsStartPos = {gps.locate(gpsTimeout)} --Stores position in array
 gpsEnabled = #gpsStartPos > 0 --Checks if location received properly
 end
 end
@@ -527,7 +554,7 @@ function up(sneak)
     down(-1)
   else
     while not turtle.up() do
-      while not digUp() do
+      if not digUp() then
         attackUp()
         sleep(0.5)
       end
@@ -565,7 +592,6 @@ end
 function attack(doAdd, func)
   doAdd = doAdd or true
   func = func or turtle.attack
-  local didAttack
   if func() then
     if doAdd then 
       attacked = attacked + 1
@@ -796,6 +822,9 @@ end
 --Pre-Mining Stuff dealing with session persistence
 local doDigDown, doDigUp = (lastHeight ~= 1), false --Used in lastHeight
 if not restoreFound then mine(false,false, true) else digUp(); digDown() end --Get it into the quarry
+if gpsEnabled then --The initial locate is done in the arguments. This is so I can figure out what quadrant the turtle is in.
+  gpsSecondPos = {gps.locate(gpsTimeout)}
+end
 if restoreFound then
   if gotoX then
     goto(gotoX,gotoZ,gotoY,gotoFacing)
