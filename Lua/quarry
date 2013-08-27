@@ -246,6 +246,9 @@ if gpsEnabled then --If it had saved gps coordinates
         error("Improper coordinates",0)
       end
     end
+    ----------------------------------------------------------------------------------------------------------------
+    --FIGURE OUT WHAT IS GOING WRONG. RIGHT NOW THE XPOS IS OFF BY ONE AND ZPOS IS JUST WIERD. FIX IT
+    ----------------------------------------------------------------------------------------------------------------
     print("X Pos: ",xPos)
     print("Y Pos: ",yPos)
     print("Z Pos: ",zPos)
