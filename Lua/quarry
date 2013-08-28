@@ -224,30 +224,46 @@ if gpsEnabled then --If it had saved gps coordinates
   local currLoc = {gps.locate(3)}
   if #currLoc > 0 and #gpsStartPos > 0 and #gpsSecondPos > 0 then --Cover all the different positions I'm using
     print("GPS Position Successfully Read")
-    if currLoc[1] == gpsStartPos[1] and currLoc[3] == gpsStartPos[3] then --X coord, z coord, y coord in that order
+    if currLoc[1] == gpsStartPos[1] and currLoc[3] == gpsStartPos[3] then --X coord, y coord, z coord in that order
       xPos, yPos, zPos = 0,1,1
+      if facing ~= 0 then turnTo(0) end
+      print("Is at start")
     else
       if inverted then --yPos setting
       ------------------------------------------------FIX THIS
       end
       local a, b = gpsStartPos, gpsSecondPos --For convenience
-      if b[2] - a[2] == -1 then--If went north (-Z)
-        xPos, zPos = -currLoc[2] + b[2], currLoc[1] + -b[1]
-      end
-      if b[1] - a[1] == 1 then--If went east (+X)
-        xPos, zPos = currLoc[1] + -b[1], currLoc[2] + -b[2]
-      end
-      if b[2] - a[2] == 1 then--If went south (+Z)
-        xPos, zPos = currLoc[2] + b[2], -currLoc[1] + b[2]
-      end
-      if b[1] - a[1] == -1 then--If went west (-X)
-        xPos, zPos = -currLoc[1] + b[1], -currLoc[2] + b[2]
+      if b[3] - a[3] == -1 then--If went north (-Z)
+        a[1] = a[1] - 1 --Shift x one to west to create a "zero"
+        xPos, zPos = -currLoc[3] + a[3], currLoc[1] + -a[1]
+      elseif b[1] - a[1] == 1 then--If went east (+X)
+        a[3] = a[3] - 1 --Shift z up one to north to create a "zero"
+        xPos, zPos = currLoc[1] + -a[1], currLoc[3] + -a[3]
+      elseif b[3] - a[3] == 1 then--If went south (+Z)
+        a[1] = a[1] + 1 --Shift x one to east to create a "zero"
+        xPos, zPos = currLoc[3] + a[3], -currLoc[1] + a[3]
+      elseif b[1] - a[1] == -1 then--If went west (-X)
+        a[3] = a[3] + 1 --Shift z down one to south to create a "zero"
+        xPos, zPos = -currLoc[1] + a[1], -currLoc[3] + a[3]
       else
-        error("Improper coordinates",0)
+        print("Improper Coordinates")
+        print("GPS Locate Failed, Using Standard Methods")        ----Maybe clean this up a bit to use flags instead.
       end
+      print("Current Loc: ",textutils.serialize(currLoc))
+      print("Original Loc: ",textutils.serialize(a))
+      print("Second Loc: ",textutils.serialize(b))
+      print(b[3] - a[3])
+      print(b[1] - a[1])
+      print(b[3] - a[3])
+      print(b[1] - a[1])
     end
     ----------------------------------------------------------------------------------------------------------------
     --FIGURE OUT WHAT IS GOING WRONG. RIGHT NOW THE XPOS IS OFF BY ONE AND ZPOS IS JUST WIERD. FIX IT
+    --Plan: Have a offset a one to left to use as a zero
+    --Plan implemented. Testing in progress...
+    --First round of testing done: It seems to be able to get its position perfectly the first time, but second restart, z is off by one. Possibly local
+    -- isn't working and it is just modifying the global table, offsetting it by one more every time so it thinks it is further away.
+    -- Testing was done in two perpendicular directions.
     ----------------------------------------------------------------------------------------------------------------
     print("X Pos: ",xPos)
     print("Y Pos: ",yPos)
@@ -297,12 +313,13 @@ if supportsRednet then
 if tArgs["-rednet"] then 
 rednetEnabled = (string.lower(string.sub(tArgs[tArgs["-rednet"]+1] or "",1,1)) == "t")
 else term.write("Rednet? "); rednetEnabled = (string.lower(string.sub(io.read(),1,1)) == "y")
-if tArgs["-GPS"] then
+if tArgs["-GPS"] and not restoreFound then
 gpsStartPos = {gps.locate(gpsTimeout)} --Stores position in array
 gpsEnabled = #gpsStartPos > 0 --Checks if location received properly
-end
+changedT.new("GPS Location Services", gpsEnabled)
 end
 changedT.new("Rednet Enabled", rednetEnabled)
+end
 if tArgs["-sendChannel"] then
 channels.send = assert(tonumber(tArgs[tArgs["-sendChannel"]+1]), errorT.num)
 assert(channels.send > 0 and channels.send < 65535, errorT.zero)
@@ -825,8 +842,8 @@ end
 --Pre-Mining Stuff dealing with session persistence
 local doDigDown, doDigUp = (lastHeight ~= 1), false --Used in lastHeight
 if not restoreFound then mine(false,false, true) else digUp(); digDown() end --Get it into the quarry
-if gpsEnabled then --The initial locate is done in the arguments. This is so I can figure out what quadrant the turtle is in.
-  gpsSecondPos = {gps.locate(gpsTimeout)}
+if gpsEnabled and not restoreFound then --The initial locate is done in the arguments. This is so I can figure out what quadrant the turtle is in.
+  gpsSecondPos = {gps.locate(gpsTimeout)} --Note: Does not run this if it has already been restarted.
 end
 if restoreFound then
   if gotoX then
