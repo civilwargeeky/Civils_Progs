@@ -6,6 +6,10 @@ Changelog so far:
     restore: resume
   Added in optional GPS capability to start up more reliably
   Fixed logic in the "up" function preventing it from continuing on getting stuck
+  Fixed flag in saveProgress function to be a "w+" so it will never save a blank file
+  Restructured the refuel thing if fuel is infinite. turtle.getFuelLevel returns math.huge if doCheckFuel == false
+  Left and right now save postion before move, may make restarts more reliable
+  
 
 Things to add for quarry version 3.2.0:
 
@@ -13,18 +17,14 @@ Things to add for quarry version 3.2.0:
   Store them in a folder and label them sequentially
   
   Consolidate Mining Loops
-  
-  Insert a sleep(0) in the loop for filesaving
-  
-  Change the fs.open("w") to a "w+" so it can use the previous location if write fails.
 
   Do something about how attack compensates for invert off the bat, but Move is compensated for in the implementation.
-  
-  Change fuel checking from a pcall to check if returns "unlimited" instead
 
   Smart-Refuel: Will take one piece of the fuel to gauge how much it will need. It will then consume as much of the stack as needed. If needed is greater than a stack, it will first consume the stack, and then tell the user how many more stacks it needs, and will loop through the filled slots to consume (nearly) precisely how much fuel it needs
 
   Make sure that you are only doing the "raise" value for fuel when it is below "needed"
+
+  Update help for -GPS and -SmartFuel
   
 Things to add for quarry version 3.2.1:
   Use "for" loops for gps location checking on successful backup read

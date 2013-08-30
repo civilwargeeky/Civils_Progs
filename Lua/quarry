@@ -155,9 +155,17 @@ end
 end
 turtle.select(1)
 end
-local function checkFuel()
-return turtle.getFuelLevel()
+
+local getFuel = turtle.getFuelLevel()
+local function turtle.getFuelLevel() --Unlimited screws up my calculations
+if doCheckFuel then
+  return getFuel()
+else
+  return math.huge --Lol... Should work for my purposes
 end
+end
+local checkFuel = turtle.getFuelLevel --Just an alias for backwards compat
+
 
  -----------------------------------------------------------------
 --Input Phase
@@ -348,7 +356,7 @@ assert(#saveFile >= 2,errorT.word, "Save File")
 end; end --First end is for vanilla, second is for DEFAULT
 
 local function saveProgress(extras) --Session persistence
-local file = fs.open(saveFile,"w")
+local file = fs.open(saveFile,"w+") --W+ so it will never write a blank text file
 for a,b in pairs(getfenv(1)) do
 if type(b) == "string" then b = "\""..b.."\"" end
 if type(b) == "table" and a~="modem" then b = textutils.serialize(b) end
@@ -461,7 +469,7 @@ local title, value = changedT.getPair(i)
 print(capitalize(title)..": ",value)
 end
 end
-print("\nStarting in 3"); sleep(1); print("2"); sleep(1); print("1"); sleep(1.5)
+print("\nStarting in 3"); sleep(1); print("2"); sleep(1); print("1"); sleep(1.5) --Dramatic pause at end
 
 
 
@@ -585,13 +593,11 @@ function down(sneak)
 end
 function right(num)
   num = num or 1
-  for i=1, num do turtle.turnRight(); facingF(1); end
-  saveProgress()
+  for i=1, num do facingF(1); saveProgress(); turtle.turnRight() end
 end
 function left(num)
   num = num or 1
-  for i=1, num do turtle.turnLeft(); facingF(-1) end
-  saveProgress()
+  for i=1, num do facingF(-1); saveProgress(); turtle.turnLeft() end
 end
 function attack(doAdd, func)
   doAdd = doAdd or true
@@ -649,16 +655,14 @@ while not forward(not outOfPath) do
     attack()
     sleep(0.2)
   end
-  if count > 50 then 
-    ran, bool = pcall(function() return turtle.getFuelLevel() > 0 end) --This is done to avoid errors. Not just "returns unlimited"
-    if ran and bool == true then  --When fuel is not infinite
-      if yPos > (startY-7) then --If it is near bedrock
-        bedrock()
-      else --Otherwise just sleep for a bit to avoid sheeps
-        sleep(1)
-      end
-    else
-      error("No Fuel/Unexpected Error",0)
+  if count > 50 then
+    if turtle.getFuelLevel() < 0 then --Don't worry about inf fuel because I modified this function
+      saveProgress()
+      error("No more fuel",0)
+    elseif yPos > (startY-7) then --If it is near bedrock
+      bedrock()
+    else --Otherwise just sleep for a bit to avoid sheeps
+      sleep(1)
     end
   end
 end
