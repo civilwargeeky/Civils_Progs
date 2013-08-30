@@ -7,6 +7,7 @@ Changelog so far:
   Added in optional GPS capability to start up more reliably
   Fixed logic in the "up" function preventing it from continuing on getting stuck
   Fixed flag in saveProgress function to be a "w+" so it will never save a blank file
+    Nvm, w+ is unsupported mode...
   Restructured the refuel thing if fuel is infinite. turtle.getFuelLevel returns math.huge if doCheckFuel == false
   Left and right now save postion before move, may make restarts more reliable
   
