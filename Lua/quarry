@@ -232,7 +232,8 @@ if gpsEnabled then --If it had saved gps coordinates
       if inverted then --yPos setting
       ------------------------------------------------FIX THIS
       end
-      local a, b = gpsStartPos, gpsSecondPos --For convenience
+      local function copyTable(tab) local toRet = {}; for a, b in pairs(tab) do toRet[a] = b end; return toRet end
+      local a, b = copyTable(gpsStartPos), copyTable(gpsSecondPos) --For convenience
       if b[3] - a[3] == -1 then--If went north (-Z)
         a[1] = a[1] - 1 --Shift x one to west to create a "zero"
         xPos, zPos = -currLoc[3] + a[3], currLoc[1] + -a[1]
@@ -248,28 +249,12 @@ if gpsEnabled then --If it had saved gps coordinates
       else
         print("Improper Coordinates")
         print("GPS Locate Failed, Using Standard Methods")        ----Maybe clean this up a bit to use flags instead.
-      end
-      print("Current Loc: ",textutils.serialize(currLoc))
-      print("Original Loc: ",textutils.serialize(a))
-      print("Second Loc: ",textutils.serialize(b))
-      print(b[3] - a[3])
-      print(b[1] - a[1])
-      print(b[3] - a[3])
-      print(b[1] - a[1])
+      end  
     end
-    ----------------------------------------------------------------------------------------------------------------
-    --FIGURE OUT WHAT IS GOING WRONG. RIGHT NOW THE XPOS IS OFF BY ONE AND ZPOS IS JUST WIERD. FIX IT
-    --Plan: Have a offset a one to left to use as a zero
-    --Plan implemented. Testing in progress...
-    --First round of testing done: It seems to be able to get its position perfectly the first time, but second restart, z is off by one. Possibly local
-    -- isn't working and it is just modifying the global table, offsetting it by one more every time so it thinks it is further away.
-    -- Testing was done in two perpendicular directions.
-    ----------------------------------------------------------------------------------------------------------------
     print("X Pos: ",xPos)
     print("Y Pos: ",yPos)
     print("Z Pos: ",zPos)
     print("Facing: ",facing)
-    os.pullEvent("key")
   else
     print("GPS Locate Failed, Using Standard Methods")
   end    
@@ -448,8 +433,7 @@ sleep(1.5)
 end
 local function biometrics(sendChannel)
 local commands = { Confirm = "Confirm" }
-local toSend = { ["x"] = x, ["y"] = (y/3 + math.ceil(lastHeight/2)),
-     ["z"] = z,                     --The y calc is weird...
+local toSend = { ["x"] = x, ["y"] = (y/3 + math.ceil(lastHeight/2)), ["z"] = z, --The y calc is weird...
     ["xPos"] = xPos, ["yPos"] = yPos, ["zPos"] = zPos, 
     ["percent"] = percent, ["mined" ]= mined, 
     ["fuel"] = checkFuel(), ["moved"] = moved, 
