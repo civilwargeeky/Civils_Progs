@@ -27,27 +27,27 @@ for a, b in files.items():
     print("Image \"%s\" Not Found" % (b))
 multiplier = min(resX,resY) / (max(*images["board"].get_size()))
 for a, b in images.items():
-  images[a] = pygame.transform.scale(images[a], tuple(int(i * multiplier) for i in images[a].get_size()))
-piecesPixels, borderPixels = max(*images["x"].get_size()), borderPixels * multiplier
+  images[a] = pygame.transform.scale(images[a], tuple(int(i * multiplier) for i in images[a].get_size())) #Scales images to match proper window size
+piecesPixels, borderPixels = max(*images["x"].get_size()), borderPixels * multiplier #Sets piecesPixels to the larger dimension, scales border pixels. 
 
 
 
 b = piecesPixels + borderPixels #Allotted space for a piece
-slotsPos = [ [(int(b*i),int(b*a)) for i in range(3)] for a in range(3)]
+slotsPos = [ [(int(b*i),int(b*a)) for i in range(3)] for a in range(3)] #Top left positions of all pictures for slot[a][b]
 slotsPos[0], slotsPos[2] = slotsPos[2], slotsPos[0] #This is for inverted.
 print("Image Positions: ",slotsPos)
 
 pygame.init()
 clockObj = pygame.time.Clock() #Creates a clock object to control fps
 windowObj = pygame.display.set_mode((resX,resY)) #Opens window at given resolution
-pygame.display.set_caption("TicTacToe")
+pygame.display.set_caption("TicTacToe") #Sets window title
 
-titleFont = pygame.font.SysFont(fontType, int(fontPixels*3))
+titleFont = pygame.font.SysFont(fontType, int(fontPixels*3)) #These are the two fonts I will use
 printFont = pygame.font.SysFont(fontType, fontPixels)
 
 #Title Sequence
 title = titleFont.render("Welcome to TTTClick!", False, (0,255,0))
-windowObj.blit(title, ((resX-title.get_size()[0])/2,0))
+windowObj.blit(title, ((resX-title.get_size()[0])/2,0)) #Centered
 pygame.display.update()
 while True:
   if pygame.event.get(MOUSEBUTTONUP): #Waits for click
@@ -78,7 +78,7 @@ def checkWin(): #If board full will raise assertion error
      return i 
   if not 0 in slots:
     raise(AssertionError)
-def userEvent(type, message):
+def userEvent(type, message): #This is so I can make my own events. event.myType is title, event.message is details
   pygame.event.post(pygame.event.Event(USEREVENT, myType = type, message = message))
 
 toQuit = False #Quit Flag
