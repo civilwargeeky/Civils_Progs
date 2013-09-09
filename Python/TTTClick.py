@@ -5,7 +5,7 @@ from pygame.locals import * #Events in global
 from math import floor
 from random import randint
 from sys import exit
-from time import sleep
+from time import sleep, time
 from os import path, chdir, getcwd
 startPath = getcwd()
 chdir("Resources") #Do note that this runs in resources
@@ -17,8 +17,7 @@ fontPixels = int(resY/20) #Height of Pixels
 fontType = "Comic Sans" #Font
 borderPixels = 10 #Width between pieces
 
-files = { "icon": "Icon.png", "board": "Board.png", "x": "X.png", "o": "O.png" }
-images = {}
+files = { "board": "Board.png", "x": "X.png", "o": "O.png" }
 for a, b in files.items():
   try: 
     images[a] = pygame.image.load(b)
@@ -29,8 +28,6 @@ multiplier = min(resX,resY) / (max(*images["board"].get_size()))
 for a, b in images.items():
   images[a] = pygame.transform.scale(images[a], tuple(int(i * multiplier) for i in images[a].get_size())) #Scales images to match proper window size
 piecesPixels, borderPixels = max(*images["x"].get_size()), borderPixels * multiplier #Sets piecesPixels to the larger dimension, scales border pixels. 
-
-
 
 b = piecesPixels + borderPixels #Allotted space for a piece
 slotsPos = [ [(int(b*i),int(b*a)) for i in range(3)] for a in range(3)] #Top left positions of all pictures for slot[a][b]
@@ -80,6 +77,23 @@ def checkWin(): #If board full will raise assertion error
     raise(AssertionError)
 def userEvent(type, message): #This is so I can make my own events. event.myType is title, event.message is details
   pygame.event.post(pygame.event.Event(USEREVENT, myType = type, message = message))
+def waitForGeneric(event, timeout = 1E100):
+  startTime = time()
+  while True:
+    a = pygame.event.get(event)
+    pygame.event.clear() #Remove all stored events from list to tidy up
+    if a:
+      return a
+    if time() >= startTime + timeout:
+      return False
+def waitForClick(timeout = None): return waitForGeneric(MOUSEBUTTONUP, timeout)
+def waitForKey(timeout = None): return waitForGeneric([KEYUP],timeout)
+  
+#Title Sequence
+title = titleFont.render("Welcome to TTTClick!", False, (0,255,0))
+windowObj.blit(title, ((resX-title.get_size()[0])/2,0))
+pygame.display.update()
+waitForGeneric([KEYUP,MOUSEBUTTONUP],3)
 
 toQuit = False #Quit Flag
 
