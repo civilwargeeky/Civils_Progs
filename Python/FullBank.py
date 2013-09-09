@@ -138,7 +138,7 @@ def readAllLoans():
   
 
 menu = [] #Form is: text, function | All functions must return true or false
-menu.append(["Check Account Info", lambda: print("Balance: %d, Account Interest Rate: %.2f, # of Transactions %d" % (bank.getInfo(account)[1:4])) or True])
+menu.append(["Check Account Info", lambda: print("Balance: %.2f, Account Interest Rate: %.2f, # of Transactions %d" % (bank.getInfo(account)[1:4])) or True])
 menu.append(["Deposit Money", lambda: bank.deposit(account, inputInt("Invalid Number","How much money would you like to deposit?"))])
 menu.append(["Withdraw Money", lambda: (bank.withdraw(account, inputInt("Invalid Number","How much money would you like to withdraw?")))[0]])
 menu.append(["Apply for Loan", applyForLoan] )
