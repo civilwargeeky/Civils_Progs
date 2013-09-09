@@ -10,6 +10,7 @@ Changelog so far:
     Nvm, w+ is unsupported mode...
   Restructured the refuel thing if fuel is infinite. turtle.getFuelLevel returns math.huge if doCheckFuel == false
   Left and right now save postion before move, may make restarts more reliable
+  Moved saveProgress to directly after first move. May improve reliability.
   
 
 Things to add for quarry version 3.2.0:
@@ -27,6 +28,8 @@ Things to add for quarry version 3.2.0:
 
   Update help for -GPS and -SmartFuel
   
+  Do tests on baseline restart to see if somewhat reliable.
+  
 Things to add for quarry version 3.2.1:
   Use "for" loops for gps location checking on successful backup read
 
@@ -36,6 +39,8 @@ Things to add for next rednet version:
 
 Program will just register items to display on receive. It will then print them in order if there is room. Each element will be a table containing the original value, the short value, the medium value,
  the long value, and a table containing the screenX required for all sizes. Maybe also have a priority (e.g. priority 1 will always disply, then priority two will display, then priority 3 will display if there is room.
+ 
+ Reinstate the thing where you can give commands from the rednet program. Like stop, or drop off items.
 
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
  
