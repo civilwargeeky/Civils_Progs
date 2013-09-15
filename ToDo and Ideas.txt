@@ -11,6 +11,7 @@ Changelog so far:
   Restructured the refuel thing if fuel is infinite. turtle.getFuelLevel returns math.huge if doCheckFuel == false
   Left and right now save postion before move, may make restarts more reliable
   Moved saveProgress to directly after first move. May improve reliability.
+  Made "doBackup" switch actually do somthing...
   
 
 Things to add for quarry version 3.2.0:
