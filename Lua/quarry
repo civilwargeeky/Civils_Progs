@@ -321,43 +321,51 @@ local volume = x*y*z
 local lastHeight = y%3
 local dispY = y
 y = math.floor(y/3)*3
-local yMult = y/3 + math.ceil(lastHeight/2)
-local moveVolumeCalc = ((area+x+z)*yMult) + (2 * dispY)
-local moveVolume = (area * yMult)
+local yMult = y/3 + math.ceil(lastHeight/2) --This is basically a smart y/3 for movement
+local moveVolume = (area * yMult) --Kept for display percent
+--Calculating Needed Fuel--
+local exStack = 8 --Expected stacks of items before full
+local neededFuel = yMult * x * z + --This is volume it will run through
+      dispY(2+1/(64*exStack)) + --This is simplified and includes the y to get up times up and down + how many times it will drop stuff off
+      (x+z)(yMult + (1/(64*exStack))  --Simplified as well: It is getting to start of row plus getting to start of row how many times will drop off stuff
+      --Original equation: x*z*y/3 + y * 2 + (x+z) * y/3 + (x + z + y) * (1/64*8)
 
 --Getting Fuel
-if doCheckFuel then --Calculating Needed Fuel
-local neededFuel = moveVolume + (math.floor(volume / (64 * 8)) * (x+dispY+z)) --Standard move plus dropping off supplies
-                             --How many times come back to start| * If it were at the very far side
-neededFuel = neededFuel + fuelTable[fuelSafety]
-if neededFuel < 100 then neededFuel = 100; end
-if checkFuel() < neededFuel then
-screen(1,1)
-print("More Fuel Needed")
-print("Current Fuel: ",checkFuel()," Needed: ",neededFuel)
-print("Place fuel in Bottom Right")
-while turtle.getItemCount(16) == 0 do
-  sleep(1)
-end
-turtle.select(16)
-while checkFuel() < neededFuel do
-if not turtle.refuel(1) then
-term.clearLine()
-print("Still too little fuel")
-term.clearLine()
-print("Insert more fuel to resume")
-while turtle.getItemCount(16) == 0 do
-  sleep(1)
-end
-end
-local x,y = term.getCursorPos()
-print(checkFuel().." Fuel")
-term.setCursorPos(x,y)
-end
-print(checkFuel().." Units of Fuel")
-sleep(3)
-turtle.select(1)
-end
+if doCheckFuel then 
+
+
+
+-- local neededFuel = moveVolume + (math.floor(volume / (64 * 8)) * (x+dispY+z)) --Standard move plus dropping off supplies
+                             -- --How many times come back to start| * If it were at the very far side
+-- neededFuel = neededFuel + fuelTable[fuelSafety]
+-- if neededFuel < 100 then neededFuel = 100; end
+-- if checkFuel() < neededFuel then
+-- screen(1,1)
+-- print("More Fuel Needed")
+-- print("Current Fuel: ",checkFuel()," Needed: ",neededFuel)
+-- print("Place fuel in Bottom Right")
+-- while turtle.getItemCount(16) == 0 do
+  -- sleep(1)
+-- end
+-- turtle.select(16)
+-- while checkFuel() < neededFuel do
+-- if not turtle.refuel(1) then
+-- term.clearLine()
+-- print("Still too little fuel")
+-- term.clearLine()
+-- print("Insert more fuel to resume")
+-- while turtle.getItemCount(16) == 0 do
+  -- sleep(1)
+-- end
+-- end
+-- local x,y = term.getCursorPos()
+-- print(checkFuel().." Fuel")
+-- term.setCursorPos(x,y)
+-- end
+-- print(checkFuel().." Units of Fuel")
+-- sleep(3)
+-- turtle.select(1)
+-- end
 end
 --Initial Rednet Handshake
 if rednetEnabled then
