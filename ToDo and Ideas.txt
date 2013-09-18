@@ -12,6 +12,8 @@ Changelog so far:
   Left and right now save postion before move, may make restarts more reliable
   Moved saveProgress to directly after first move. May improve reliability.
   Made "doBackup" switch actually do somthing...
+  Changed fuelSafety default to loose in order to test new fuel algorithm.
+  Added numberOfStacksPerRun to config. Used in fuel.
   
 
 Things to add for quarry version 3.2.0:

@@ -26,9 +26,10 @@ doCheckFuel = true --Perform fuel check [Default true]
 doRefuel = false --Whenever it comes to start location will attempt to refuel from inventory [Default false]
 invCheckFreq = 10 --Will check for inventory full every <-- moved spaces [Default 10]
 keepOpen = 1 --How many inventory slots it will attempt to keep open at all times [Default 1]
-fuelSafety = "moderate" --How much fuel it will ask for: safe, moderate, and loose [Default moderate]
+fuelSafety = "loose" --How much fuel it will ask for: safe, moderate, and loose [Default moderate]
 saveFile = "Civil_Quarry_Restore" --Where it saves restore data [Default "Civil_Quarry_Restore"]
 doBackup = true --If it will keep backups for session persistence [Default true]
+numberOfStacksPerRun = 8 --How many stacks (number of items) the turtle expects (on average) to have before it must dump off. Not in arguments.
 --Standard number slots for fuel (you shouldn't care)
 fuelTable = { --Will add in this amount of fuel to requirement.
 safe = 1000,
@@ -324,17 +325,44 @@ y = math.floor(y/3)*3
 local yMult = y/3 + math.ceil(lastHeight/2) --This is basically a smart y/3 for movement
 local moveVolume = (area * yMult) --Kept for display percent
 --Calculating Needed Fuel--
-local exStack = 8 --Expected stacks of items before full
+local exStack = numberOfStacksPerRun --Expected stacks of items before full
 local neededFuel = yMult * x * z + --This is volume it will run through
-      dispY(2+1/(64*exStack)) + --This is simplified and includes the y to get up times up and down + how many times it will drop stuff off
-      (x+z)(yMult + (1/(64*exStack))  --Simplified as well: It is getting to start of row plus getting to start of row how many times will drop off stuff
+      dispY*(2+1/(64*exStack)) + --This is simplified and includes the y to get up times up and down + how many times it will drop stuff off
+      (x+z)*(yMult + 1/(64*exStack))  --Simplified as well: It is getting to start of row plus getting to start of row how many times will drop off stuff
       --Original equation: x*z*y/3 + y * 2 + (x+z) * y/3 + (x + z + y) * (1/64*8)
 
 --Getting Fuel
-if doCheckFuel then 
-
-
-
+if doCheckFuel and checkFuel() < neededFuel then
+neededFuel = neededFuel + fuelTable[fuelSafety] --For safety
+  print("Not enough fuel")
+  print("Current: ",checkFuel()," Needed: ",neededFuel)
+  print("Please place fuel in top left")
+  local function output(text, x, y) --For displaying fuel
+    currX, currY = term.getCursorPos()
+    term.setCursorPos(x,y)
+    term.clearLine()
+    term.write(text)
+    term.setCursorPos(currX,currY)
+    end
+  local oneFuel
+  local currSlot = 0
+  while checkFuel() <= neededFuel do
+    currSlot = currSlot + 1
+    output("Current Fuel: "..tostring(checkFuel()),1,13)
+    print("Currently taking fuel from slot ",currSlot)
+    turtle.select(currSlot)
+    while turtle.getItemCount(currSlot) == 0 do sleep(1) end
+    while (oneFuel or 0) <= 0 do --Not an if to prevent errors if fuel taken out prematurely.
+      local previous = checkFuel()
+      turtle.refuel(1)
+      oneFuel = checkFuel() - previous
+    end
+    neededFuelItems = (neededFuel - checkFuel()) / oneFuel
+    turtle.refuel(neededFuelItems) --Change because can only think about 64 at once.
+    if turtle.getItemCount(currSlot + 1) == 0 then --Resets if no more fuel
+      currSlot = 0
+    end
+  end
 -- local neededFuel = moveVolume + (math.floor(volume / (64 * 8)) * (x+dispY+z)) --Standard move plus dropping off supplies
                              -- --How many times come back to start| * If it were at the very far side
 -- neededFuel = neededFuel + fuelTable[fuelSafety]
