@@ -1,5 +1,5 @@
 --[[ 
-Version 3.1.1
+Version 3.2.0
 Recent Changes:
 1. Now has session persistence! Just type "quarry -restore"
    and your turtle will pick up where it left off
@@ -154,9 +154,16 @@ end
 end
 turtle.select(1)
 end
-local function checkFuel()
-return turtle.getFuelLevel()
+
+local getFuel = turtle.getFuelLevel
+turtle.getFuelLevel = function() --Unlimited screws up my calculations
+if doCheckFuel then --Also, this may or may not screw it up for other programs that run...
+  return getFuel()
+else
+  return math.huge --Lol... Should work for my purposes
 end
+end
+local checkFuel = turtle.getFuelLevel --Just an alias for backwards compat
 
  -----------------------------------------------------------------
 --Input Phase
@@ -922,3 +929,6 @@ goto(0,1,1,2)
 drop(dropSide, true)
 --Display was moved above to be used in bedrock function
 display()
+
+--Cleanup
+turtle.getFuelLevel = getFuel
