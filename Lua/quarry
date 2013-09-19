@@ -694,7 +694,7 @@ if outOfPath == nil then outOfPath = false end
 if inverted then
   doDigUp, doDigDown = doDigDown, doDigUp --Just switch the two if inverted
 end
-if doRefuel and checkFuel() < 100 then
+if doRefuel and checkFuel() <= fuelTable[fuelSafety]/2 then
   for i=1, 16 do
   if turtle.getItemCount(i) > 0 then
     turtle.select(i)
@@ -716,7 +716,7 @@ while not forward(not outOfPath) do
     sleep(0.2)
   end
   if count > 50 then
-    if turtle.getFuelLevel() < 0 then --Don't worry about inf fuel because I modified this function
+    if turtle.getFuelLevel() == 0 then --Don't worry about inf fuel because I modified this function
       saveProgress()
       error("No more fuel",0)
     elseif yPos > (startY-7) then --If it is near bedrock
@@ -870,6 +870,7 @@ goto(1,1,1, 0)
 goto(currX,currZ,currY,currFacing)
 end
 function bedrock()
+if checkFuel() == 0 then error("No Fuel",0) end
 local origin = {x = xPos, y = yPos, z = zPos}
 print("Bedrock Detected")
 if turtle.detectUp() then
