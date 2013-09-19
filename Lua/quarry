@@ -26,10 +26,12 @@ doCheckFuel = true --Perform fuel check [Default true]
 doRefuel = false --Whenever it comes to start location will attempt to refuel from inventory [Default false]
 invCheckFreq = 10 --Will check for inventory full every <-- moved spaces [Default 10]
 keepOpen = 1 --How many inventory slots it will attempt to keep open at all times [Default 1]
-fuelSafety = "loose" --How much fuel it will ask for: safe, moderate, and loose [Default moderate]
+fuelSafety = "moderate" --How much fuel it will ask for: safe, moderate, and loose [Default moderate]
 saveFile = "Civil_Quarry_Restore" --Where it saves restore data [Default "Civil_Quarry_Restore"]
 doBackup = true --If it will keep backups for session persistence [Default true]
 numberOfStacksPerRun = 8 --How many stacks (number of items) the turtle expects (on average) to have before it must dump off. Not in arguments.
+gpsEnabled = false -- If option is enabled, will attempt to find position via GPS api
+gpsTimeout = 3 --The number of seconds the program will wait to get GPS coords
 --Standard number slots for fuel (you shouldn't care)
 fuelTable = { --Will add in this amount of fuel to requirement.
 safe = 1000,
@@ -192,11 +194,11 @@ for i=1, #tArgs do tArgs.checkStart(i) end
 if not turtle then
   print("This is not a turtle, you must be looking for the \"Companion Rednet Program\" \nCheck My forum thread for that")
   print("Press 'q' to quit, or any other key to start help ")
-  local _, key = os.pullEvent("char")
-  if key ~= "q" then tArgs.help = true else error("",0) end
+  if ({os.pullEvent("char")})[2] ~= "q" then tArgs.help = true else error("",0) end
 end
 
-if tArgs["help"] or tArgs["-help"] or tArgs["-?"] then
+
+if tArgs["help"] or tArgs["-help"] or tArgs["-?"] or tArgs["?"] then
 print("You have selected help, press any key to continue"); print("Use arrow keys to naviate, q to quit"); os.pullEvent("key")
 local pos = 1
 local key = 0
@@ -229,15 +231,58 @@ if tArgs["doBackup"] then doBackup = (string.lower(string.sub(tArgs[tArgs["doBac
 if tArgs["saveFile"] then saveFile = tArgs[tArgs["saveFile"]+1] or saveFile end
 
 local restoreFound = false
-if tArgs["-restore"] then
+if tArgs["-restore"] or tArgs["-resume"] then
 restoreFound = fs.exists(saveFile)
 if restoreFound then
 os.run(getfenv(1),saveFile)
+if gpsEnabled then --If it had saved gps coordinates
+  print("Found GPS Start Coordinates") 
+  local currLoc = {gps.locate(3)}
+  if #currLoc > 0 and #gpsStartPos > 0 and #gpsSecondPos > 0 then --Cover all the different positions I'm using
+    print("GPS Position Successfully Read")
+    if currLoc[1] == gpsStartPos[1] and currLoc[3] == gpsStartPos[3] then --X coord, y coord, z coord in that order
+      xPos, yPos, zPos = 0,1,1
+      if facing ~= 0 then turnTo(0) end
+      print("Is at start")
+    else
+      if inverted then --yPos setting
+      ------------------------------------------------FIX THIS
+      end
+      local function copyTable(tab) local toRet = {}; for a, b in pairs(tab) do toRet[a] = b end; return toRet end
+      local a, b = copyTable(gpsStartPos), copyTable(gpsSecondPos) --For convenience
+      if b[3] - a[3] == -1 then--If went north (-Z)
+        a[1] = a[1] - 1 --Shift x one to west to create a "zero"
+        xPos, zPos = -currLoc[3] + a[3], currLoc[1] + -a[1]
+      elseif b[1] - a[1] == 1 then--If went east (+X)
+        a[3] = a[3] - 1 --Shift z up one to north to create a "zero"
+        xPos, zPos = currLoc[1] + -a[1], currLoc[3] + -a[3]
+      elseif b[3] - a[3] == 1 then--If went south (+Z)
+        a[1] = a[1] + 1 --Shift x one to east to create a "zero"
+        xPos, zPos = currLoc[3] + a[3], -currLoc[1] + a[3]
+      elseif b[1] - a[1] == -1 then--If went west (-X)
+        a[3] = a[3] + 1 --Shift z down one to south to create a "zero"
+        xPos, zPos = -currLoc[1] + a[1], -currLoc[3] + a[3]
+      else
+        print("Improper Coordinates")
+        print("GPS Locate Failed, Using Standard Methods")        ----Maybe clean this up a bit to use flags instead.
+      end  
+    end
+    print("X Pos: ",xPos)
+    print("Y Pos: ",yPos)
+    print("Z Pos: ",zPos)
+    print("Facing: ",facing)
+  else
+    print("GPS Locate Failed, Using Standard Methods")
+  end    
 print("Restore File read successfully. Starting in 3"); sleep(3)
 end
 end
+end
 
-if not (tArgs["-DEFAULT"] or restoreFound) then
+if not (tArgs["-DEFAULT"] or restoreFound) then 
+  --Just a note, the whole error checking section here was more of an
+  --experiment than anything else. If its ever changed in the future,
+  --it would probably be for the better.
 local section = "Dimensions"
 --Dimesnions
 if tArgs["-dim"] then local num = tArgs["-dim"];
@@ -269,8 +314,13 @@ if supportsRednet then
 if tArgs["-rednet"] then 
 rednetEnabled = (string.lower(string.sub(tArgs[tArgs["-rednet"]+1] or "",1,1)) == "t")
 else term.write("Rednet? "); rednetEnabled = (string.lower(string.sub(io.read(),1,1)) == "y")
+if tArgs["-GPS"] and not restoreFound then
+gpsStartPos = {gps.locate(gpsTimeout)} --Stores position in array
+gpsEnabled = #gpsStartPos > 0 --Checks if location received properly
+changedT.new("GPS Location Services", gpsEnabled)
 end
 changedT.new("Rednet Enabled", rednetEnabled)
+end
 if tArgs["-sendChannel"] then
 channels.send = assert(tonumber(tArgs[tArgs["-sendChannel"]+1]), errorT.num)
 assert(channels.send > 0 and channels.send < 65535, errorT.zero)
@@ -451,8 +501,7 @@ sleep(1.5)
 end
 local function biometrics(sendChannel)
 local commands = { Confirm = "Confirm" }
-local toSend = { ["x"] = x, ["y"] = (y/3 + math.ceil(lastHeight/2)),
-     ["z"] = z,                     --The y calc is weird...
+local toSend = { ["x"] = x, ["y"] = (y/3 + math.ceil(lastHeight/2)), ["z"] = z, --The y calc is weird...
     ["xPos"] = xPos, ["yPos"] = yPos, ["zPos"] = zPos, 
     ["percent"] = percent, ["mined" ]= mined, 
     ["fuel"] = checkFuel(), ["moved"] = moved, 
@@ -480,7 +529,7 @@ local title, value = changedT.getPair(i)
 print(capitalize(title)..": ",value)
 end
 end
-print("\nStarting in 3"); sleep(1); print("2"); sleep(1); print("1"); sleep(1.5)
+print("\nStarting in 3"); sleep(1); print("2"); sleep(1); print("1"); sleep(1.5) --Dramatic pause at end
 
 
 
@@ -577,7 +626,7 @@ function up(sneak)
     down(-1)
   else
     while not turtle.up() do
-      while not digUp() do
+      if not digUp() then
         attackUp()
         sleep(0.5)
       end
@@ -604,18 +653,15 @@ function down(sneak)
 end
 function right(num)
   num = num or 1
-  for i=1, num do turtle.turnRight(); facingF(1); end
-  saveProgress()
+  for i=1, num do facingF(1); saveProgress(); turtle.turnRight() end
 end
 function left(num)
   num = num or 1
-  for i=1, num do turtle.turnLeft(); facingF(-1) end
-  saveProgress()
+  for i=1, num do facingF(-1); saveProgress(); turtle.turnLeft() end
 end
 function attack(doAdd, func)
   doAdd = doAdd or true
   func = func or turtle.attack
-  local didAttack
   if func() then
     if doAdd then 
       attacked = attacked + 1
@@ -669,16 +715,14 @@ while not forward(not outOfPath) do
     attack()
     sleep(0.2)
   end
-  if count > 50 then 
-    ran, bool = pcall(function() return turtle.getFuelLevel() > 0 end) --This is done to avoid errors. Not just "returns unlimited"
-    if ran and bool == true then  --When fuel is not infinite
-      if yPos > (startY-7) then --If it is near bedrock
-        bedrock()
-      else --Otherwise just sleep for a bit to avoid sheeps
-        sleep(1)
-      end
-    else
-      error("No Fuel/Unexpected Error",0)
+  if count > 50 then
+    if turtle.getFuelLevel() < 0 then --Don't worry about inf fuel because I modified this function
+      saveProgress()
+      error("No more fuel",0)
+    elseif yPos > (startY-7) then --If it is near bedrock
+      bedrock()
+    else --Otherwise just sleep for a bit to avoid sheeps
+      sleep(1)
     end
   end
 end
@@ -846,6 +890,9 @@ end
 --Pre-Mining Stuff dealing with session persistence
 local doDigDown, doDigUp = (lastHeight ~= 1), false --Used in lastHeight
 if not restoreFound then mine(false,false, true) else digUp(); digDown() end --Get it into the quarry
+if gpsEnabled and not restoreFound then --The initial locate is done in the arguments. This is so I can figure out what quadrant the turtle is in.
+  gpsSecondPos = {gps.locate(gpsTimeout)} --Note: Does not run this if it has already been restarted.
+end
 if restoreFound then
   if gotoX then
     goto(gotoX,gotoZ,gotoY,gotoFacing)
