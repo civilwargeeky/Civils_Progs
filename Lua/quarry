@@ -60,6 +60,7 @@ local help_paragraph = [[
 -doBackup: [t/f] Whether or not the turtle will backup its current position to a file.
 -restore: Turtle will check for a save file. If found will ignore all other arguments.
 -fuelSafety: [safe/moderate/loose] How much extra fuel the turtle will request at startup
+-GPS: [t/f]
 Examples [1]:
  The minimum amount necessary to start a turtle automatically would be one of these two
  ---------
@@ -188,7 +189,6 @@ if not turtle then
   if key ~= "q" then tArgs.help = true else error("",0) end
 end
 
-
 if tArgs["help"] or tArgs["-help"] or tArgs["-?"] then
 print("You have selected help, press any key to continue"); print("Use arrow keys to naviate, q to quit"); os.pullEvent("key")
 local pos = 1
@@ -207,6 +207,15 @@ end
 error("",0)
 end
 
+--Check if it is a mining turtle
+if not isMiningTurtle then
+  local a, b = turtle.dig()
+  if a then mined = mined + 1; isMiningTurtle = true
+  elseif b == "Nothing to dig with" then 
+    print("This is not a mining turtle. To make a mining turtle, craft me together with a diamond pickaxe")
+    error("",0)
+  end
+end
 
 --Saving
 if tArgs["doBackup"] then doBackup = (string.lower(string.sub(tArgs[tArgs["doBackup"]+1],1,1)) ~= "f") end

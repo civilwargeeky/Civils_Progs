@@ -17,15 +17,12 @@ Changelog so far:
   Finished the smart fueling section. It will now intelligently fuel with multiple stacks
   More intelligent fueling algorithm. Asks for much less fuel
   "Raise" value in fueling is now only refuelled to, not checked for.
+  Made the turtle error if it is not a mining turtle
 
 Things to add for quarry version 3.2.0:
 
   Cool Idea: Option to log mining runs. E.g. The size, blocks mined, and what type. File in human-readable format.
   Store them in a folder and label them sequentially
-  
-  Check if Turtle has a pickaxe
-
-  Do something about how attack compensates for invert off the bat, but Move is compensated for in the implementation.
 
   Update help for -GPS and -SmartFuel 
 
@@ -35,6 +32,8 @@ Things to add for quarry version 3.2.1:
   Do tests on baseline restart to see if somewhat reliable.
   
   Consolidate Mining Loops
+
+  Do something about how attack compensates for invert off the bat, but Move is compensated for in the implementation.
 
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
   
