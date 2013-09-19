@@ -336,7 +336,11 @@ if doCheckFuel and checkFuel() < neededFuel then
 neededFuel = neededFuel + fuelTable[fuelSafety] --For safety
   print("Not enough fuel")
   print("Current: ",checkFuel()," Needed: ",neededFuel)
-  print("Please place fuel in top left")
+  print("Starting SmartFuel")
+  sleep(1) --So they can read everything.
+  term.clear()
+  local oneFuel, neededFuelItems
+  local currSlot = 0
   local function output(text, x, y) --For displaying fuel
     currX, currY = term.getCursorPos()
     term.setCursorPos(x,y)
@@ -344,22 +348,33 @@ neededFuel = neededFuel + fuelTable[fuelSafety] --For safety
     term.write(text)
     term.setCursorPos(currX,currY)
     end
-  local oneFuel
-  local currSlot = 0
+  local function roundTo(num, target) --For stacks of fuel
+    if num >= target then return target else return num end
+  end
+  local function updateScreen()
+    output("Welcome to SmartFuel! Now Refueling...", 1,1)
+    output("Currently taking fuel from slot "..currSlot,1,2)
+    output("Current single fuel: "..tostring(oneFuel or 0),1,3)
+    output("Current estimate of needed fuel: ",1,4)
+    output("Single Items: "..math.floor(neededFuelItems or 0),4,5)
+    output("Stacks:       "..math.ceil((neededFuelItems or 0) / 64),4,6)
+    output("Needed Fuel: "..tostring(neededFuel),1,12)
+    output("Current Fuel: "..tostring(checkFuel()),1,13)
+  end
   while checkFuel() <= neededFuel do
     currSlot = currSlot + 1
-    output("Current Fuel: "..tostring(checkFuel()),1,13)
-    print("Currently taking fuel from slot ",currSlot)
     turtle.select(currSlot)
-    while turtle.getItemCount(currSlot) == 0 do sleep(1) end
-    while (oneFuel or 0) <= 0 do --Not an if to prevent errors if fuel taken out prematurely.
+    updateScreen()
+    while turtle.getItemCount(currSlot) == 0 do sleep(1.5) end
+    repeat
       local previous = checkFuel()
       turtle.refuel(1)
       oneFuel = checkFuel() - previous
-    end
+      updateScreen()
+    until (oneFuel or 0) > 0 --Not an if to prevent errors if fuel taken out prematurely.
     neededFuelItems = (neededFuel - checkFuel()) / oneFuel
-    turtle.refuel(neededFuelItems) --Change because can only think about 64 at once.
-    if turtle.getItemCount(currSlot + 1) == 0 then --Resets if no more fuel
+    turtle.refuel(roundTo(neededFuelItems, 64)) --Change because can only think about 64 at once.
+    if turtle.getItemCount(roundTo(currSlot + 1, 16)) == 0 then --Resets if no more fuel
       currSlot = 0
     end
   end
