@@ -10,25 +10,27 @@ Changelog so far:
     Nvm, w+ is unsupported mode...
   Restructured the refuel thing if fuel is infinite. turtle.getFuelLevel returns math.huge if doCheckFuel == false
   Left and right now save postion before move, may make restarts more reliable
-  
+  Moved saveProgress to directly after first move. May improve reliability.
+  Made "doBackup" switch actually do somthing...
+  Changed fuelSafety default to loose in order to test new fuel algorithm.
+  Added numberOfStacksPerRun to config. Used in fuel calculation
+  Finished the smart fueling section. It will now intelligently fuel with multiple stacks
+  More intelligent fueling algorithm. Asks for much less fuel
+  "Raise" value in fueling is now only refuelled to, not checked for.
+  Made the turtle error if it is not a mining turtle
+  Updated Turtle help for -GPS and smartfuel
+  Finsished Logging option. Turtle now logs what it does
 
 Things to add for quarry version 3.2.0:
 
-  Cool Idea: Option to log mining runs. E.g. The size, blocks mined, and what type. File in human-readable format.
-  Store them in a folder and label them sequentially
+Things to add for quarry version 3.2.1:
+  Use "for" loops for gps location checking on successful backup read
+  
+  Do tests on baseline restart to see if somewhat reliable.
   
   Consolidate Mining Loops
 
   Do something about how attack compensates for invert off the bat, but Move is compensated for in the implementation.
-
-  Smart-Refuel: Will take one piece of the fuel to gauge how much it will need. It will then consume as much of the stack as needed. If needed is greater than a stack, it will first consume the stack, and then tell the user how many more stacks it needs, and will loop through the filled slots to consume (nearly) precisely how much fuel it needs
-
-  Make sure that you are only doing the "raise" value for fuel when it is below "needed"
-
-  Update help for -GPS and -SmartFuel
-  
-Things to add for quarry version 3.2.1:
-  Use "for" loops for gps location checking on successful backup read
 
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
   
