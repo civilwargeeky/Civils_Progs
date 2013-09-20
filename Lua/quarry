@@ -29,9 +29,12 @@ keepOpen = 1 --How many inventory slots it will attempt to keep open at all time
 fuelSafety = "moderate" --How much fuel it will ask for: safe, moderate, and loose [Default moderate]
 saveFile = "Civil_Quarry_Restore" --Where it saves restore data [Default "Civil_Quarry_Restore"]
 doBackup = true --If it will keep backups for session persistence [Default true]
-numberOfStacksPerRun = 8 --How many stacks (number of items) the turtle expects (on average) to have before it must dump off. Not in arguments.
-gpsEnabled = false -- If option is enabled, will attempt to find position via GPS api
-gpsTimeout = 3 --The number of seconds the program will wait to get GPS coords
+numberOfStacksPerRun = 8 --How many stacks (number of items) the turtle expects (on average) to have before it must dump off. Not in arguments. [Default 8]
+gpsEnabled = false -- If option is enabled, will attempt to find position via GPS api [Default false]
+gpsTimeout = 3 --The number of seconds the program will wait to get GPS coords. Not in arguments [Default 3]
+logging = true --Whether or not the turtle will log mining runs. [Default ...still deciding]
+logFolder = "Quarry_Logs" --What folder the turtle will store logs in [Default "Quarry_Logs"]
+logExtension = "" --The extension of the file (e.g. ".txt") [Default ""]
 --Standard number slots for fuel (you shouldn't care)
 fuelTable = { --Will add in this amount of fuel to requirement.
 safe = 1000,
@@ -66,6 +69,8 @@ local help_paragraph = [[
   You must have a valid GPS network set up for this to work. It will take its starting location from this and its first position.
   It will then store these values in its progress file in case your turtle stops for any reason.
   On startup, the turtle will calculate its current position based on a new gps locate.
+-log: Turns logging on if not already on.
+  Will publish reports of mining runs to its own folder for later reading
 Smart Fueling System: As of 3.2.0, the turtle uses a new smart fueling system
   With this new system you can shift click in as many stacks of fuel as you want, and it will take stacks of fuel at a time
   This makes fueling for large jobs on new turtles much, much faster.
@@ -283,6 +288,8 @@ if gpsEnabled then --If it had saved gps coordinates
 print("Restore File read successfully. Starting in 3"); sleep(3)
 end
 end
+else
+  originalFuel = checkFuel() --For use in logging. To see how much fuel is REALLY used
 end
 
 if not (tArgs["-DEFAULT"] or restoreFound) then 
@@ -351,6 +358,11 @@ if tArgs["-fuelSafety"] then local loc = tArgs[tArgs["-fuelSafety"]+1]
     fuelSafety = loc; changedT.new("Fuel Check Safety", fuelSafety)
   end
 end
+--Logging
+logging = (tArgs["-log"] and true) or logging --The and will set it to true if value, or its original value if nil
+if logging then changedT.new("Logging",logging) end
+if tArgs["-logFolder"] then logFolder = tArgs[tArgs["-logFolder"]+1] or logFolder; changedT.new("Log Folder",logFolder) end
+if tArgs["-logExtension"] then logExtension = tArgs[tArgs["-logExtension"]+1] or logExtension; changedT.new("Log Extension",logExtension) end
 --Misc
 if tArgs["-startY"] then
 startY = math.abs(math.floor(checkNum(tArgs[tArgs["-startY"]+1],"Start Y")))
@@ -398,10 +410,11 @@ local yMult = y/3 + math.ceil(lastHeight/2) --This is basically a smart y/3 for 
 local moveVolume = (area * yMult) --Kept for display percent
 --Calculating Needed Fuel--
 local exStack = numberOfStacksPerRun --Expected stacks of items before full
-local neededFuel = yMult * x * z + --This is volume it will run through
+neededFuel = yMult * x * z + --This is volume it will run through
       dispY*(2+1/(64*exStack)) + --This is simplified and includes the y to get up times up and down + how many times it will drop stuff off
       (x+z)*(yMult + 1/(64*exStack))  --Simplified as well: It is getting to start of row plus getting to start of row how many times will drop off stuff
       --Original equation: x*z*y/3 + y * 2 + (x+z) * y/3 + (x + z + y) * (1/64*8)
+neededFuel = math.ceil(neededFuel)
 
 --Getting Fuel
 if doCheckFuel and checkFuel() < neededFuel then
@@ -570,6 +583,39 @@ print(checkFuel())
 if rednetEnabled then
 screenLine(1,7)
 print("Connected: "..tostring(connected))
+end
+end
+function logMiningRun(textExtension, extras) --Logging mining runs
+if logging then
+local number
+if not fs.isDir(logFolder) then
+  fs.delete(logFolder)
+  fs.makeDir(logFolder)
+  number = 1
+else
+  local i = 0
+  repeat
+    i = i + 1
+  until not fs.exists(logFolder.."/Quarry_Log_"..tostring(i)..(textExtension or ""))
+  number = i
+end
+handle = fs.open(logFolder.."/Quarry_Log_"..tostring(number)..(textExtension or ""),"w")
+local function write(...)
+  for a, b in ipairs({...}) do
+    handle.write(tostring(b))
+  end
+  handle.write("\n")
+end
+write("Welcome to the Quarry Logs!")
+write("Entry Number: ",number)
+write("Dimensions (X Z Y): ",x," ",z," ", dispY)
+write("Blocks Mined: ", mined)
+write("  Cobble: ", totals.cobble)
+write("  Usable Fuel: ", totals.fuel)
+write("  Other: ",totals.other)
+write("Total Fuel Used: ",  originalFuel- checkFuel())
+write("Expected Fuel Use: ", neededFuel)
+handle.close()
 end
 end
 function isFull(slots)
@@ -983,6 +1029,8 @@ goto(0,1,1,2)
 drop(dropSide, true)
 --Display was moved above to be used in bedrock function
 display()
+--Log current mining run
+logMiningRun(logExtension)
 
 --Cleanup
 turtle.getFuelLevel = getFuel

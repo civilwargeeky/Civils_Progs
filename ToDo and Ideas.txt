@@ -18,13 +18,10 @@ Changelog so far:
   More intelligent fueling algorithm. Asks for much less fuel
   "Raise" value in fueling is now only refuelled to, not checked for.
   Made the turtle error if it is not a mining turtle
+  Updated Turtle help for -GPS and smartfuel
+  Finsished Logging option. Turtle now logs what it does
 
 Things to add for quarry version 3.2.0:
-
-  Cool Idea: Option to log mining runs. E.g. The size, blocks mined, and what type. File in human-readable format.
-  Store them in a folder and label them sequentially
-
-  Update help for -GPS and -SmartFuel 
 
 Things to add for quarry version 3.2.1:
   Use "for" loops for gps location checking on successful backup read
