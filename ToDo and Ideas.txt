@@ -1,29 +1,8 @@
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 
 Changelog so far:
-  Added aliases:
-    help: ?
-    restore: resume
-  Added in optional GPS capability to start up more reliably
-  Fixed logic in the "up" function preventing it from continuing on getting stuck
-  Fixed flag in saveProgress function to be a "w+" so it will never save a blank file
-    Nvm, w+ is unsupported mode...
-  Restructured the refuel thing if fuel is infinite. turtle.getFuelLevel returns math.huge if doCheckFuel == false
-  Left and right now save postion before move, may make restarts more reliable
-  Moved saveProgress to directly after first move. May improve reliability.
-  Made "doBackup" switch actually do somthing...
-  Changed fuelSafety default to loose in order to test new fuel algorithm.
-  Added numberOfStacksPerRun to config. Used in fuel calculation
-  Finished the smart fueling section. It will now intelligently fuel with multiple stacks
-  More intelligent fueling algorithm. Asks for much less fuel
-  "Raise" value in fueling is now only refuelled to, not checked for.
-  Made the turtle error if it is not a mining turtle
-  Updated Turtle help for -GPS and smartfuel
-  Finsished Logging option. Turtle now logs what it does
 
-Things to add for quarry version 3.2.0:
-
-Things to add for quarry version 3.2.1:
+Things to add for quarry version 3.2.2:
   Use "for" loops for gps location checking on successful backup read
   
   Do tests on baseline restart to see if somewhat reliable.
@@ -31,6 +10,16 @@ Things to add for quarry version 3.2.1:
   Consolidate Mining Loops
 
   Do something about how attack compensates for invert off the bat, but Move is compensated for in the implementation.
+  
+  Make the turtle turn around more smartly when it is at the end of a layer
+  
+  EnderChest support. Figure out how you are going to do this.
+  
+-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
+
+Quarry Utils:
+Program that can read logs and make a configuration file to run quarry from. Precursor to Quarry Shell.
+Will feature an interactive menu where you can select start quarry, make configuration file, or read logs.
 
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
   
