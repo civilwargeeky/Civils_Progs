@@ -1,5 +1,5 @@
 --[[ 
-Version 3.2.0
+Version 3.2.1
 Recent Changes:
 1. Now has session persistence! Just type "quarry -restore"
    and your turtle will pick up where it left off
@@ -168,15 +168,19 @@ end
 turtle.select(1)
 end
 
-local getFuel = turtle.getFuelLevel
+
+do --Common variable name...
+local flag = turtle.getFuelLevel() ~= "Unlimited"
 turtle.getFuelLevel = function() --Unlimited screws up my calculations
-if doCheckFuel then --Also, this may or may not screw it up for other programs that run...
+if not flag then --Also, this may or may not screw it up for other programs that run...
   return getFuel()
 else
   return math.huge --Lol... Should work for my purposes
 end
 end
+end
 local checkFuel = turtle.getFuelLevel --Just an alias for backwards compat
+local getFuel = turtle.getFuelLevel
 
  -----------------------------------------------------------------
 --Input Phase
@@ -225,16 +229,6 @@ if key == 200 then pos = pos - 1 end
 if key == 208 then pos = pos + 1 end
 end
 error("",0)
-end
-
---Check if it is a mining turtle
-if not isMiningTurtle then
-  local a, b = turtle.dig()
-  if a then mined = mined + 1; isMiningTurtle = true
-  elseif b == "Nothing to dig with" then 
-    print("This is not a mining turtle. To make a mining turtle, craft me together with a diamond pickaxe")
-    error("",0)
-  end
 end
 
 --Saving
@@ -769,7 +763,7 @@ while not forward(not outOfPath) do
   end
   if count > 50 then
     if turtle.getFuelLevel() == 0 then --Don't worry about inf fuel because I modified this function
-      saveProgress()
+      saveProgress({doCheckFuel = true})
       error("No more fuel",0)
     elseif yPos > (startY-7) then --If it is near bedrock
       bedrock()
@@ -942,7 +936,18 @@ end
 -------------------------------------------------------------------------------------
 --Pre-Mining Stuff dealing with session persistence
 local doDigDown, doDigUp = (lastHeight ~= 1), false --Used in lastHeight
-if not restoreFound then mine(false,false, true) else digUp(); digDown() end --Get it into the quarry
+if not restoreFound then 
+--Check if it is a mining turtle
+if not isMiningTurtle then
+  local a, b = turtle.dig()
+  if a then mined = mined + 1; isMiningTurtle = true
+  elseif b == "Nothing to dig with" then 
+    print("This is not a mining turtle. To make a mining turtle, craft me together with a diamond pickaxe")
+    error("",0)
+  end
+end
+while not turtle.forward() do end
+else digUp(); digDown() end --Get it into the quarry
 if gpsEnabled and not restoreFound then --The initial locate is done in the arguments. This is so I can figure out what quadrant the turtle is in.
   gpsSecondPos = {gps.locate(gpsTimeout)} --Note: Does not run this if it has already been restarted.
 end
