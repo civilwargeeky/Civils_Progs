@@ -168,9 +168,9 @@ end
 turtle.select(1)
 end
 
-
+local getFuel = turtle.getFuelLevel
 do --Common variable name...
-local flag = turtle.getFuelLevel() ~= "Unlimited"
+local flag = turtle.getFuelLevel() == "Unlimited"
 turtle.getFuelLevel = function() --Unlimited screws up my calculations
 if not flag then --Also, this may or may not screw it up for other programs that run...
   return getFuel()
@@ -180,7 +180,6 @@ end
 end
 end
 local checkFuel = turtle.getFuelLevel --Just an alias for backwards compat
-local getFuel = turtle.getFuelLevel
 
  -----------------------------------------------------------------
 --Input Phase
@@ -415,8 +414,8 @@ if doCheckFuel and checkFuel() < neededFuel then
 neededFuel = neededFuel + fuelTable[fuelSafety] --For safety
   print("Not enough fuel")
   print("Current: ",checkFuel()," Needed: ",neededFuel)
-  print("Starting SmartFuel")
-  sleep(1) --So they can read everything.
+  print("Starting SmartFuel...")
+  sleep(2) --So they can read everything.
   term.clear()
   local oneFuel, neededFuelItems
   local currSlot = 0
@@ -428,7 +427,7 @@ neededFuel = neededFuel + fuelTable[fuelSafety] --For safety
     term.setCursorPos(currX,currY)
     end
   local function roundTo(num, target) --For stacks of fuel
-    if num >= target then return target else return num end
+    if num >= target then return target elseif num < 0 then return 0 else return num end
   end
   local function updateScreen()
     output("Welcome to SmartFuel! Now Refueling...", 1,1)
@@ -946,7 +945,6 @@ if not isMiningTurtle then
     error("",0)
   end
 end
-while not turtle.forward() do end
 else digUp(); digDown() end --Get it into the quarry
 if gpsEnabled and not restoreFound then --The initial locate is done in the arguments. This is so I can figure out what quadrant the turtle is in.
   gpsSecondPos = {gps.locate(gpsTimeout)} --Note: Does not run this if it has already been restarted.
