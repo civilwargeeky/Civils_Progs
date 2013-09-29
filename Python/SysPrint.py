@@ -1,8 +1,11 @@
-import pygame
+"""NOTE: THE AMOUNT OF LINES CALCULATION IS OFF!!! WITH 10 LINES, IT ONLY HAS 7.5!!! FIX IT!!!"""
 
+
+import pygame
+dPrint = print
 if not pygame.font.get_init(): pygame.font.init()
 
-data = { "screen": None, "font": "Calibri", "size": 20, "color": (0,0,0), "antiAlias": False, "buffer": 5}
+data = { "screen": None, "font": "Calibri", "size": 20, "color": (0,0,0), "antiAlias": True, "buffer": 5}
 openLines = []
 currLine, maxLines = 1, 20
 fontObj = pygame.font.SysFont(data["font"],data["size"])
@@ -26,8 +29,8 @@ def init(surfaceObject, lines, font = data["font"], color = data["color"], antiA
   global data, maxLines, fontObj
   data["screen"], data["font"], data["color"], data["antiAlias"], data["buffer"] = surfaceObject, font, color, antiAlias, buffer
   maxLines, data["size"] = lines, (int(surfaceObject.get_size()[0] / lines) or 1) #Verify that 0 is height and not 1
-  print(data["font"])
-  print(data["size"])
+  dPrint(data["font"])
+  dPrint(data["size"])
   fontObj = pygame.font.SysFont(data["font"], data["size"])
 
 def print(toPrint, flag = None):
