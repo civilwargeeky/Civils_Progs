@@ -2,6 +2,9 @@
 
 Changelog so far:
 
+Changes for 3.2.1 Fixes:
+  Fix saveFile handle sometimes not being made. repeat loop?
+
 Things to add for quarry version 3.2.2:
   Use "for" loops for gps location checking on successful backup read
   
