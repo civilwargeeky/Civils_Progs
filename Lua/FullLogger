@@ -166,46 +166,41 @@ end
 end
 
 function getFuel(electric) -- This will be the function to get fuel from a furnace
-up()
 turtle.turnLeft()
-if not turtle.detect() then
-down()
-turtle.turnRight()
-print("No refueling furnace")
-return 0
+move()
+if not turtle.detectUp() then
+  turtle.back()
+  turtle.turnRight()
+  print("No refueling furnace")
+  return 0
 end
 turtle.select(16) --Sucking Charcoal
 turtle.dropDown()
-turtle.suck()
+turtle.suckUp()
+turtle.back()
 local fuelObtained = turtle.getItemCount(16)
-if fuelObtained > 0 then
-if turtle.getItemSpace(15) > fuelObtained/4 then --Space, not count
-turtle.transferTo(15, math.ceil(fuelObtained/4))
-end
-turtle.refuel()
-elseif not electric then --Won't drop in new charcoal
-down()
-if turtle.getItemCount(15) > 0 then --If there is reserve charcoal
-turtle.select(15)
-move()
-turtle.dropUp()
-turtle.back()
-elseif turtle.getItemCount(2) > 2 then --If there isn't, but collected wood
-turtle.select(2)
-move()
-turtle.dropUp(2)
-turtle.back()
-end
 up()
-end
 if turtle.getItemCount(2) > 5 then --Drop Wood
-up()
-turtle.forward()
-turtle.select(2)
-turtle.dropDown(turtle.getItemCount(2)/4)
-turtle.select(1)
-turtle.back()
-down()
+  up()
+  turtle.forward()
+  turtle.select(2)
+  turtle.dropDown(turtle.getItemCount(2)/4)
+  turtle.select(1)
+  turtle.back()
+  down()
+end
+if fuelObtained > 0 then --Dropping off fuel
+  if turtle.getItemSpace(15) > fuelObtained/4 then --Space, not count
+  turtle.transferTo(15, math.ceil(fuelObtained/4))
+  end
+  turtle.refuel()
+  if turtle.getItemCount(15) > 0 then --If there is reserve charcoal
+    turtle.select(15)
+    turtle.drop()
+    elseif turtle.getItemCount(2) > 2 then --If there isn't, but collected wood
+    turtle.select(2)
+    turtle.drop(2)
+  end
 end
 down()
 turtle.select(1)
@@ -262,6 +257,17 @@ print("This Job Will Take Up To "..fuelUsage.." fuel")
 if doCheckFuel == true then
 
 if checkFuel() < fuelUsage then
+  if doRefuel then
+    term.clear()
+    term.setCursorPos(1,1)
+    print("Place some wood into slot 2")
+    turtle.turnLeft(); turtle.turnLeft()
+    getFuel()
+    sleep(10)
+    getFuel()
+    turtle.turnLeft(); turtle.turnLeft()
+  end
+if checkFuel() < fuelUsage then
 term.clear()
 term.setCursorPos(1,1)
 print("More Fuel Needed")
@@ -283,6 +289,7 @@ end
 print(checkFuel().." Units of Fuel")
 sleep(3)
 turtle.select(1)
+end
 end
 end
 
