@@ -141,8 +141,8 @@ local supportsRednet = (peripheral.wrap("right") ~= nil)
 
 local tArgs = {...}
 --You don't care about these
-      xPos,yPos,zPos,facing,percent,mined,moved,relxPos, rowCheck, connected, isInPath, layersDone, attacked, endRow, startY
-    = 0,   1,   1,   0,     0,      0,    0,    1,       "right",  false,     true,     1,          0,        0,      0
+      xPos,yPos,zPos,facing,percent,mined,moved,relxPos, rowCheck, connected, isInPath, layersDone, attacked, startY
+    = 0,   1,   1,   0,     0,      0,    0,    1,       "right",  false,     true,     1,          0,        0
 
 local totals = {cobble = 0, fuel = 0, other = 0} -- Total for display (cannot go inside function)
 local function count() --Done any time inventory dropped and at end
@@ -276,9 +276,9 @@ if gpsEnabled then --If it had saved gps coordinates
   end    
 print("Restore File read successfully. Starting in 3"); sleep(3)
 end
-end
 else
   originalFuel = checkFuel() --For use in logging. To see how much fuel is REALLY used
+end
 end
 
 if not (tArgs["-DEFAULT"] or restoreFound) then 
@@ -372,7 +372,10 @@ end; end --First end is for vanilla, second is for DEFAULT
 
 local function saveProgress(extras) --Session persistence
 if doBackup then
-local file = fs.open(saveFile,"w")
+local file
+repeat
+  file = fs.open(saveFile,"w")
+until file --WHY DOES IT SAY ATTEMPT TO INDEX NIL!!!
 for a,b in pairs(getfenv(1)) do
 if type(b) == "string" then b = "\""..b.."\"" end
 if type(b) == "table" and a~="modem" then b = textutils.serialize(b) end
@@ -562,13 +565,23 @@ end
 if doBackup then fs.delete(saveFile) end
 end
 function updateDisplay() --Runs in Mine(), display information to the screen in a certain place
-screen(1,1)
-print("Blocks Mined")
-print(mined)
-print("Percent Complete")
-print(percent.."%")
-print("Fuel")
-print(checkFuel())
+-- screen(1,1)
+-- print("Blocks Mined")
+-- print(mined)
+-- print("Percent Complete")
+-- print(percent.."%")
+-- print("Fuel")
+-- print(checkFuel())
+  screen(1,1)
+  print("Xpos: ")
+  print(xPos)
+  print("RelXPos: ")
+  print(relxPos)
+  print("Z Pos: ")
+  print(zPos)
+  print("Y pos: ")
+  print(yPos)
+  
 if rednetEnabled then
 screenLine(1,7)
 print("Connected: "..tostring(connected))
@@ -602,7 +615,7 @@ write("Blocks Mined: ", mined)
 write("  Cobble: ", totals.cobble)
 write("  Usable Fuel: ", totals.fuel)
 write("  Other: ",totals.other)
-write("Total Fuel Used: ",  originalFuel- checkFuel())
+write("Total Fuel Used: ",  (originalFuel or (neededFuel + checkFuel()))- checkFuel()) --Protect against errors with some precision
 write("Expected Fuel Use: ", neededFuel)
 handle.close()
 end
@@ -645,7 +658,7 @@ function forward(doAdd)
     if doAdd then
       moved = moved + 1
     end
-   if facing == 0 then
+    if facing == 0 then
       xPos = xPos + 1
     elseif facing == 1 then
       zPos = zPos + 1
@@ -767,15 +780,12 @@ while not forward(not outOfPath) do
     end
   end
 end
-local tab = {} --This registers a change in the saveProgress file
-if facing == 0 then --I do this because when it restores, it always
-  tab.xPos = xPos + 1-- Thinks it is one position back, for some reason
-elseif facing == 1 then-- This overwrites that.
-  tab.zPos = zPos + 1
-elseif facing == 2 then
-  tab.xPos = xPos - 1
-elseif facing == 3 then
-  tab.zPos = zPos - 1
+--Insanity Checking
+if xPos < 0 or xPos > x or zPos < 0 or zPos > z or yPos < 0 then
+  print("Oops. Detected that quarry was outside of predefined boundaries.")
+  print("Please go to my forum thread and report this with a short description of what happened")
+  print("If you could also run \"pastebin put Civil_Quarry_Restore\" and give me that code it would be great")
+  error("",0)
 end
 saveProgress(tab)
 if doDigUp then
@@ -930,41 +940,39 @@ error("",0)
 end
 -------------------------------------------------------------------------------------
 --Pre-Mining Stuff dealing with session persistence
--- local doDigDown, doDigUp = (lastHeight ~= 1), false --Used in lastHeight
--- if not restoreFound then 
--- --Check if it is a mining turtle
--- if not isMiningTurtle then
-  -- local a, b = turtle.dig()
-  -- if a then mined = mined + 1; isMiningTurtle = true
-  -- elseif b == "Nothing to dig with" then 
-    -- print("This is not a mining turtle. To make a mining turtle, craft me together with a diamond pickaxe")
-    -- error("",0)
-  -- end
--- end
--- else digUp(); digDown() end --Get it into the quarry
--- if gpsEnabled and not restoreFound then --The initial locate is done in the arguments. This is so I can figure out what quadrant the turtle is in.
-  -- gpsSecondPos = {gps.locate(gpsTimeout)} --Note: Does not run this if it has already been restarted.
--- end
--- if restoreFound then
-  -- if gotoX then
-    -- goto(gotoX,gotoZ,gotoY,gotoFacing)
-  -- end
-  -- local func
-  -- if rowCheck == "left" then func = right else func = left end
-  -- if endRow == 1 then
-    -- mine()
-    -- func()
-  -- elseif endRow == 2 then
-    -- func()
-  -- end
--- end
-if y ~= 0 and not restoreFound then down() end
+local doDigDown, doDigUp = (lastHeight ~= 1), false --Used in lastHeight
+if gpsEnabled and not restoreFound then --The initial locate is done in the arguments. This is so I can figure out what quadrant the turtle is in.
+  gpsSecondPos = {gps.locate(gpsTimeout)} --Note: Does not run this if it has already been restarted.
+end
+if not restoreFound then --Regularly
+  --Check if it is a mining turtle
+  if not isMiningTurtle then
+    local a, b = turtle.dig()
+    if a then mined = mined + 1; isMiningTurtle = true
+    elseif b == "Nothing to dig with" then 
+      print("This is not a mining turtle. To make a mining turtle, craft me together with a diamond pickaxe")
+      error("",0)
+    end
+  end
+  if y~= 0 then mine(false, false, true) down() end --Get into quarry
+else --restore found
+  digUp(); digDown() --Get blocks missed before stopped
+  if gotoX then
+    goto(gotoX,gotoZ,gotoY,gotoFacing)
+  end
+  if (relxPos == x or relxPos == 1) and not gotoX and not (facing == 0 or facing == 2) then --If not in goto loop or facing standard direction
+    if rowCheck == "right" then --If on odd rows (starting with first)
+      turnTo(0) --Face the end so will turn properly
+    else
+      turnTo(2)
+    end
+  end
+end
 --Mining Loops
 turtle.select(1)
 while layersDone <= y do -------------Height---------
 moved = moved + 1 --To account for the first position in row as "moved"
-if not restoreFound then rowCheck = "right" end
-relativeXCalc()
+if not restoreFound then rowCheck = "right"; relativeXCalc() end
 while zPos <= z do -------------Width----------
 while relxPos < x do ------------Length---------
 mine()
@@ -972,13 +980,11 @@ end ---------------Length End-------
 if zPos ~= z then
 local func
 if rowCheck == "right" and zPos ~= z then --Swithcing to next row
-  func = right; rowCheck = "left"; else func = left; rowCheck = "right" end --Which way to turn
+func = right; rowCheck = "left"; else func = left; rowCheck = "right" end --Which way to turn
   func()
-  endRow = 1
+  saveProgress({zPos = zPos + 1}) --This might make it so it will go back to proper spot z wise
   mine()
-  endRow = 2
   func()
-  endRow = 0
 else break
 end
 end ---------------Width End--------
@@ -1005,11 +1011,8 @@ local func
 if rowCheck == "right" and zPos ~= z then --Swithcing to next row
   func = right; rowCheck = "left"; else func = left; rowCheck = "right" end --Which way to turn
   func()
-  endRow = 1
   mine(doDigDown,doDigUp)
-  endRow = 2
   func()
-  endRow = 0
 else break
 end
 end ---------------Width End--------
