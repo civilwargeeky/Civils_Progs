@@ -180,6 +180,18 @@ turtle.suckUp()
 turtle.back()
 local fuelObtained = turtle.getItemCount(16)
 up()
+ --Dropping off fuel
+if turtle.getItemSpace(15) > fuelObtained/4 then --Space, not count
+turtle.transferTo(15, math.ceil(fuelObtained/4))
+end
+turtle.refuel()
+if turtle.getItemCount(15) > 0 then --If there is reserve charcoal
+  turtle.select(15)
+  turtle.drop()
+elseif turtle.getItemCount(2) > 2 then --If there isn't, but collected wood
+  turtle.select(2)
+  turtle.drop(2)
+end
 if turtle.getItemCount(2) > 5 then --Drop Wood
   up()
   turtle.forward()
@@ -189,19 +201,7 @@ if turtle.getItemCount(2) > 5 then --Drop Wood
   turtle.back()
   down()
 end
-if fuelObtained > 0 then --Dropping off fuel
-  if turtle.getItemSpace(15) > fuelObtained/4 then --Space, not count
-  turtle.transferTo(15, math.ceil(fuelObtained/4))
-  end
-  turtle.refuel()
-  if turtle.getItemCount(15) > 0 then --If there is reserve charcoal
-    turtle.select(15)
-    turtle.drop()
-    elseif turtle.getItemCount(2) > 2 then --If there isn't, but collected wood
-    turtle.select(2)
-    turtle.drop(2)
-  end
-end
+
 down()
 turtle.select(1)
 turtle.turnRight()
@@ -399,7 +399,7 @@ sleep(1)
 for i=2, 14 do
 logs = logs + turtle.getItemCount(i)
 end
-if doRefuel then
+if doRefuel and checkFuel() < fuelUsage then
 abc = getFuel(electricFurnace) --abc used to display charcoal
 end
 if turtle.detect() then
