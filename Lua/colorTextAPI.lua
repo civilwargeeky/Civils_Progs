@@ -1,28 +1,7 @@
 --Colored Text API by Civilwargeeky
---Version 0.1
+--Version 0.2
 
-
---SOMETHING IS WRONG WITH PRINTING NEWLINES. I DON'T KNOW, BUT FIX IT.
-
-
---[[This will work by parsing text for a pattern that denotes colors. The color will apply until the next color code is reached]]
---[[Colors:
-white
-orange
-magenta
-lightBlue
-yellow
-lime
-pink
-gray
-lightGray
-cyan
-purple
-blue
-brown
-green
-red
-black]]
+--[[Colors: white orange magenta lightBlue yellow lime pinkgray lightGray cyan purple blue brown green red black]] 
 
 local codes = {}
 for a, b in pairs(colors) do --This just makes a list of the colors to parse.
@@ -47,32 +26,37 @@ function encode(input) --Function to make colored strings
       table.insert(toRet, {color = codes[color], start = a })
     end
   end
-  if not toRet[1] then toRet[1] = {color = codes.wh, start = 0} end
+  table.insert(toRet, 1, {color = codes.wh, start = 0})
   toRet.text = input
-  meta = {}
+  local meta = {}
   meta.__call = function(tab) return tab.text end
   meta.__tostring = function(tab) return tab.text end
+  meta.__len = function(tab) return #tab.text end
   setmetatable(toRet,meta)
   return toRet
 end
 
-local oldWrite = term.write
+local oldWrite = write
 write = function(input)
   if input.isColorText and term.isColor() then
-    currPos = 0
+    local currPos = 0
     for i=1, #input do
       startPos, endPos = input[i].start, (input[i+1] or {start = #input.text+1}).start-1
       term.setTextColor(input[i].color)
       oldWrite(input.text:sub(startPos,endPos))
     end
-    print()
-    return 0
+    term.setTextColor(codes.wh)
+    return true
   else
     return oldWrite(input)
   end
 end
 
--- local oldPrint = print
--- print = function(input)
--- write(input); write(encode("\n"))
--- end
+function writeCode(input)
+  return write(encode(input))
+end
+
+local oldPrint = print
+print = function(input)
+return write(input), write("\n")
+end
