@@ -18,6 +18,7 @@ fontType = "Comic Sans" #Font
 borderPixels = 10 #Width between pieces
 
 files = { "board": "Board.png", "x": "X.png", "o": "O.png" }
+images = {}
 for a, b in files.items():
   try: 
     images[a] = pygame.image.load(b)

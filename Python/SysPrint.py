@@ -1,8 +1,8 @@
 import pygame
-
+dPrint = print
 if not pygame.font.get_init(): pygame.font.init()
 
-data = { "screen": None, "font": "Calibri", "size": 20, "color": (0,0,0), "antiAlias": False, "buffer": 5}
+data = { "screen": None, "font": "Calibri", "size": 20, "color": (0,0,0), "antiAlias": True, "buffer": 5}
 openLines = []
 currLine, maxLines = 1, 20
 fontObj = pygame.font.SysFont(data["font"],data["size"])
@@ -25,11 +25,17 @@ def init(surfaceObject, lines, font = data["font"], color = data["color"], antiA
   (Optionally a whole bunch of other parameters), and it comes up with a font size for you."""
   global data, maxLines, fontObj
   data["screen"], data["font"], data["color"], data["antiAlias"], data["buffer"] = surfaceObject, font, color, antiAlias, buffer
-  maxLines, data["size"] = lines, (int(surfaceObject.get_size()[0] / lines) or 1) #Verify that 0 is height and not 1
-  print(data["font"])
-  print(data["size"])
+  maxLines, data["size"] = lines, (int(surfaceObject.get_size()[1] / lines) or 1) #Height is 1
+  dPrint(data["font"])
+  dPrint(data["size"])
   fontObj = pygame.font.SysFont(data["font"], data["size"])
 
-def print(toPrint, flag = None):
-  data["screen"].blit(fontObj.render(toPrint, data["antiAlias"], data["color"]),(0, (currLine-1) * data["size"] + data["buffer"]))
+  #Maybe have like "special print" that allows you to change parameters
+def print(toPrint, align = "left"):
+  if align == "left": 
+    data["screen"].blit(fontObj.render(toPrint, data["antiAlias"], data["color"]),(0, (currLine-1) * data["size"] + data["buffer"]))
+  elif align == "center":
+    pass #Look at your lua menu api if you forget how this works...
+  elif align == "right":
+    pass
   lineInc()
