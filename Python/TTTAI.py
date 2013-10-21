@@ -44,22 +44,43 @@ pygame.display.set_caption("TicTacToe") #Sets window title
 titleFont = pygame.font.SysFont(fontType, int(fontPixels*3)) #These are the two fonts I will use
 printFont = pygame.font.SysFont(fontType, fontPixels)
 
+#Non-TTT Related Functions
+def userEvent(type, message): #This is so I can make my own events. event.myType is title, event.message is details
+  pygame.event.post(pygame.event.Event(USEREVENT, myType = type, message = message))
+def waitForGeneric(event, timeout = 1E100):
+  startTime = time()
+  while True:
+    if pygame.event.peek(event):
+      for a in pygame.event.get(event):
+        return a
+    if time() >= startTime + timeout:
+      return False
+def waitForClick(timeout = 1E100): return waitForGeneric(MOUSEBUTTONUP, timeout)
+def waitForKey(timeout = 1E100): return waitForGeneric([KEYUP],timeout)
+
 player = False #Current player is a bit. False is X, True is O
-humanPlayer = False
+computerPlayer = -1
 turn = 1 #Because updated at beginning of turn
 slots = [0] * 9 #These are all board positions
+
+#Title Sequence
+title = titleFont.render("Welcome to TTTClick!", True, (0,255,0))
+windowObj.blit(title, ((resX-title.get_size()[0])/2,0))
+pygame.display.update()
+waitForGeneric([KEYUP,MOUSEBUTTONUP],3)
+
+action = False #Quit Flag. Can be set to 'quit' or 'menu'
+
 def update(slot,currPlayer, board = slots):
   try:
     if board[slot] == 0:
       board[slot] = int(currPlayer) + 1
-      if board == slots: #Because now there is more than one board possible
-        global turn; turn += 1
       #print("Slot %d belongs to Player %d in turn %d" % (slot,currPlayer,turn-1)) #Debug
       return True
   except (IndexError, ValueError, TypeError):
     pass
   return False
-def checkWin(board = slots): #If board full will raise assertion error
+def checkWin(board = slots, doRaise = True): #If board full will raise assertion error
   for i in [1,2]:
    for a in range(3):
      b = a*3
@@ -69,7 +90,7 @@ def checkWin(board = slots): #If board full will raise assertion error
        return i
    if [board[0],board[4],board[8]] == [i,i,i] or [board[2],board[4],board[6]] == [i,i,i]:
      return i
-  if not 0 in board:
+  if not 0 in board and doRaise:
     raise(AssertionError)
   return 0
 def isFree(board, slot): #For AI. This checks if a slot is free
@@ -130,83 +151,71 @@ def getComputerMove(): #the AI part!
       checkWin() #Will raise assertion error if board full
       if slots[a] == 0:
         return a
-def userEvent(type, message): #This is so I can make my own events. event.myType is title, event.message is details
-  pygame.event.post(pygame.event.Event(USEREVENT, myType = type, message = message))
-def waitForGeneric(event, timeout = 1E100):
-  startTime = time()
-  while True:
-    if pygame.event.peek(event):
-      for a in pygame.event.get(event):
-        return a
-    if time() >= startTime + timeout:
-      return False
-def waitForClick(timeout = 1E100): return waitForGeneric(MOUSEBUTTONUP, timeout)
-def waitForKey(timeout = 1E100): return waitForGeneric([KEYUP],timeout)
-  
-#Title Sequence
-title = titleFont.render("Welcome to TTTClick!", True, (0,255,0))
-windowObj.blit(title, ((resX-title.get_size()[0])/2,0))
-pygame.display.update()
-waitForGeneric([KEYUP,MOUSEBUTTONUP],3)
 
-toQuit = False #Quit Flag
 
 while True:
   windowObj.fill((255,255,255)) #Fill screen w/ white
   windowObj.blit(images["board"],(0,0))
 
+  try: #Checking for winner
+    winner = checkWin() #Main board, raise exception if full
+    if winner:
+      userEvent("Winner", "Player %d has won!" % (winner))
+  except AssertionError:
+      userEvent("Winner", "NO WINNER")
+
+  events = pygame.event.get()
+  
+  for event in events: #Cleanup Events to Quit game.
+    if event.type == USEREVENT and event.myType == "Winner":
+      print(event.myType,"   ",event.message)
+      windowObj.blit(printFont.render(event.message, True, (0,0,0)), (images["board"].get_size()[0],0))
+      action = "menu"
+    if event.type == QUIT:
+      action = "quit"      
+      
+  
+  
+  if not action: #If nothing special is happening
+    if player == computerPlayer:
+      print("Computer Starting Move")
+      while True:
+        if update(getComputerMove(),player):
+          break
+      print("Computer Move Done")
+      player = not player
+      turn += 1
+    else:
+      for event in events:
+        if event.type in (KEYUP, KEYDOWN): #All the key press events
+          print("KEY UP/DOWN")
+          print(event.key)
+          if event.key in list(range(K_1,K_9+1)) + list(range(K_KP1,K_KP9+1)):
+            if update(event.key-K_1 if event.key in range(K_1,K_9+1) else event.key-K_KP1,player): #Works because key - first number. First is top numbers, second is keypad
+              player = not player
+        if event.type in (MOUSEBUTTONUP,): #Mouse button up
+          for a in range(3):
+            for b in range(3):
+              c = slotsPos[a][b] #For ease of use
+              if not False in list((c[i]<=event.pos[i]<=c[i]+piecesPixels) for i in range(2)): #I think this is to see if the mouse is in a certain square
+                if update(a*3+b,player): #+1 because first slot is 1, not 0
+                  print("Player Move Done")
+                  turn += 1
+                  player = not player     
+
   for a in range(9): #Blitting all pieces to screen
     if slots[a] == 1:
       windowObj.blit(images["x"], slotsPos[int(a/3)][a%3])
     elif slots[a] == 2:
-      windowObj.blit(images["o"], slotsPos[int(a/3)][a%3])              
-  
-  events = pygame.event.get()
-  
-  for event in events:
-    if event.type == USEREVENT:
-      print(event.myType,"   ",event.message)
-      windowObj.blit(printFont.render(event.message, True, (0,0,0)), (images["board"].get_size()[0],0))
-      toQuit = True
-    if event.type == QUIT:
-      toQuit = True
-  
-  if player != humanPlayer and not toQuit:
-    print("Computer Move")
-    while True:
-      if update(getComputerMove(),player):
-        break
-    player = not player
-  else:
-    for event in events:
-      if event.type in (KEYUP, KEYDOWN): #All the key press events
-        print("KEY UP/DOWN")
-        print(event.key)
-        if event.key in list(range(K_1,K_9+1)) + list(range(K_KP1,K_KP9+1)):
-          if update(event.key-K_1 if event.key in range(K_1,K_9+1) else event.key-K_KP1,player): #Works because key - first number. First is top numbers, second is keypad
-            player = not player
-      if event.type in (MOUSEBUTTONUP,): #Mouse button up
-        for a in range(3):
-          for b in range(3):
-            c = slotsPos[a][b] #For ease of use
-            if not False in list((c[i]<=event.pos[i]<=c[i]+piecesPixels) for i in range(2)): #I think this is to see if the mouse is in a certain square
-              if update(a*3+b,player): #+1 because first slot is 1, not 0
-                player = not player
+      windowObj.blit(images["o"], slotsPos[int(a/3)][a%3])
 
-
+  #Blitting turn and player counters
   windowObj.blit(printFont.render("Player %d" % (int(player)+1), True, (0,0,0)), (images["board"].get_size()[0],25))
   windowObj.blit(printFont.render("Turn %d" % turn, True, (0,0,0)), (images["board"].get_size()[0],50))
   
-  try: #Checking for winner
-    winner = checkWin()
-    if winner:
-      userEvent("Winner", "Player %d has won!" % (winner))
-  except:
-      userEvent("Winner", "NO WINNER")
-
   pygame.display.update()
   clockObj.tick(20)
-  if toQuit:
+  if action:
     sleep(2)
     break
 
