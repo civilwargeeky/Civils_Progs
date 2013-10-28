@@ -48,6 +48,7 @@ printFont = pygame.font.SysFont(fontType, fontPixels)
 player = False #Current player is a bit. False is X, True is O. This variable assigns who goes first
 humanPlayer = False #Which player is human
 twoPlayer = False #If true, player is always human
+difficulty = 2 #Difficulties 0 - 2 in increasing difficulty
 turn = 1 #Because updated at beginning of turn
 slots = [0] * 9 #These are all board positions
 
@@ -91,30 +92,34 @@ def getComputerMove(): #the AI part!
     #1. See if computer can win
     #2. See if player can win next turn 
     #3. Player first turn condition (???)
-    #4. See if "magic" win available (all corners)
-    #4. corners > center > edges
-    for x in range(0, 9):
-        copy = board + [0] #This is so checkwin does not think its "slots". Should not affect calculations
-        if isFree(copy, x):
-            update(x, player, copy)
-            if checkWin(copy)-1 == player: #If current player (AI) is winner
-                return x
-   
-    for y in range(0, 9):
-        copy = board + [0] 
-        if isFree(copy, y):
-            update(y,not player, copy)
-            if checkWin(copy)-1 == (not player): #CheckWin returns player 1 or 2
-                return y
+    #4. Check sneaky wins/counters
+    #5. corners > center > edges
+    
+    difficultyCheck = random.randint(0,10) #Lower difficulties have a chance of AI not realizing what its doing
+    if difficulty >= 2 or (difficulty == 2 and not difficultyCheck == 0) or (difficulty == 0 and difficultyCheck in [i for i in range(6)]):
+      for x in range(0, 9):
+          copy = board + [0] #This is so checkwin does not think its "slots". Should not affect calculations
+          if isFree(copy, x):
+              update(x, player, copy)
+              if checkWin(copy)-1 == player: #If current player (AI) is winner
+                  return x
+     
+      for y in range(0, 9):
+          copy = board + [0] 
+          if isFree(copy, y):
+              update(y,not player, copy)
+              if checkWin(copy)-1 == (not player): #CheckWin returns player 1 or 2
+                  return y
                 
-    tableOfCorners = [board[0],board[2],board[6],board[8]]            
-    if tableOfCorners.count(player+1) == 2: #If has two corners, pick the third
-      copy = board + [0]
-      for i in [0,2,6,8]:
-        if isFree(copy,i):
-          return i
-    if tableOfCorners.count((not player) + 1) == 2: #Prevents opposite corner start trick
-      return randomMove(board,[1,3,7,5])
+    if difficulty >= 2: #I consider this a "hard" level behavior    
+      tableOfCorners = [board[0],board[2],board[6],board[8]]            
+      if tableOfCorners.count(player+1) == 2: #If has two corners, pick the third
+        copy = board + [0]
+        for i in [0,2,6,8]:
+          if isFree(copy,i):
+            return i
+      if tableOfCorners.count((not player) + 1) == 2: #Prevents opposite corner start trick
+        return randomMove(board,[1,3,7,5])
     
    
     cornerMove = not(isFree(board,0) and isFree(board,2) and isFree(board,6) and isFree(board,8))
