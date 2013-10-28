@@ -46,14 +46,13 @@ printFont = pygame.font.SysFont(fontType, fontPixels)
 
 player = False #Current player is a bit. False is X, True is O
 humanPlayer = False
+twoPlayer = False
 turn = 1 #Because updated at beginning of turn
 slots = [0] * 9 #These are all board positions
 def update(slot,currPlayer, board = slots):
   try:
     if board[slot] == 0:
       board[slot] = int(currPlayer) + 1
-      if board == slots: #Because now there is more than one board possible
-        global turn; turn += 1
       #print("Slot %d belongs to Player %d in turn %d" % (slot,currPlayer,turn-1)) #Debug
       return True
   except (IndexError, ValueError, TypeError):
@@ -84,7 +83,12 @@ def randomMove(board, movesList): #Cedrick's Random move function
         return random.choice(moves)
 def getComputerMove(): #the AI part! 
     board = slots
-    # priority order - 1)see if computer can win 2)see if player can win next turn 3) player first turn condition 4) corners > center > edges
+    #Priority Order:
+    #1. See if computer can win
+    #2. See if player can win next turn 
+    #3. Player first turn condition (???)
+    #4. See if "magic" win available (all corners)
+    #4. corners > center > edges
     for x in range(0, 9):
         copy = board + [0] #This is so checkwin does not think its "slots". Should not affect calculations
         if isFree(copy, x):
@@ -98,6 +102,9 @@ def getComputerMove(): #the AI part!
             update(y,not player, copy)
             if checkWin(copy)-1 == int(not player): #CheckWin returns player 1 or 2
                 return y
+                
+    if [board[0],board[2],board[6],board[8]].count(player+1) == 2: #If has two corners
+      pass#Pick one of the other two corners
    
     cornerMove = not(isFree(board,0) and isFree(board,2) and isFree(board,6) and isFree(board,8))
     edgeMove = not(isFree(board,1) and isFree(board,3) and isFree(board,7) and isFree(board,5))
@@ -142,16 +149,25 @@ def waitForGeneric(event, timeout = 1E100):
       return False
 def waitForClick(timeout = 1E100): return waitForGeneric(MOUSEBUTTONUP, timeout)
 def waitForKey(timeout = 1E100): return waitForGeneric([KEYUP],timeout)
+def switchPlayer():
+  global player, humanPlayer, turn
+  player = not player
+  if twoPlayer:
+    humanPlayer = player
+  turn += 1
   
 #Title Sequence
 title = titleFont.render("Welcome to TTTClick!", True, (0,255,0))
 windowObj.blit(title, ((resX-title.get_size()[0])/2,0))
 pygame.display.update()
 waitForGeneric([KEYUP,MOUSEBUTTONUP],3)
+pygame.event.get() #Get rid of excess events
 
 toQuit = False #Quit Flag
 
 while True:
+  if twoPlayer:
+    humanPlayer = player #Tell computer that player always human
   windowObj.fill((255,255,255)) #Fill screen w/ white
   windowObj.blit(images["board"],(0,0))
 
@@ -176,11 +192,11 @@ while True:
     while True:
       if update(getComputerMove(),player):
         break
-    player = not player
+    switchPlayer()
   else:
     for event in events:
-      if event.type in (KEYUP, KEYDOWN): #All the key press events
-        print("KEY UP/DOWN")
+      if event.type in (KEYDOWN,): #All the key press events
+        print("KEY DOWN")
         print(event.key)
         if event.key in list(range(K_1,K_9+1)) + list(range(K_KP1,K_KP9+1)):
           if update(event.key-K_1 if event.key in range(K_1,K_9+1) else event.key-K_KP1,player): #Works because key - first number. First is top numbers, second is keypad
@@ -191,7 +207,7 @@ while True:
             c = slotsPos[a][b] #For ease of use
             if not False in list((c[i]<=event.pos[i]<=c[i]+piecesPixels) for i in range(2)): #I think this is to see if the mouse is in a certain square
               if update(a*3+b,player): #+1 because first slot is 1, not 0
-                player = not player
+                switchPlayer()
 
 
   windowObj.blit(printFont.render("Player %d" % (int(player)+1), True, (0,0,0)), (images["board"].get_size()[0],25))
@@ -201,7 +217,7 @@ while True:
     winner = checkWin()
     if winner:
       userEvent("Winner", "Player %d has won!" % (winner))
-  except:
+  except AssertionError:
       userEvent("Winner", "NO WINNER")
 
   pygame.display.update()
