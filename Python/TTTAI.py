@@ -44,31 +44,12 @@ pygame.display.set_caption("TicTacToe") #Sets window title
 titleFont = pygame.font.SysFont(fontType, int(fontPixels*3)) #These are the two fonts I will use
 printFont = pygame.font.SysFont(fontType, fontPixels)
 
-#Non-TTT Related Functions
-def userEvent(type, message): #This is so I can make my own events. event.myType is title, event.message is details
-  pygame.event.post(pygame.event.Event(USEREVENT, myType = type, message = message))
-def waitForGeneric(event, timeout = 1E100):
-  startTime = time()
-  while True:
-    if pygame.event.peek(event):
-      for a in pygame.event.get(event):
-        return a
-    if time() >= startTime + timeout:
-      return False
-def waitForClick(timeout = 1E100): return waitForGeneric(MOUSEBUTTONUP, timeout)
-def waitForKey(timeout = 1E100): return waitForGeneric([KEYUP],timeout)
-
-player = False #Current player is a bit. False is X, True is O
-humanPlayer = False
-twoPlayer = False
+#Config
+player = False #Current player is a bit. False is X, True is O. This variable assigns who goes first
+humanPlayer = False #Which player is human
+twoPlayer = False #If true, player is always human
 turn = 1 #Because updated at beginning of turn
 slots = [0] * 9 #These are all board positions
-
-#Title Sequence
-title = titleFont.render("Welcome to TTTClick!", True, (0,255,0))
-windowObj.blit(title, ((resX-title.get_size()[0])/2,0))
-pygame.display.update()
-waitForGeneric([KEYUP,MOUSEBUTTONUP],3)
 
 action = False #Quit Flag. Can be set to 'quit' or 'menu'
 
