@@ -97,18 +97,25 @@ def getComputerMove(): #the AI part!
         copy = board + [0] #This is so checkwin does not think its "slots". Should not affect calculations
         if isFree(copy, x):
             update(x, player, copy)
-            if checkWin(copy)-1 == int(player): #If current player (AI) is winner
+            if checkWin(copy)-1 == player: #If current player (AI) is winner
                 return x
    
     for y in range(0, 9):
         copy = board + [0] 
         if isFree(copy, y):
             update(y,not player, copy)
-            if checkWin(copy)-1 == int(not player): #CheckWin returns player 1 or 2
+            if checkWin(copy)-1 == (not player): #CheckWin returns player 1 or 2
                 return y
                 
-    if [board[0],board[2],board[6],board[8]].count(player+1) == 2: #If has two corners
-      pass#Pick one of the other two corners
+    tableOfCorners = [board[0],board[2],board[6],board[8]]            
+    if tableOfCorners.count(player+1) == 2: #If has two corners, pick the third
+      copy = board + [0]
+      for i in [0,2,6,8]:
+        if isFree(copy,i):
+          return i
+    if tableOfCorners.count((not player) + 1) == 2: #Prevents opposite corner start trick
+      return randomMove(board,[1,3,7,5])
+    
    
     cornerMove = not(isFree(board,0) and isFree(board,2) and isFree(board,6) and isFree(board,8))
     edgeMove = not(isFree(board,1) and isFree(board,3) and isFree(board,7) and isFree(board,5))
