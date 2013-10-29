@@ -60,7 +60,7 @@ class text(object):
     x, y = None, None
     if args["align"] == "left":
       x, y = self.data["offsetX"], (self.currLine-1) * self.data["size"] + self.data["offsetY"]
-      self.data["screen"].blit(self.makeSurface(toPrint, **args),(self.data["offsetX"], (self.currLine-1) * self.data["size"] + self.data["offsetY"]))
+      self.data["screen"].blit(self.makeSurface(toPrint, **args), (x,y))
     elif args["align"] == "center":
       pass #Look at your lua menu api if you forget how this works...
     elif args["align"] == "right":
@@ -75,3 +75,11 @@ class text(object):
     
   def print(self, toPrint, align = "left"):
     return self.specialWrite(toPrint, align = align, antiAlias = self.data["antiAlias"], color = self.data["color"]), self.lineInc()
+    
+def makeBox(words, width, height): #This is kind of silly right now
+  box = pygame.Surface((width,height))
+  box.fill((0,0,0))
+  pygame.draw.rect(box, (255,255,255), pygame.Rect((5,5,width-10,height-10)))
+  textObj = text(box, lines = 1)
+  textObj.write(words)
+  return box
