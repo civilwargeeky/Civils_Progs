@@ -8,8 +8,6 @@ Changes for 3.2.1 Fixes:
 Things to add for quarry version 3.2.2:
   Use "for" loops for gps location checking on successful backup read
   
-  Do tests on baseline restart to see if somewhat reliable.
-  
   Consolidate Mining Loops
 
   Do something about how attack compensates for invert off the bat, but Move is compensated for in the implementation.
@@ -17,6 +15,8 @@ Things to add for quarry version 3.2.2:
   Make the turtle turn around more smartly when it is at the end of a layer
   
   EnderChest support. Figure out how you are going to do this.
+  
+  Maybe on restart, if at end of row, turn around set rowCheck to opposite, and let it start from there.
   
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 
