@@ -394,7 +394,7 @@ end
 
 
 --Dropping Inventory
-local logs = 0
+local abc, logs = 0, 0
 sleep(1)
 for i=2, 14 do
 logs = logs + turtle.getItemCount(i)
