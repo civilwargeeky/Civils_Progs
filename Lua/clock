@@ -1,0 +1,22 @@
+side = "front"
+
+sleep(2)
+term.redirect(peripheral.wrap(side))
+x, y = term.getSize()
+while true do
+  term.clear()
+  time = textutils.formatTime(os.time(),false)
+  term.setCursorPos(1,2)
+  print(time)
+  time = os.time()
+  if time > (6) and time < (17.75) then
+    print("Day")
+  elseif time > (17.75) and time < 19 then
+    print("Sunset")
+  elseif time > 4.75 and time < 6 then
+    print("Sunrise")
+  else
+    print("Night")
+  end
+  sleep(0.05)
+end
