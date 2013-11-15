@@ -3,7 +3,7 @@ If interest is high enough:
 1. Add rednet capability
 ]]
 
---Version 2.2.1
+--Version 2.3.0
 
 --Config rows are to the right
 --Columns are forward
@@ -394,7 +394,7 @@ end
 
 
 --Dropping Inventory
-local logs = 0
+local abc, logs = 0, 0
 sleep(1)
 for i=2, 14 do
 logs = logs + turtle.getItemCount(i)

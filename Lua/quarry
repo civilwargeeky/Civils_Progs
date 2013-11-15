@@ -1,5 +1,5 @@
 --[[ 
-Version 3.2.2
+Version 3.2.3
 Recent Changes:
 1. Now has session persistence! Just type "quarry -restore"
    and your turtle will pick up where it left off
@@ -234,50 +234,57 @@ local restoreFound = false
 if tArgs["-restore"] or tArgs["-resume"] then
 restoreFound = fs.exists(saveFile)
 if restoreFound then
-os.run(getfenv(1),saveFile)
-if gpsEnabled then --If it had saved gps coordinates
-  print("Found GPS Start Coordinates") 
-  local currLoc = {gps.locate(gpsTimeout)}
-  if #currLoc > 0 and #gpsStartPos > 0 and #gpsSecondPos > 0 then --Cover all the different positions I'm using
-    print("GPS Position Successfully Read")
-    if currLoc[1] == gpsStartPos[1] and currLoc[3] == gpsStartPos[3] then --X coord, y coord, z coord in that order
-      xPos, yPos, zPos = 0,1,1
-      if facing ~= 0 then turnTo(0) end
-      print("Is at start")
-    else
-      if inverted then --yPos setting
-      ------------------------------------------------FIX THIS
-      end
-      local function copyTable(tab) local toRet = {}; for a, b in pairs(tab) do toRet[a] = b end; return toRet end
-      local a, b = copyTable(gpsStartPos), copyTable(gpsSecondPos) --For convenience
-      if b[3] - a[3] == -1 then--If went north (-Z)
-        a[1] = a[1] - 1 --Shift x one to west to create a "zero"
-        xPos, zPos = -currLoc[3] + a[3], currLoc[1] + -a[1]
-      elseif b[1] - a[1] == 1 then--If went east (+X)
-        a[3] = a[3] - 1 --Shift z up one to north to create a "zero"
-        xPos, zPos = currLoc[1] + -a[1], currLoc[3] + -a[3]
-      elseif b[3] - a[3] == 1 then--If went south (+Z)
-        a[1] = a[1] + 1 --Shift x one to east to create a "zero"
-        xPos, zPos = currLoc[3] + a[3], -currLoc[1] + a[3]
-      elseif b[1] - a[1] == -1 then--If went west (-X)
-        a[3] = a[3] + 1 --Shift z down one to south to create a "zero"
-        xPos, zPos = -currLoc[1] + a[1], -currLoc[3] + a[3]
+fs.open(saveFile,"r")
+if file.readAll() ~= "" and file.close() then
+  os.run(getfenv(1),saveFile)
+  if gpsEnabled then --If it had saved gps coordinates
+    print("Found GPS Start Coordinates") 
+    local currLoc = {gps.locate(gpsTimeout)}
+    if #currLoc > 0 and #gpsStartPos > 0 and #gpsSecondPos > 0 then --Cover all the different positions I'm using
+      print("GPS Position Successfully Read")
+      if currLoc[1] == gpsStartPos[1] and currLoc[3] == gpsStartPos[3] then --X coord, y coord, z coord in that order
+        xPos, yPos, zPos = 0,1,1
+        if facing ~= 0 then turnTo(0) end
+        print("Is at start")
       else
-        print("Improper Coordinates")
-        print("GPS Locate Failed, Using Standard Methods")        ----Maybe clean this up a bit to use flags instead.
-      end  
-    end
-    print("X Pos: ",xPos)
-    print("Y Pos: ",yPos)
-    print("Z Pos: ",zPos)
-    print("Facing: ",facing)
+        if inverted then --yPos setting
+        ------------------------------------------------FIX THIS
+        end
+        local function copyTable(tab) local toRet = {}; for a, b in pairs(tab) do toRet[a] = b end; return toRet end
+        local a, b = copyTable(gpsStartPos), copyTable(gpsSecondPos) --For convenience
+        if b[3] - a[3] == -1 then--If went north (-Z)
+          a[1] = a[1] - 1 --Shift x one to west to create a "zero"
+          xPos, zPos = -currLoc[3] + a[3], currLoc[1] + -a[1]
+        elseif b[1] - a[1] == 1 then--If went east (+X)
+          a[3] = a[3] - 1 --Shift z up one to north to create a "zero"
+          xPos, zPos = currLoc[1] + -a[1], currLoc[3] + -a[3]
+        elseif b[3] - a[3] == 1 then--If went south (+Z)
+          a[1] = a[1] + 1 --Shift x one to east to create a "zero"
+          xPos, zPos = currLoc[3] + a[3], -currLoc[1] + a[3]
+        elseif b[1] - a[1] == -1 then--If went west (-X)
+          a[3] = a[3] + 1 --Shift z down one to south to create a "zero"
+          xPos, zPos = -currLoc[1] + a[1], -currLoc[3] + a[3]
+        else
+          print("Improper Coordinates")
+          print("GPS Locate Failed, Using Standard Methods")        ----Maybe clean this up a bit to use flags instead.
+        end  
+      end
+      print("X Pos: ",xPos)
+      print("Y Pos: ",yPos)
+      print("Z Pos: ",zPos)
+      print("Facing: ",facing)
+    else
+      print("GPS Locate Failed, Using Standard Methods")
+    end    
+  print("Restore File read successfully. Starting in 3"); sleep(3)
+  end
   else
-    print("GPS Locate Failed, Using Standard Methods")
-  end    
-print("Restore File read successfully. Starting in 3"); sleep(3)
-end
+    originalFuel = checkFuel() --For use in logging. To see how much fuel is REALLY used
+  end
 else
-  originalFuel = checkFuel() --For use in logging. To see how much fuel is REALLY used
+  fs.delete(saveFile)
+  print("Restore file was empty, sorry, aborting")
+  error("",0)
 end
 end
 
@@ -372,18 +379,20 @@ end; end --First end is for vanilla, second is for DEFAULT
 
 local function saveProgress(extras) --Session persistence
 if doBackup then
-local file
-repeat
-  file = fs.open(saveFile,"w")
-until file --WHY DOES IT SAY ATTEMPT TO INDEX NIL!!!
+local toWrite = ""
 for a,b in pairs(getfenv(1)) do
 if type(b) == "string" then b = "\""..b.."\"" end
 if type(b) == "table" and a~="modem" then b = textutils.serialize(b) end
 if type(b) ~= "function" then
-file.write(a.." = "..tostring(b).."\n")
+toWrite = toWrite..a.." = "..tostring(b).."\n"
 end
 end
-file.write("doCheckFuel = false\n") --It has already used fuel, so calculation unnesesary
+toWrite = toWrite.."doCheckFuel = false\n" --It has already used fuel, so calculation unnesesary
+local file
+repeat
+  file = fs.open(saveFile,"w")
+until file --WHY DOES IT SAY ATTEMPT TO INDEX NIL!!!
+file.write(toWrite)
 if type(extras) == "table" then
   for a, b in pairs(extras) do
     file.write(a.." = "..tostring(b))
@@ -433,7 +442,7 @@ neededFuel = neededFuel + fuelTable[fuelSafety] --For safety
     output("Currently taking fuel from slot "..currSlot,1,2)
     output("Current single fuel: "..tostring(oneFuel or 0),1,3)
     output("Current estimate of needed fuel: ",1,4)
-    output("Single Items: "..math.floor(neededFuelItems or 0),4,5)
+    output("Single Items: "..math.ceil(neededFuelItems or 0),4,5)
     output("Stacks:       "..math.ceil((neededFuelItems or 0) / 64),4,6)
     output("Needed Fuel: "..tostring(neededFuel),1,12)
     output("Current Fuel: "..tostring(checkFuel()),1,13)
@@ -454,6 +463,7 @@ neededFuel = neededFuel + fuelTable[fuelSafety] --For safety
     if turtle.getItemCount(roundTo(currSlot + 1, 16)) == 0 then --Resets if no more fuel
       currSlot = 0
     end
+    neededFuelItems = (neededFuel - checkFuel()) / oneFuel
   end
 -- local neededFuel = moveVolume + (math.floor(volume / (64 * 8)) * (x+dispY+z)) --Standard move plus dropping off supplies
                              -- --How many times come back to start| * If it were at the very far side

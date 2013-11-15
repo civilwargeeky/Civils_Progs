@@ -5,4 +5,5 @@ __pycache__/
 Accounts/
 *.bank
 
-
+#System Related
+Thumbs.db

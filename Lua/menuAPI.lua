@@ -19,8 +19,8 @@ titleAlign = alignments[titleAlign] or alignments.center --Default title alignme
 textAlign = alignments[textAlign] or alignments.left --Default options alignment
 prefixCharacter = prefixCharacter or "["
 suffixCharacter = suffixCharacter or "]"
-if type(textTable[1]) == "table" then --This allows you to have tables of text, function pairs. So my function returns 1, and you call input[1].func()
-  for i=1, #textTable do
+for i=1, #textTable do
+  if type(textTable[i]) == "table" then --This allows you to have tables of text, function pairs. So my function returns 1, and you call input[1].func()
     textTable[i] = textTable[i].text
   end
 end
@@ -90,22 +90,3 @@ while true do
   end
 end
 end
-
---The following is some silly testing
-list = {"Apples", "Oranges", "Bananas", "Avocadoes",'a','b','c','d','g','u','t','g','y'}
-function silly() --For messing with the input function
-_, key = os.pullEvent("key")
-a = {"up","down"}
-if key ~= 28 then
-  return a[math.random(1,2)]
-end
-return "enter"
-end
-
-a, b = menu(titleize("Fruit and Letter picker"), "What will you pick today?", list, false, nil, "left", "-->","<--",nil)
-term.clear(); term.setCursorPos(1,1)
-print("You picked \""..list[a].."\"!!!")
-sleep(2)
-a,b = menu("Did you pick "..b.."?","Tell the truth now...",{"Yes, I picked "..b,"no"},false,left,center)
-term.clear(); term.setCursorPos(1,1)
-if b == "no" then print("liar!") else print("Good!") end
