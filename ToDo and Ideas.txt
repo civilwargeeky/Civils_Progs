@@ -1,3 +1,10 @@
+I'll just put this here: After that, I'm going to work on a somewhat ambitious plan for refactoring the code to use several 
+new systems I've been thinking of. After that, I will probably do some more tests on restarting and server restarts and things
+of that manner. Then I have a plan for making an installer that will perform various tasks like installing latest versions, 
+running pre-designated quarries (so like, load a set of parameters that you make in a file), reading quarry logs, 
+and possibly doing multiple quarries/rooms/however you use its in a row (quarry, go left 60, quarry). 
+So that will be cool. One of these days, I'm going to actually get around to making a new rednet program... 
+
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 
 Changelog so far:
@@ -57,11 +64,13 @@ Program will just register items to display on receive. It will then print them 
  the long value, and a table containing the screenX required for all sizes. Maybe also have a priority (e.g. priority 1 will always disply, then priority two will display, then priority 3 will display if there is room.
  
  Reinstate the thing where you can give commands from the rednet program. Like stop, or drop off items.
+ New cool way to implement this: When new event system gets implemented, add a coroutine that adds events to the event queue based on messages received.
 
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
  
 Plans for a tower program:
 Make a program that fills in an X x Z x Until it hits ground hole. Will turn around, go up a certain number, then back one, then down until hits bottom, back up, place a block, and go up. Repeat this until gets to x. If last point will end in a down then will go to the bottom and place up. Keeps track of coordinates to go back to start.
+Prolly just going to scrap this
 
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 
@@ -70,12 +79,16 @@ Basically, make an api table that only has one function. This function returns a
 Title, default redstone, "On" text, "Off" text, color of title, background color of title, pulse t/f, pulse duration, cable color, and a "current" value, which is just redstone true of false right now.
 The actual program will handle stuff like key presses, scrolling, adjusting redstone, and updating the screen.
 
+Cool mockup in the notebook in your backpack.
+
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 
 Ideas for minecraft word:
   Completely seperate the data from the visual. The data will conatain all of the lines (seperated by line breaks), and the visual will handle printing it in a formatted way for reading.
-
+  Some day...
+  
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
   
 Ideas for TTTClick:
   Using SysPrint(once it is done), make a menu that the program will come back to once it is done with a game/ at start of game.
+  :D May get to work soon :D :D :D
