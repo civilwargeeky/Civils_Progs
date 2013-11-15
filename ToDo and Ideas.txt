@@ -38,7 +38,7 @@ Things to add for quarry version 3.3.0:
   -enderChest t/f : Whether enderchest will be used. Maybe an int parameter for slot number
   
   Do some debugging of SmartFuel. It currently is not working as intended. Cool idea would be to make it seperate, and then have arrow keys control a
-  control variable that subtracts from turtle.getFuelLevel() to artificially have less fuel.
+  control variable that subtracts from turtle.getFuelLevel() to artificially have less fuel. Done now. Still a cool idea...
   
 
   

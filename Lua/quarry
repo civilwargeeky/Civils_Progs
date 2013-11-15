@@ -1,5 +1,5 @@
 --[[ 
-Version 3.2.2
+Version 3.2.3
 Recent Changes:
 1. Now has session persistence! Just type "quarry -restore"
    and your turtle will pick up where it left off
@@ -442,7 +442,7 @@ neededFuel = neededFuel + fuelTable[fuelSafety] --For safety
     output("Currently taking fuel from slot "..currSlot,1,2)
     output("Current single fuel: "..tostring(oneFuel or 0),1,3)
     output("Current estimate of needed fuel: ",1,4)
-    output("Single Items: "..math.floor(neededFuelItems or 0),4,5)
+    output("Single Items: "..math.ceil(neededFuelItems or 0),4,5)
     output("Stacks:       "..math.ceil((neededFuelItems or 0) / 64),4,6)
     output("Needed Fuel: "..tostring(neededFuel),1,12)
     output("Current Fuel: "..tostring(checkFuel()),1,13)
@@ -463,6 +463,7 @@ neededFuel = neededFuel + fuelTable[fuelSafety] --For safety
     if turtle.getItemCount(roundTo(currSlot + 1, 16)) == 0 then --Resets if no more fuel
       currSlot = 0
     end
+    neededFuelItems = (neededFuel - checkFuel()) / oneFuel
   end
 -- local neededFuel = moveVolume + (math.floor(volume / (64 * 8)) * (x+dispY+z)) --Standard move plus dropping off supplies
                              -- --How many times come back to start| * If it were at the very far side
