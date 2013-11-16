@@ -11,6 +11,9 @@ Changelog so far:
     Made the turtle turn around more smartly when it is at the end of a layer
     Fixed empty save file checking. It works properly now.
     Made a fancy event system :3
+    Used event system in turning corners and gotos and chest drops
+    Added Coterminal logic to facing direction
+    Hopefully forever fixed it losing its way on turns at the end of the row.
     
 
 Things to add for quarry version 3.3.0:
@@ -20,19 +23,12 @@ Things to add for quarry version 3.3.0:
 
   Do something about how attack compensates for invert off the bat, but Move is compensated for in the implementation. --Bah
   
-  Maybe on restart, if at end of row, turn around set rowCheck to opposite, and let it start from there.
-  
   Ideas transcribed from paper:
   For adding enderchest support: Use function "useEnderChest()" instead of dropoff. Function will not turn around, but check if item count in 16 is 1 (or return)
   and select slot 16
   Then place chest based on chest side parameter, then call function drop. Then will pick ender chest back up and select original slot. Will then continue
   on its merry way.
   In drop function, add extra parameters for dropside and excluded slots, and cobble slots.
-  Idea for system restore: Use an "event" queue for things like end of rows and dropoffs. This will allow it to properly save and resume, as it will call 
-  "runEventsFromQueue" before anything else is done (mining loops-wise). So, for example, say it gets to the end of the row. It will then queue
-  turnTo(direction),forward,turnTo(direction). --Probably have the function to run from queue return true if things still in queue so you can do 
-  "while runEventsFromQueue do end" -- Then for going back to chest, it will queue "goto(home), drop(), goto(lastPos)". After an item completes, it is removed
-  from the queue, but not before.
   
   For restructuring parameter system:
   function addParam(name, defaultValue, forceInput?,prompt, maybe if needs bounds checking, screenName, etc)
@@ -46,13 +42,7 @@ Things to add for quarry version 3.3.0:
   -startDown int : The turtle will go down a certain number of blocks before starting quarry. It will go back to original starting location to drop off at chest
   -enderChest t/f : Whether enderchest will be used. Maybe an int parameter for slot number
   
-  Do some debugging of SmartFuel. It currently is not working as intended. Cool idea would be to make it seperate, and then have arrow keys control a
-  control variable that subtracts from turtle.getFuelLevel() to artificially have less fuel. Done now. Still a cool idea...
-  
-  For events list, maybe make it so there is a run event function that can run either strings or functions. Also add event can take a string with paramaters as other strings, or a function
-  
-
-  
+  Make a parameter for a list of exclusions with function drop. It will not drop from these slots.
   
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 

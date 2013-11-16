@@ -719,11 +719,11 @@ function down(sneak)
 end
 function right(num)
   num = num or 1
-  for i=1, num do facingF(1); saveProgress(); turtle.turnRight() end
+  for i=1, num do facing = coterminal(facing+1); saveProgress(); turtle.turnRight() end
 end
 function left(num)
   num = num or 1
-  for i=1, num do facingF(-1); saveProgress(); turtle.turnLeft() end
+  for i=1, num do facing = coterminal(facing-1); saveProgress(); turtle.turnLeft() end
 end
 function attack(doAdd, func)
   doAdd = doAdd or true
@@ -833,18 +833,22 @@ function checkSanity()
   end
 end
 
---Direction: Front = 0, Right = 1, Back = 2, Left = 3
-function facingF(num)
-facing = facing + num
-if facing > 3 then facing = 0 end
-if facing < 0 then facing = 3 end
+local function fromBoolean(input) --Like a calculator
+if input then return 1 end
+return 0
 end
+function coterminal(num, limit) --I knew this would come in handy :D
+limit = limit or 4 --This is for facing
+return math.abs((limit*fromBoolean(num < 0))-(math.abs(num)%limit))
+end
+
+--Direction: Front = 0, Right = 1, Back = 2, Left = 3
 
 function turnTo(num)
   num = num or facing
   local turnRight = true
   if facing-num == 1 or facing-num == -3 then turnRight = false end --0 - 1 = -3, 1 - 0 = 1, 2 - 1 = 1
-  while facing ~= num do
+  while facing ~= num do          --The above is used to smartly turn
     if turnRight then
       right()
     else 
@@ -959,6 +963,18 @@ print(origin.x," Was position in row\n",origin.z," Was row in layer\n",origin.y,
 error("",0)
 end
 
+function endOfRowTurn(startZ, wasFacing, mineFunctionTable)
+local halfFacing = 1
+local toFace = coterminal(wasFacing + 2) --Opposite side
+if zPos == startZ then
+  if facing ~= halfFacing then turnTo(halfFacing) end
+  mine(unpack(mineFunctionTable or {}))
+end
+if facing ~= toFace then
+  turnTo(toFace)
+end
+end
+
 -------------------------------------------------------------------------------------
 --Pre-Mining Stuff dealing with session persistence
 runAllEvents()
@@ -995,9 +1011,7 @@ if zPos ~= z then --If not on last row of section
   local func
   if rowCheck == "right" then --Swithcing to next row
   func = "right"; rowCheck = "left"; else func = "left"; rowCheck = "right" end --Which way to turn
-    eventAdd(func)
-    eventAdd("mine")
-    eventAdd(func)
+    eventAdd("endOfRowTurn", zPos, facing)
     runAllEvents()
 else break
 end
