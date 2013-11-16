@@ -223,7 +223,8 @@ if tArgs["saveFile"] then saveFile = tArgs[tArgs["saveFile"]+1] or saveFile end
 local restoreFound = false
 
 restoreFound = fs.exists(saveFile)
-if restoreFound and (tArgs["-restore"] or tArgs["-resume"])  then
+local restoreFoundSwitch = restoreFound and (tArgs["-restore"] or tArgs["-resume"])
+if restoreFoundSwitch then
   local file = fs.open(saveFile,"r")
   local test = file.readAll() ~= ""
   file.close()
@@ -280,7 +281,7 @@ else --If turtle is just starting
   originalFuel = checkFuel() --For use in logging. To see how much fuel is REALLY used
 end
 
-if not (tArgs["-DEFAULT"] or restoreFound) then 
+if not (tArgs["-DEFAULT"] or restoreFoundSwitch) then 
   --Just a note, the whole error checking section here was more of an
   --experiment than anything else. If its ever changed in the future,
   --it would probably be for the better.
@@ -370,7 +371,7 @@ assert(#saveFile >= 2,errorT.word, "Save File")
 end; end --First end is for vanilla, second is for DEFAULT
 
 local function saveProgress(extras) --Session persistence
-exclusions = { modem = true, events = true}
+exclusions = { modem = true, }
 if doBackup then
 local toWrite = ""
 for a,b in pairs(getfenv(1)) do
@@ -459,37 +460,6 @@ neededFuel = neededFuel + fuelTable[fuelSafety] --For safety
     end
     neededFuelItems = (neededFuel - checkFuel()) / oneFuel
   end
--- local neededFuel = moveVolume + (math.floor(volume / (64 * 8)) * (x+dispY+z)) --Standard move plus dropping off supplies
-                             -- --How many times come back to start| * If it were at the very far side
--- neededFuel = neededFuel + fuelTable[fuelSafety]
--- if neededFuel < 100 then neededFuel = 100; end
--- if checkFuel() < neededFuel then
--- screen(1,1)
--- print("More Fuel Needed")
--- print("Current Fuel: ",checkFuel()," Needed: ",neededFuel)
--- print("Place fuel in Bottom Right")
--- while turtle.getItemCount(16) == 0 do
-  -- sleep(1)
--- end
--- turtle.select(16)
--- while checkFuel() < neededFuel do
--- if not turtle.refuel(1) then
--- term.clearLine()
--- print("Still too little fuel")
--- term.clearLine()
--- print("Insert more fuel to resume")
--- while turtle.getItemCount(16) == 0 do
-  -- sleep(1)
--- end
--- end
--- local x,y = term.getCursorPos()
--- print(checkFuel().." Fuel")
--- term.setCursorPos(x,y)
--- end
--- print(checkFuel().." Units of Fuel")
--- sleep(3)
--- turtle.select(1)
--- end
 end
 --Initial Rednet Handshake
 if rednetEnabled then
@@ -560,18 +530,15 @@ function eventPop(pos)
   return table.remove(events,tonumber(pos) or #events) or false --This will return value popped, tonumber returns nil if fail, so default to end
 end
 function eventRun(value, ...)
-  local argsList, toRet = {...}, nil
-  if type(value) == "function" then
-    _, toRet = pcall(value, unpack(argsList))
-    assert(_ , toRet)
-    return toRet
-  elseif type(value) == "string" then
-    if value:sub(-1) == ")" then --So supports both "up()" and "up"
-      --Do nothing
-    else
+  local argsList = {...}
+  if type(value) == "string" then
+    if value:sub(-1) ~= ")" then --So supports both "up()" and "up"
       value = value .. "("
       for a, b in pairs(argsList) do --Appending arguments
-        value = value .. tostring(b) or "true" .. ", "
+        value = value .. (tostring(b) or "true") .. ", "
+      end
+      if value:sub(-1) ~= "(" then --If no args, do not want to cut off
+        value = value:sub(1,-3)..""
       end
       value = value .. ")"
     end
@@ -616,16 +583,15 @@ print("Percent Complete")
 print(percent.."%")
 print("Fuel")
 print(checkFuel())
-  -- screen(1,1)
-  -- print("Xpos: ")
-  -- print(xPos)
-  -- print("RelXPos: ")
-  -- print(relxPos)
-  -- print("Z Pos: ")
-  -- print(zPos)
-  -- print("Y pos: ")
-  -- print(yPos)
-  
+  screen(1,1)
+  print("Xpos: ")
+  print(xPos)
+  print("RelXPos: ")
+  print(relxPos)
+  print("Z Pos: ")
+  print(zPos)
+  print("Y pos: ")
+  print(yPos)
 if rednetEnabled then
 screenLine(1,7)
 print("Connected: "..tostring(connected))
@@ -731,6 +697,7 @@ function up(sneak)
     end
     yPos = yPos - sneak --Oh! I feel so clever
   end                   --This works because inverted :)
+  saveProgress()
 end
 function down(sneak)
   sneak = sneak or 1
@@ -748,6 +715,7 @@ function down(sneak)
     end
     yPos = yPos + sneak
   end
+  saveProgress()
 end
 function right(num)
   num = num or 1
@@ -790,7 +758,7 @@ if doDigDown == nil then doDigDown = true end
 if doDigUp == nil then doDigUp = true end
 if outOfPath == nil then outOfPath = false end
 if inverted then
-  doDigUp, doDigDown = doDigDown, doDigUp --Just switch the two if inverted
+  doDigUp, doDigDown = doDigDown, doDigUp --Just Switch the two if inverted
 end
 if doRefuel and checkFuel() <= fuelTable[fuelSafety]/2 then
   for i=1, 16 do
@@ -824,13 +792,7 @@ while not forward(not outOfPath) do
     end
   end
 end
---Insanity Checking
-if xPos < 0 or xPos > x or zPos < 0 or zPos > z or yPos < 0 then
-  print("Oops. Detected that quarry was outside of predefined boundaries.")
-  print("Please go to my forum thread and report this with a short description of what happened")
-  print("If you could also run \"pastebin put Civil_Quarry_Restore\" and give me that code it would be great")
-  error("",0)
-end
+checkSanity() --Not kidding... This is necessary
 saveProgress(tab)
 if doDigUp then
 while turtle.detectUp() do 
@@ -856,6 +818,21 @@ if moved%invCheckFreq == 0 then
 end; end
 if rednetEnabled then biometrics() end
 end
+--Insanity Checking
+function checkSanity()
+  if isInPath and not (facing == 0 or facing == 2) and #events == 0 then --If mining and not facing proper direction and not in a turn
+    turnTo(0)
+    rowCheck = "right"
+  end
+  if xPos < 0 or xPos > x or zPos < 0 or zPos > z or yPos < 0 then
+    saveProgress()
+    print("Oops. Detected that quarry was outside of predefined boundaries.")
+    print("Please go to my forum thread and report this with a short description of what happened")
+    print("If you could also run \"pastebin put Civil_Quarry_Restore\" and give me that code it would be great")
+    error("",0)
+  end
+end
+
 --Direction: Front = 0, Right = 1, Back = 2, Left = 3
 function facingF(num)
 facing = facing + num
@@ -878,7 +855,6 @@ end
 function goto(x,z,y, toFace)
 --Will first go to desired z pos, then x pos, y pos varies
 x = x or 1; y = y or 1; z = z or 1; toFace = toFace or facing
-gotoX,gotoY,gotoZ,gotoFacing = xPos,yPos,zPos,facing --For use in session persistence
 if yPos > y then --Will go up first if below position
   while yPos~=y do up() end
 end
@@ -899,7 +875,6 @@ if yPos < y then --Will go down after if above position
 end
 turnTo(toFace,"right")
 saveProgress()
-gotoX,gotoY,gotoZ,gotoFacing = nil
 end
 function drop(side, final, allowSkip)
 side = sides[side] or "front"    --The final number means that it will
@@ -957,11 +932,12 @@ turnTo(0)
 end
 function dropOff() --Not local because called in mine()
 local currX,currZ,currY,currFacing = xPos, zPos, yPos, facing
-goto(0,1,1,2)
-drop(dropSide,false)
-mine(false,false,true, false)
-goto(1,1,1, 0)
-goto(currX,currZ,currY,currFacing)
+eventAdd("goto(0,1,1,2)")
+eventAdd("drop", dropSide,false)
+eventAdd("mine",false,false,true,false)
+eventAdd("goto(1,1,1, 0)")
+eventAdd("goto", currX,currZ,currY,currFacing)
+runAllEvents()
 return true
 end
 function bedrock()
@@ -982,28 +958,16 @@ print("\nFound bedrock at these coordinates: ")
 print(origin.x," Was position in row\n",origin.z," Was row in layer\n",origin.y," Blocks down from start")
 error("",0)
 end
---------------------------
---Test--
--- eventAdd("up()")
--- eventAdd("down")
--- eventAdd("turtle.select",2)
--- eventAdd(turtle.select,1)
--- eventAdd(mine)
--- eventAdd(mine)
--- runAllEvents()
--- goto(0,1,1,0)
-
--- print("done")
--- error("",0)
-
 
 -------------------------------------------------------------------------------------
 --Pre-Mining Stuff dealing with session persistence
+runAllEvents()
+
 local doDigDown, doDigUp = (lastHeight ~= 1), false --Used in lastHeight
 if gpsEnabled and not restoreFound then --The initial locate is done in the arguments. This is so I can figure out what quadrant the turtle is in.
   gpsSecondPos = {gps.locate(gpsTimeout)} --Note: Does not run this if it has already been restarted.
 end
-if not restoreFound then --Regularly
+if not restoreFoundSwitch then --Regularly
   --Check if it is a mining turtle
   if not isMiningTurtle then
     local a, b = turtle.dig()
@@ -1016,50 +980,42 @@ if not restoreFound then --Regularly
   if y~= 0 then mine(false, false, true) down() end --Get into quarry
 else --restore found
   digUp(); digDown() --Get blocks missed before stopped
-  if gotoX then
-    goto(gotoX,gotoZ,gotoY,gotoFacing)
-  end
-  if (relxPos == x or relxPos == 1) and not gotoX and not (facing == 0 or facing == 2) then --If not in goto loop or facing standard direction
-    if rowCheck == "right" then --If on odd rows (starting with first)
-      turnTo(0) --Face the end so will turn properly
-    else
-      turnTo(2)
-    end
-  end
 end
 --Mining Loops
 turtle.select(1)
 while layersDone <= y do -------------Height---------
 moved = moved + 1 --To account for the first position in row as "moved"
-if not restoreFound then rowCheck = "right"; relativeXCalc() end
+if not restoreFoundSwitch then rowCheck = "right" end
+relativeXCalc()
 while zPos <= z do -------------Width----------
 while relxPos < x do ------------Length---------
 mine()
 end ---------------Length End-------
-if zPos ~= z then
-local func
-if rowCheck == "right" and zPos ~= z then --Swithcing to next row
-func = right; rowCheck = "left"; else func = left; rowCheck = "right" end --Which way to turn
-  func()
-  saveProgress({zPos = zPos + 1}) --This might make it so it will go back to proper spot z wise
-  mine()
-  func()
+if zPos ~= z then --If not on last row of section
+  local func
+  if rowCheck == "right" then --Swithcing to next row
+  func = "right"; rowCheck = "left"; else func = "left"; rowCheck = "right" end --Which way to turn
+    eventAdd(func)
+    eventAdd("mine")
+    eventAdd(func)
+    runAllEvents()
 else break
 end
 end ---------------Width End--------
-goto(1,1,yPos,0)
+eventAdd("goto",1,1,yPos,0)
+runAllEvents()
 if yPos+1 ~= y then 
   for i=1, 3 do down() end
 end
 layersDone = layersDone + 3
-restoreFound = false --This is done so that rowCheck works properly upon restore
+restoreFoundSwitch = false --This is done so that rowCheck works properly upon restore
 end ---------------Height End-------
 if lastHeight ~= 0 then ---------LAST ROW--------- (copied from above)
 moved = moved + 1 --To account for the first position in row as "moved"
 if y ~= 0 then --If the basic y == 2 or 1
   for i=1, 2 do down() end
 end 
-if not restoreFound then rowCheck = "right" end
+if not restoreFoundSwitch then rowCheck = "right" end
 relativeXCalc()
 while zPos <= z do -------------Width----------
 while relxPos < x do ------------Length---------
@@ -1068,10 +1024,11 @@ end ---------------Length End-------
 if zPos ~= z then
 local func
 if rowCheck == "right" and zPos ~= z then --Swithcing to next row
-  func = right; rowCheck = "left"; else func = left; rowCheck = "right" end --Which way to turn
-  func()
-  mine(doDigDown,doDigUp)
-  func()
+  func = "right"; rowCheck = "left"; else func = "left"; rowCheck = "right" end --Which way to turn
+  eventAdd(func)
+  eventAdd("mine",doDigDown,doDigUp)
+  eventAdd(func)
+  runAllEvents()
 else break
 end
 end ---------------Width End--------
@@ -1084,14 +1041,16 @@ if doDigDown then
     digDown()
   end
 end
-goto(0,1,1,2)
+eventAdd("goto",0,1,1,2)
 
 --Output to a chest or sit there
-drop(dropSide, true)
---Display was moved above to be used in bedrock function
-display()
---Log current mining run
-logMiningRun(logExtension)
+eventAdd("drop",dropSide, true)
 
+--Display was moved above to be used in bedrock function
+eventAdd("display")
+--Log current mining run
+eventAdd("logMiningRun",logExtension)
+eventAdd("error('',0)") --So it doesn't start mining when its done. Probably clean this up better later.
+runAllEvents()
 --Cleanup
 turtle.getFuelLevel = getFuel
