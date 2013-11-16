@@ -1,16 +1,6 @@
 --[[ 
-Version 3.2.3
+Version 3.3.0
 Recent Changes:
-1. Now has session persistence! Just type "quarry -restore"
-   and your turtle will pick up where it left off
-2. New Argument: startY to help stop it from getting stuck on those nasty sheep!
-3. Most directional functions take care of invert. Exception is turtle.detect
-]]
---[[ToDo:
-1. Actually get the rednet send back and forth to work
-3. Send basic commands from receiver program e.g. Stop
-6. Add in rednet stuff
-7. Massive update for rednet program
 ]]
 --Defining things
 _G.civilTable = {}; civilTable = nil; setmetatable(civilTable, {__index = _G}); setfenv(1,civilTable)
@@ -231,61 +221,63 @@ if tArgs["doBackup"] then doBackup = (string.lower(string.sub(tArgs[tArgs["doBac
 if tArgs["saveFile"] then saveFile = tArgs[tArgs["saveFile"]+1] or saveFile end
 
 local restoreFound = false
-if tArgs["-restore"] or tArgs["-resume"] then
+
 restoreFound = fs.exists(saveFile)
-if restoreFound then
-fs.open(saveFile,"r")
-if file.readAll() ~= "" and file.close() then
-  os.run(getfenv(1),saveFile)
-  if gpsEnabled then --If it had saved gps coordinates
-    print("Found GPS Start Coordinates") 
-    local currLoc = {gps.locate(gpsTimeout)}
-    if #currLoc > 0 and #gpsStartPos > 0 and #gpsSecondPos > 0 then --Cover all the different positions I'm using
-      print("GPS Position Successfully Read")
-      if currLoc[1] == gpsStartPos[1] and currLoc[3] == gpsStartPos[3] then --X coord, y coord, z coord in that order
-        xPos, yPos, zPos = 0,1,1
-        if facing ~= 0 then turnTo(0) end
-        print("Is at start")
-      else
-        if inverted then --yPos setting
-        ------------------------------------------------FIX THIS
-        end
-        local function copyTable(tab) local toRet = {}; for a, b in pairs(tab) do toRet[a] = b end; return toRet end
-        local a, b = copyTable(gpsStartPos), copyTable(gpsSecondPos) --For convenience
-        if b[3] - a[3] == -1 then--If went north (-Z)
-          a[1] = a[1] - 1 --Shift x one to west to create a "zero"
-          xPos, zPos = -currLoc[3] + a[3], currLoc[1] + -a[1]
-        elseif b[1] - a[1] == 1 then--If went east (+X)
-          a[3] = a[3] - 1 --Shift z up one to north to create a "zero"
-          xPos, zPos = currLoc[1] + -a[1], currLoc[3] + -a[3]
-        elseif b[3] - a[3] == 1 then--If went south (+Z)
-          a[1] = a[1] + 1 --Shift x one to east to create a "zero"
-          xPos, zPos = currLoc[3] + a[3], -currLoc[1] + a[3]
-        elseif b[1] - a[1] == -1 then--If went west (-X)
-          a[3] = a[3] + 1 --Shift z down one to south to create a "zero"
-          xPos, zPos = -currLoc[1] + a[1], -currLoc[3] + a[3]
+if restoreFound and (tArgs["-restore"] or tArgs["-resume"])  then
+  local file = fs.open(saveFile,"r")
+  local test = file.readAll() ~= ""
+  file.close()
+  if test then
+    os.run(getfenv(1),saveFile)
+    if gpsEnabled then --If it had saved gps coordinates
+      print("Found GPS Start Coordinates") 
+      local currLoc = {gps.locate(gpsTimeout)}
+      if #currLoc > 0 and #gpsStartPos > 0 and #gpsSecondPos > 0 then --Cover all the different positions I'm using
+        print("GPS Position Successfully Read")
+        if currLoc[1] == gpsStartPos[1] and currLoc[3] == gpsStartPos[3] then --X coord, y coord, z coord in that order
+          xPos, yPos, zPos = 0,1,1
+          if facing ~= 0 then turnTo(0) end
+          print("Is at start")
         else
-          print("Improper Coordinates")
-          print("GPS Locate Failed, Using Standard Methods")        ----Maybe clean this up a bit to use flags instead.
-        end  
-      end
-      print("X Pos: ",xPos)
-      print("Y Pos: ",yPos)
-      print("Z Pos: ",zPos)
-      print("Facing: ",facing)
-    else
-      print("GPS Locate Failed, Using Standard Methods")
-    end    
-  print("Restore File read successfully. Starting in 3"); sleep(3)
-  end
+          if inverted then --yPos setting
+          ------------------------------------------------FIX THIS
+          end
+          local function copyTable(tab) local toRet = {}; for a, b in pairs(tab) do toRet[a] = b end; return toRet end
+          local a, b = copyTable(gpsStartPos), copyTable(gpsSecondPos) --For convenience
+          if b[3] - a[3] == -1 then--If went north (-Z)
+            a[1] = a[1] - 1 --Shift x one to west to create a "zero"
+            xPos, zPos = -currLoc[3] + a[3], currLoc[1] + -a[1]
+          elseif b[1] - a[1] == 1 then--If went east (+X)
+            a[3] = a[3] - 1 --Shift z up one to north to create a "zero"
+            xPos, zPos = currLoc[1] + -a[1], currLoc[3] + -a[3]
+          elseif b[3] - a[3] == 1 then--If went south (+Z)
+            a[1] = a[1] + 1 --Shift x one to east to create a "zero"
+            xPos, zPos = currLoc[3] + a[3], -currLoc[1] + a[3]
+          elseif b[1] - a[1] == -1 then--If went west (-X)
+            a[3] = a[3] + 1 --Shift z down one to south to create a "zero"
+            xPos, zPos = -currLoc[1] + a[1], -currLoc[3] + a[3]
+          else
+            print("Improper Coordinates")
+            print("GPS Locate Failed, Using Standard Methods")        ----Maybe clean this up a bit to use flags instead.
+          end  
+        end
+        print("X Pos: ",xPos)
+        print("Y Pos: ",yPos)
+        print("Z Pos: ",zPos)
+        print("Facing: ",facing)
+      else
+        print("GPS Locate Failed, Using Standard Methods")
+      end    
+    print("Restore File read successfully. Starting in 3"); sleep(3)
+    end
   else
-    originalFuel = checkFuel() --For use in logging. To see how much fuel is REALLY used
+    fs.delete(saveFile)
+    print("Restore file was empty, sorry, aborting")
+    error("",0)
   end
-else
-  fs.delete(saveFile)
-  print("Restore file was empty, sorry, aborting")
-  error("",0)
-end
+else --If turtle is just starting
+  events = {} --This is the event queue :D
+  originalFuel = checkFuel() --For use in logging. To see how much fuel is REALLY used
 end
 
 if not (tArgs["-DEFAULT"] or restoreFound) then 
@@ -378,11 +370,13 @@ assert(#saveFile >= 2,errorT.word, "Save File")
 end; end --First end is for vanilla, second is for DEFAULT
 
 local function saveProgress(extras) --Session persistence
+exclusions = { modem = true, events = true}
 if doBackup then
 local toWrite = ""
 for a,b in pairs(getfenv(1)) do
+  --print(a ,"   ", b, "   ", type(b)) --Debug
 if type(b) == "string" then b = "\""..b.."\"" end
-if type(b) == "table" and a~="modem" then b = textutils.serialize(b) end
+if type(b) == "table" and not exclusions[a] then b = textutils.serialize(b) end
 if type(b) ~= "function" then
 toWrite = toWrite..a.." = "..tostring(b).."\n"
 end
@@ -556,6 +550,46 @@ print("\nStarting in 3"); sleep(1); print("2"); sleep(1); print("1"); sleep(1.5)
 
 ----------------------------------------------------------------
 --Define ALL THE FUNCTIONS
+function eventAdd(...)
+  return table.insert(events,1, {...}) or true
+end
+function eventGet(pos)
+  return events[tonumber(pos) or #events]
+end
+function eventPop(pos)
+  return table.remove(events,tonumber(pos) or #events) or false --This will return value popped, tonumber returns nil if fail, so default to end
+end
+function eventRun(value, ...)
+  local argsList, toRet = {...}, nil
+  if type(value) == "function" then
+    _, toRet = pcall(value, unpack(argsList))
+    assert(_ , toRet)
+    return toRet
+  elseif type(value) == "string" then
+    if value:sub(-1) == ")" then --So supports both "up()" and "up"
+      --Do nothing
+    else
+      value = value .. "("
+      for a, b in pairs(argsList) do --Appending arguments
+        value = value .. tostring(b) or "true" .. ", "
+      end
+      value = value .. ")"
+    end
+    local func = loadstring(value)
+    setfenv(func, getfenv(1))
+    return func()
+  end
+end
+      
+function runAllEvents()
+  while #events > 0 do
+    local toRun = eventGet()
+    --print(toRun[1]) --Debug
+    eventRun(unpack(toRun))
+    eventPop()
+  end
+end
+
 function display() --This is just the last screen that displays at the end
 screen(1,1)
 print("Total Blocks Mined: "..mined)
@@ -829,17 +863,16 @@ if facing > 3 then facing = 0 end
 if facing < 0 then facing = 3 end
 end
 
-function turnTo(num, dir)
+function turnTo(num)
   num = num or facing
-  dir = dir or "left"
+  local turnRight = true
+  if facing-num == 1 or facing-num == -3 then turnRight = false end --0 - 1 = -3, 1 - 0 = 1, 2 - 1 = 1
   while facing ~= num do
-    if dir == "left" then
-      left()
-    elseif dir == "right" then
+    if turnRight then
       right()
-    else
-      error("TurnTo: Left or Right expected, got "..tosrting(dir))
-      end
+    else 
+      left() 
+    end
   end
 end
 function goto(x,z,y, toFace)
@@ -929,6 +962,7 @@ drop(dropSide,false)
 mine(false,false,true, false)
 goto(1,1,1, 0)
 goto(currX,currZ,currY,currFacing)
+return true
 end
 function bedrock()
 if checkFuel() == 0 then error("No Fuel",0) end
@@ -948,6 +982,21 @@ print("\nFound bedrock at these coordinates: ")
 print(origin.x," Was position in row\n",origin.z," Was row in layer\n",origin.y," Blocks down from start")
 error("",0)
 end
+--------------------------
+--Test--
+-- eventAdd("up()")
+-- eventAdd("down")
+-- eventAdd("turtle.select",2)
+-- eventAdd(turtle.select,1)
+-- eventAdd(mine)
+-- eventAdd(mine)
+-- runAllEvents()
+-- goto(0,1,1,0)
+
+-- print("done")
+-- error("",0)
+
+
 -------------------------------------------------------------------------------------
 --Pre-Mining Stuff dealing with session persistence
 local doDigDown, doDigUp = (lastHeight ~= 1), false --Used in lastHeight

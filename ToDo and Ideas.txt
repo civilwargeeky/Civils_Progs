@@ -8,6 +8,10 @@ So that will be cool. One of these days, I'm going to actually get around to mak
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 
 Changelog so far:
+    Made the turtle turn around more smartly when it is at the end of a layer
+    Fixed empty save file checking. It works properly now.
+    Made a fancy event system :3
+    
 
 Things to add for quarry version 3.3.0:
   Use "for" loops for gps location checking on successful backup read --Cosmetic Change
@@ -15,8 +19,6 @@ Things to add for quarry version 3.3.0:
   Consolidate Mining Loops --One of these days...
 
   Do something about how attack compensates for invert off the bat, but Move is compensated for in the implementation. --Bah
-  
-  Make the turtle turn around more smartly when it is at the end of a layer
   
   Maybe on restart, if at end of row, turn around set rowCheck to opposite, and let it start from there.
   
@@ -46,6 +48,8 @@ Things to add for quarry version 3.3.0:
   
   Do some debugging of SmartFuel. It currently is not working as intended. Cool idea would be to make it seperate, and then have arrow keys control a
   control variable that subtracts from turtle.getFuelLevel() to artificially have less fuel. Done now. Still a cool idea...
+  
+  For events list, maybe make it so there is a run event function that can run either strings or functions. Also add event can take a string with paramaters as other strings, or a function
   
 
   
