@@ -1033,30 +1033,6 @@ end
 layersDone = layersDone + 1
 restoreFoundSwitch = false --This is done so that rowCheck works properly upon restore
 end ---------------Height End-------
--- if lastHeight ~= 0 then ---------LAST ROW--------- (copied from above)
--- moved = moved + 1 --To account for the first position in row as "moved"
--- if y ~= 0 then --If the basic y == 2 or 1
-  -- for i=1, 2 do down() end
--- end 
--- if not restoreFoundSwitch then rowCheck = "right" end
--- relativeXCalc()
--- while zPos <= z do -------------Width----------
--- while relxPos < x do ------------Length---------
--- mine(doDigDown,doDigUp)
--- end ---------------Length End-------
--- if zPos ~= z then
--- local func
--- if rowCheck == "right" and zPos ~= z then --Swithcing to next row
-  -- func = "right"; rowCheck = "left"; else func = "left"; rowCheck = "right" end --Which way to turn
-  -- eventAdd(func)
-  -- eventAdd("mine",doDigDown,doDigUp)
-  -- eventAdd(func)
-  -- runAllEvents()
--- else break
--- end
--- end ---------------Width End--------
--- goto(1,1,yPos,0)
--- end
 if doDigDown then --This is because it doesn't mine first block in layer
   if inverted then
     digUp()
