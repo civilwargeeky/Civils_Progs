@@ -180,15 +180,64 @@ print("----- Welcome to Quarry! -----")
 print("")
 
 local sides = {top = "top", right = "right", left = "left", bottom = "bottom", front = "front"} --Used to whitelist sides
-local errorT = {num = "Numbers not recognized", zero = "Variable is out of range", word = "String failed assertion" }
-local changedT = {}
-changedT.new = function(key, value) changedT[#changedT+1] = {[key] = value} end
-changedT.getPair = function(i) for a, b in pairs(changedT[i]) do return a, b end end
+local changedT, tArgsWithUpper = {}, {}
+changedT.new = function(key, value) table.insert(changedT,{key, value}) end --Numeric list of lists
 local function capitalize(text) return (string.upper(string.sub(text,1,1))..string.sub(text,2,-1)) end
-local function assert(condition, message, section) section = section or "[Blank]"; if condition then return condition else error("Error: "..message.."\nin section "..section, 0) end end
-local function checkNum(number, section) return assert(tonumber(number),errorT.num, section) end
-tArgs.checkStart = function(num) tArgs[tArgs[num]] = num end
-for i=1, #tArgs do tArgs.checkStart(i) end
+for i=1, #tArgs do tArgsWithUpper[i] = tArgs[i]; tArgsWithUpper[tArgsWithUpper[i]] = i; tArgs[i] = tArgs[i]:lower(); tArgs[tArgs[i]] = i end --My signature key-value pair system, now with upper
+
+function addParam(name, displayText, formatString, forcePrompt, trigger, variableOverride) --To anyone that doesn't understand this very well, probably not your best idea to go in here.
+  if trigger == nil then trigger = true end --Defaults to being able to run
+  if not trigger then return end --This is what the trigger is for. Will not run if trigger not there
+  if restoreFoundSwitch or tArgs["-default"] then forcePrompt = false end --Don't want to prompt if these
+  local toGetText = name:lower() --Because all params are now lowered
+  local formatType = formatString:match("^%a+"):lower() or error("Format String Unknown: "..formatString) --Type of format string
+  local args = formatString:sub(({formatString:find(formatType)})[2] + 2).."" --Everything in formatString but the type and space
+  local variable = variableOverride or name --Goes first to the override for name
+  local func = loadstring("return "..variable)
+  setfenv(func,getfenv(1))
+  local originalValue = assert(func)() --This is the default value, for checking to add to changed table
+  if originalValue == nil then error("From addParam, \""..variable.."\" returned nil",2) end --I may have gotten a wrong variable name
+  local givenValue, toRet --Initializing for use
+  if tArgs["-"..toGetText] then
+    givenValue = tArgsWithUpper[tArgs["-"..toGetText]+1] --This is the value after the desired parameter
+  elseif forcePrompt then
+    term.write(displayText.."? ")
+    givenValue = io.read()
+  end
+  if not givenValue then return end --Don't do anything if you aren't given anything. Leave it as default
+  if formatType == "boolean" then --All the format strings will be basically be put through a switch statement
+    toRet = givenValue:sub(1,1):lower() == "y" or givenValue:sub(1,1):lower() == "t" --Accepts true or yes
+  elseif formatType == "string" then
+    toRet = givenValue:match("^[%w%.]+") --Basically anything not a space or control character etc
+  elseif formatType == "number" then
+    toRet = tonumber(givenValue) --Note this is a local, not the above so we don't change anything
+    if not toRet then return end --We need a number... Otherwise compare errors
+    toRet = math.abs(math.floor(toRet)) --Get proper integers
+    local startNum, endNum = formatString:match("(%d+)%-(%d+)") --Gets range of numbers
+    startNum, endNum = tonumber(startNum), tonumber(endNum)
+    if not ((toRet >= startNum) and (toRet <= endNum)) then return end --Can't use these
+  elseif formatType == "side" then
+    local exclusionTab = {} --Ignore the wizardry here. Just getting arguments without format string
+    for a in args:gmatch("%S+") do exclusionTab[a] = true end --This makes a list of the sides to not include
+    if not exclusionTab[givenValue] then toRet = sides[givenValue] end --If side is not excluded
+  elseif formatType == "list" then
+    toRet = {}
+    for a in args:gmatch("[^,]") do
+      table.insert(toRet,a)
+    end
+  else error("Improper formatType",2)
+  end
+  if toRet == nil then return end --Don't want to set variables to nil... That's bad
+  tempParam = toRet --This is what loadstring will see :D
+  local func = loadstring(variable.." = tempParam")
+  setfenv(func, getfenv(1))
+  func()
+  tempParam = nil --Cleanup of global
+  if toRet ~= originalValue then
+    changedT.new(displayText, tostring(toRet))
+  end
+  return toRet
+end
 
 --Check if it is a turtle
 if not turtle then
@@ -217,8 +266,8 @@ error("",0)
 end
 
 --Saving
-if tArgs["doBackup"] then doBackup = (string.lower(string.sub(tArgs[tArgs["doBackup"]+1],1,1)) ~= "f") end
-if tArgs["saveFile"] then saveFile = tArgs[tArgs["saveFile"]+1] or saveFile end
+addParam("doBackup", "Backup Save File", "boolean")
+addParam("saveFile", "Save File Name", "string")
 
 local restoreFound = false
 
@@ -281,106 +330,60 @@ else --If turtle is just starting
   originalFuel = checkFuel() --For use in logging. To see how much fuel is REALLY used
 end
 
-if not (tArgs["-DEFAULT"] or restoreFoundSwitch) then 
-  --Just a note, the whole error checking section here was more of an
-  --experiment than anything else. If its ever changed in the future,
-  --it would probably be for the better.
-local section = "Dimensions"
 --Dimesnions
 if tArgs["-dim"] then local num = tArgs["-dim"];
 x = checkNum(tArgs[num + 1],section); z = checkNum(tArgs[num + 2],section); y = checkNum(tArgs[num + 3],section)
-else
+elseif not (tArgs["-default"] or restoreFoundSwitch) then
 print("What dimensions?")
 print("")
 --This will protect from negatives, letters, and decimals
-term.write("Length: ")
+term.write("Length? ")
 x = math.floor(math.abs(tonumber(io.read()) or x))
-term.write("Width: ")
+term.write("Width? ")
 z = math.floor(math.abs(tonumber(io.read()) or z))
-term.write("Height: ")
+term.write("Height? ")
 y = math.floor(math.abs(tonumber(io.read()) or y))
+changedT.new("Length",x); changedT.new("Width",z); changedT.new("Height",y)
 end
-changedT.new("x",x); changedT.new("z",z); changedT.new("y",y)
-assert(x~=0, errorT.zero, section); assert(z~=0, errorT.zero, section); assert(y~=0, errorT.zero, section)
-assert(not(x == 1 and y == 1 and z == 1) ,"1, 1, 1 dosen't work well at all, try again", section)
-if not tArgs["-vanilla"] then
 --Invert
-if tArgs["-invert"] then
-inverted = (string.lower(string.sub(tArgs[tArgs["-invert"]+1] or "",1,1)) == "t") else
-term.write("Inverted? ")
-inverted = (string.lower(string.sub(io.read(),1,1)) == "y")
-end
-changedT.new("Inverted", inverted)
+addParam("invert", "Inverted","boolean", true, nil, "inverted")
+addParam("chest", "Chest Drop Side", "side front", nil, nil, "dropSide")
 --Rednet
-if supportsRednet then
-if tArgs["-rednet"] then 
-rednetEnabled = (string.lower(string.sub(tArgs[tArgs["-rednet"]+1] or "",1,1)) == "t")
-else term.write("Rednet? "); rednetEnabled = (string.lower(string.sub(io.read(),1,1)) == "y")
-if (tArgs["-GPS"] or tArgs["-gps"]) and not restoreFound and not gpsEnabled then --The not gps enabled makes it so it is toggled
-gpsStartPos = {gps.locate(gpsTimeout)} --Stores position in array
-gpsEnabled = #gpsStartPos > 0 --Checks if location received properly
-changedT.new("GPS Location Services", gpsEnabled)
+addParam("rednet", "Rednet Enabled","boolean",true, supportsRednet)
+addParam("gps", "GPS Location Services", "boolean", nil, (not restoreFoundSwitch) and supportsRednet ) --Has these triggers so that does not record position if restarted.
+if gpsEnabled then
+  gpsStartPos = {gps.locate(gpsTimeout)} --Stores position in array
+  gpsEnabled = #gpsStartPos > 0 --Checks if location received properly. If not, position is not saved
 end
-changedT.new("Rednet Enabled", rednetEnabled)
-end
-if tArgs["-sendChannel"] then
-channels.send = assert(tonumber(tArgs[tArgs["-sendChannel"]+1]), errorT.num)
-assert(channels.send > 0 and channels.send < 65535, errorT.zero)
-changedT.new("Send Channel",channels.send) end
-if tArgs["-receiveChannel"] then
-channels.receive = assert(tonumber(tArgs[tArgs["-receiveChannel"]+1]), errorT.num)
-assert(channels.receive > 0 and channels.receive < 65535 and channels.receive ~= channels.send, errorT.zero)
-changedT.new("Receive Channel",channels.receive) end
-end
+addParam("sendChannel", "Rednet Send Channel", "number 1-65535", false, supportsRednet, "channels.send")
+addParam("receiveChannel","Rednet Receive Channel", "number 1-65535", false, supportsRednet, "channels.receive")
 --Fuel
-if tArgs["-doRefuel"] then doRefuel = not doRefuel; changedT.new("Do Refuel",doRefuel) end
-if turtle.getFuelLevel() == "unlimited" then
-  doCheckFuel = false
-else
-  if tArgs["-doCheckFuel"] then
-  doCheckFuel = (string.lower(string.sub(tArgs[tArgs["-doCheckFuel"]+1] or "",1,1)) == "t"); changedT.new("Do Check Fuel", doCheckFuel) end
-end
-if tArgs["-chest"] then
-dropSide = sides[tArgs[tArgs["-chest"]+1]] or dropSide; changedT.new("Chest Side",dropSide) end
-if tArgs["-fuelSafety"] then local loc = tArgs[tArgs["-fuelSafety"]+1]
-  if fuelTable[loc] then
-    fuelSafety = loc; changedT.new("Fuel Check Safety", fuelSafety)
-  end
-end
+addParam("doRefuel", "Refuel from Inventory","boolean", nil, turtle.getFuelLevel ~= math.huge) --math.huge due to my changes
+addParam("doCheckFuel", "Check Fuel", "boolean", nil, turtle.getFuelLevel ~= math.huge)
 --Logging
-logging = (tArgs["-log"] and true) or logging --The and will set it to true if value, or its original value if nil
-if logging then changedT.new("Logging",logging) end
-if tArgs["-logFolder"] then logFolder = tArgs[tArgs["-logFolder"]+1] or logFolder; changedT.new("Log Folder",logFolder) end
-if tArgs["-logExtension"] then logExtension = tArgs[tArgs["-logExtension"]+1] or logExtension; changedT.new("Log Extension",logExtension) end
+addParam("logging", "Logging", "boolean")
+addParam("logFolder", "Log Folder", "string")
+addParam("logExtension","Log Extension", "string")
 --Misc
-if tArgs["-startY"] then
-startY = math.abs(math.floor(checkNum(tArgs[tArgs["-startY"]+1],"Start Y")))
-changedT.new("Start Y Position",startY) end
-assert(startY >= 0, errorT.zero, "StartY")
-if tArgs["-invCheckFreq"] then
-invCheckFreq = math.abs(math.floor(checkNum(tArgs[tArgs["-invCheckFreq"]+1],"Inventory Check Frequency")))
-changedT.new("Inventory Check Frequency",invCheckFreq) end
-assert(invCheckFreq ~= 0, errorT.zero, "Inventory Check Frequency")
-if tArgs["-keepOpen"] then
-keepOpen = math.abs(math.floor(checkNum(tArgs[tArgs["-keepOpen"]+1],"Open Slots")))
-changedT.new("Slots to keep open", keepOpen) end
-assert(keepOpen ~= 0 and keepOpen < 16, errorT.zero, "Open Slots")
-if tArgs["-ignoreResources"] then careAboutResources = false; changedT.new("Ignore Resources?", not careAboutResources) end
-if tArgs["-saveFile"] then saveFile = tArgs[tArgs["-saveFile"]+1] changedT.new("Save File", saveFile) end
-assert(#saveFile >= 2,errorT.word, "Save File")
-end; end --First end is for vanilla, second is for DEFAULT
+addParam("startY", "Start Y","number 1-256")
+addParam("invCheckFreq","Inventory Check Frequency","number 1-342")
+addParam("keepOpen", "Slots to Keep Open", "number 1-15")
+addParam("careAboutResources", "Care About Resources","boolean")
+
 
 local function saveProgress(extras) --Session persistence
 exclusions = { modem = true, }
 if doBackup then
 local toWrite = ""
 for a,b in pairs(getfenv(1)) do
-  --print(a ,"   ", b, "   ", type(b)) --Debug
-if type(b) == "string" then b = "\""..b.."\"" end
-if type(b) == "table" and not exclusions[a] then b = textutils.serialize(b) end
-if type(b) ~= "function" then
-toWrite = toWrite..a.." = "..tostring(b).."\n"
-end
+  if not exclusions[a] then
+      --print(a ,"   ", b, "   ", type(b)) --Debug
+    if type(b) == "string" then b = "\""..b.."\"" end
+    if type(b) == "table" then b = textutils.serialize(b) end
+    if type(b) ~= "function" then
+      toWrite = toWrite..a.." = "..tostring(b).."\n"
+    end
+  end
 end
 toWrite = toWrite.."doCheckFuel = false\n" --It has already used fuel, so calculation unnesesary
 local file
@@ -509,8 +512,7 @@ if #changedT == 0 then
 print("Completely Default")
 else
 for i=1, #changedT do
-local title, value = changedT.getPair(i)
-print(capitalize(title)..": ",value)
+print(changedT[i][1],": ",changedT[i][2]) --Name and Value
 end
 end
 print("\nStarting in 3"); sleep(1); print("2"); sleep(1); print("1"); sleep(1.5) --Dramatic pause at end
