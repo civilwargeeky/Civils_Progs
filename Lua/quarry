@@ -400,14 +400,13 @@ end
 local area = x*z
 local volume = x*y*z
 local lastHeight = y%3
-local dispY = y
-y = math.floor(y/3)*3
-local yMult = y/3 + math.ceil(lastHeight/2) --This is basically a smart y/3 for movement
+layers = math.ceil(y/3)
+local yMult = layers + math.ceil(lastHeight/2) --This is basically a smart y/3 for movement
 local moveVolume = (area * yMult) --Kept for display percent
 --Calculating Needed Fuel--
 local exStack = numberOfStacksPerRun --Expected stacks of items before full
 neededFuel = yMult * x * z + --This is volume it will run through
-      dispY*(2+1/(64*exStack)) + --This is simplified and includes the y to get up times up and down + how many times it will drop stuff off
+      y*(2+1/(64*exStack)) + --This is simplified and includes the y to get up times up and down + how many times it will drop stuff off
       (x+z)*(yMult + 1/(64*exStack))  --Simplified as well: It is getting to start of row plus getting to start of row how many times will drop off stuff
       --Original equation: x*z*y/3 + y * 2 + (x+z) * y/3 + (x + z + y) * (1/64*8)
 neededFuel = math.ceil(neededFuel)
@@ -486,7 +485,7 @@ sleep(1.5)
 end
 local function biometrics(sendChannel)
 local commands = { Confirm = "Confirm" }
-local toSend = { ["x"] = x, ["y"] = (y/3 + math.ceil(lastHeight/2)), ["z"] = z, --The y calc is weird...
+local toSend = { ["x"] = x, ["y"] = (layers), ["z"] = z, --The y calc is weird...
     ["xPos"] = xPos, ["yPos"] = yPos, ["zPos"] = zPos, 
     ["percent"] = percent, ["mined" ]= mined, 
     ["fuel"] = checkFuel(), ["moved"] = moved, 
@@ -535,13 +534,16 @@ function eventRun(value, ...)
     if value:sub(-1) ~= ")" then --So supports both "up()" and "up"
       value = value .. "("
       for a, b in pairs(argsList) do --Appending arguments
-        value = value .. (tostring(b) or "true") .. ", "
+        local toAppend
+        if type(b) == "table" then toAppend = textutils.serialize(b) else toAppend = tostring(b) end
+        value = value .. (toAppend or "true") .. ", "
       end
       if value:sub(-1) ~= "(" then --If no args, do not want to cut off
         value = value:sub(1,-3)..""
       end
       value = value .. ")"
     end
+    print(value) --Debug
     local func = loadstring(value)
     setfenv(func, getfenv(1))
     return func()
@@ -620,7 +622,7 @@ local function write(...)
 end
 write("Welcome to the Quarry Logs!")
 write("Entry Number: ",number)
-write("Dimensions (X Z Y): ",x," ",z," ", dispY)
+write("Dimensions (X Z Y): ",x," ",z," ", y)
 write("Blocks Mined: ", mined)
 write("  Cobble: ", totals.cobble)
 write("  Usable Fuel: ", totals.fuel)
@@ -837,6 +839,9 @@ local function fromBoolean(input) --Like a calculator
 if input then return 1 end
 return 0
 end
+local function multBoolean(first,second) --Boolean multiplication
+return (fromBoolean(first) * fromBoolean(second)) == 1
+end
 function coterminal(num, limit) --I knew this would come in handy :D
 limit = limit or 4 --This is for facing
 return math.abs((limit*fromBoolean(num < 0))-(math.abs(num)%limit))
@@ -979,7 +984,7 @@ end
 --Pre-Mining Stuff dealing with session persistence
 runAllEvents()
 
-local doDigDown, doDigUp = (lastHeight ~= 1), false --Used in lastHeight
+local doDigDown, doDigUp = (lastHeight ~= 1), (lastHeight == 0) --Used in lastHeight
 if gpsEnabled and not restoreFound then --The initial locate is done in the arguments. This is so I can figure out what quadrant the turtle is in.
   gpsSecondPos = {gps.locate(gpsTimeout)} --Note: Does not run this if it has already been restarted.
 end
@@ -993,62 +998,64 @@ if not restoreFoundSwitch then --Regularly
       error("",0)
     end
   end
-  if y~= 0 then mine(false, false, true) down() end --Get into quarry
+  if not(y == 1 or y == 2) then mine(false, false, true) down() end --Go forward one, then down. If y is one or two, it doesn't need to do this.
 else --restore found
   digUp(); digDown() --Get blocks missed before stopped
 end
---Mining Loops
+--Mining Loops--------------------------------------------------------------------------
 turtle.select(1)
-while layersDone <= y do -------------Height---------
+while layersDone <= layers do -------------Height---------
+local lastLayer = layersDone == layers --If this is the last layer
+local secondToLastLayer = (layersDone + 1) == layers --This is for the going down at the end of a layer.
 moved = moved + 1 --To account for the first position in row as "moved"
 if not restoreFoundSwitch then rowCheck = "right" end
 relativeXCalc()
 while zPos <= z do -------------Width----------
 while relxPos < x do ------------Length---------
-mine()
+mine(not lastLayer or (doDigDown and lastLayer), not lastLayer or (doDigUp and lastLayer)) --This will be the idiom that I use for the mine function
 end ---------------Length End-------
 if zPos ~= z then --If not on last row of section
   local func
   if rowCheck == "right" then --Swithcing to next row
   func = "right"; rowCheck = "left"; else func = "left"; rowCheck = "right" end --Which way to turn
-    eventAdd("endOfRowTurn", zPos, facing)
+    eventAdd("endOfRowTurn", zPos, facing , {not lastLayer or (doDigDown and lastLayer), not lastLayer or (doDigUp and lastLayer)}) --The table is passed to the mine function
     runAllEvents()
 else break
 end
 end ---------------Width End--------
-eventAdd("goto",1,1,yPos,0)
+eventAdd("goto",1,1,yPos,0) --Goto start of layer
 runAllEvents()
-if yPos+1 ~= y then 
-  for i=1, 3 do down() end
+if not lastLayer then --If there is another layer
+  for i=1, 2+fromBoolean(not(lastHeight~=0 and secondToLastLayer)) do down() end --The fromBoolean stuff means that if lastheight is 1 and last and layer, will only go down two
 end
-layersDone = layersDone + 3
+layersDone = layersDone + 1
 restoreFoundSwitch = false --This is done so that rowCheck works properly upon restore
 end ---------------Height End-------
-if lastHeight ~= 0 then ---------LAST ROW--------- (copied from above)
-moved = moved + 1 --To account for the first position in row as "moved"
-if y ~= 0 then --If the basic y == 2 or 1
-  for i=1, 2 do down() end
-end 
-if not restoreFoundSwitch then rowCheck = "right" end
-relativeXCalc()
-while zPos <= z do -------------Width----------
-while relxPos < x do ------------Length---------
-mine(doDigDown,doDigUp)
-end ---------------Length End-------
-if zPos ~= z then
-local func
-if rowCheck == "right" and zPos ~= z then --Swithcing to next row
-  func = "right"; rowCheck = "left"; else func = "left"; rowCheck = "right" end --Which way to turn
-  eventAdd(func)
-  eventAdd("mine",doDigDown,doDigUp)
-  eventAdd(func)
-  runAllEvents()
-else break
-end
-end ---------------Width End--------
-goto(1,1,yPos,0)
-end
-if doDigDown then
+-- if lastHeight ~= 0 then ---------LAST ROW--------- (copied from above)
+-- moved = moved + 1 --To account for the first position in row as "moved"
+-- if y ~= 0 then --If the basic y == 2 or 1
+  -- for i=1, 2 do down() end
+-- end 
+-- if not restoreFoundSwitch then rowCheck = "right" end
+-- relativeXCalc()
+-- while zPos <= z do -------------Width----------
+-- while relxPos < x do ------------Length---------
+-- mine(doDigDown,doDigUp)
+-- end ---------------Length End-------
+-- if zPos ~= z then
+-- local func
+-- if rowCheck == "right" and zPos ~= z then --Swithcing to next row
+  -- func = "right"; rowCheck = "left"; else func = "left"; rowCheck = "right" end --Which way to turn
+  -- eventAdd(func)
+  -- eventAdd("mine",doDigDown,doDigUp)
+  -- eventAdd(func)
+  -- runAllEvents()
+-- else break
+-- end
+-- end ---------------Width End--------
+-- goto(1,1,yPos,0)
+-- end
+if doDigDown then --This is because it doesn't mine first block in layer
   if inverted then
     digUp()
   else
