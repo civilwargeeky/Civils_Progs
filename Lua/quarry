@@ -160,7 +160,7 @@ end
 
 local getFuel = turtle.getFuelLevel --This is for cleanup at the end
 do --Common variable name...
-local flag = turtle.getFuelLevel() == "Unlimited"--Unlimited screws up my calculations
+local flag = turtle.getFuelLevel() == "unlimited"--Unlimited screws up my calculations
 if flag then --Fuel is disabled
   turtle.getFuelLevel = function() return math.huge end --Infinite Fuel
 end --There is no "else" because it will already return the regular getFuel
