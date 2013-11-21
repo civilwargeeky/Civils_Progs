@@ -25,6 +25,9 @@ gpsTimeout = 3 --The number of seconds the program will wait to get GPS coords. 
 logging = true --Whether or not the turtle will log mining runs. [Default ...still deciding]
 logFolder = "Quarry_Logs" --What folder the turtle will store logs in [Default "Quarry_Logs"]
 logExtension = "" --The extension of the file (e.g. ".txt") [Default ""]
+startDown = 0 --How many blocks to start down from the top of the mine [Default 0]
+enderChestEnabled = false --Whether or not to use an ender chest [Default false]
+enderChestSlot = 16 --What slot to put the ender chest in [Default 16]
 --Standard number slots for fuel (you shouldn't care)
 fuelTable = { --Will add in this amount of fuel to requirement.
 safe = 1000,
@@ -160,7 +163,7 @@ end
 
 local getFuel = turtle.getFuelLevel --This is for cleanup at the end
 do --Common variable name...
-local flag = turtle.getFuelLevel() == "Unlimited"--Unlimited screws up my calculations
+local flag = turtle.getFuelLevel() == "unlimited"--Unlimited screws up my calculations
 if flag then --Fuel is disabled
   turtle.getFuelLevel = function() return math.huge end --Infinite Fuel
 end --There is no "else" because it will already return the regular getFuel
@@ -207,6 +210,9 @@ function addParam(name, displayText, formatString, forcePrompt, trigger, variabl
   if not givenValue then return end --Don't do anything if you aren't given anything. Leave it as default
   if formatType == "boolean" then --All the format strings will be basically be put through a switch statement
     toRet = givenValue:sub(1,1):lower() == "y" or givenValue:sub(1,1):lower() == "t" --Accepts true or yes
+    if formatString == "boolean special" then
+      toRet = givenValue:sub(1,1):lower() == "n" or givenValue:sub(1,1):lower() == "f" --Accepts anything but false or no
+    end
   elseif formatType == "string" then
     toRet = givenValue:match("^[%w%.]+") --Basically anything not a space or control character etc
   elseif formatType == "number" then
@@ -272,7 +278,7 @@ addParam("saveFile", "Save File Name", "string")
 local restoreFound = false
 
 restoreFound = fs.exists(saveFile)
-local restoreFoundSwitch = restoreFound and (tArgs["-restore"] or tArgs["-resume"])
+restoreFoundSwitch = restoreFound and (tArgs["-restore"] or tArgs["-resume"])
 if restoreFoundSwitch then
   local file = fs.open(saveFile,"r")
   local test = file.readAll() ~= ""
@@ -347,7 +353,11 @@ changedT.new("Length",x); changedT.new("Width",z); changedT.new("Height",y)
 end
 --Invert
 addParam("invert", "Inverted","boolean", true, nil, "inverted")
+addParam("startDown","Start Down","number 1-256")
+--Inventory
 addParam("chest", "Chest Drop Side", "side front", nil, nil, "dropSide")
+addParam("enderChest","Ender Chest Enabled","boolean special", nil, nil, "enderChestEnabled") --This will accept anything (including numbers) thats not "f" or "n"
+addParam("enderChest", "Ender Chest Slot", "number 1-16", nil, nil, "enderChestSlot") --This will get the number slot if given
 --Rednet
 addParam("rednet", "Rednet Enabled","boolean",true, supportsRednet)
 addParam("gps", "GPS Location Services", "boolean", nil, (not restoreFoundSwitch) and supportsRednet ) --Has these triggers so that does not record position if restarted.
@@ -369,7 +379,12 @@ addParam("startY", "Start Y","number 1-256")
 addParam("invCheckFreq","Inventory Check Frequency","number 1-342")
 addParam("keepOpen", "Slots to Keep Open", "number 1-15")
 addParam("careAboutResources", "Care About Resources","boolean")
-
+--Manual Position
+if tArgs["-manualpos"] then --Gives current coordinates in xPos,zPos,yPos, facing
+  local a = tArgs["-manualPos"]
+  xPos, zPos, yPos, facing = tonumber(tArgs[a+1]) or xPos, tonumber(tArgs[a+2]) or zPos, tonumber(tArgs[a+3]) or yPos, coterminal(tonumber(tArgs[a+4])) or facing
+  changedT.new("xPos",xPos); changedT.new("zPos",zPos); changedT.new("yPos","yPos"); changedT.new("facing",facing)
+end
 
 local function saveProgress(extras) --Session persistence
 exclusions = { modem = true, }
@@ -462,6 +477,17 @@ neededFuel = neededFuel + fuelTable[fuelSafety] --For safety
     end
     neededFuelItems = (neededFuel - checkFuel()) / oneFuel
   end
+end
+--Ender Chest Obtaining
+if enderChestEnabled then
+  while turtle.getItemCount(enderChestSlot) ~= 1 do
+    screen(1,1)
+    print("You have selected to use an Ender Chest!")
+    print("Please place one Ender Chest in slot ",enderChestSlot)
+    sleep(1)
+  end
+  print("Thank you, continuing your scheduled program")
+  sleep(2)
 end
 --Initial Rednet Handshake
 if rednetEnabled then
@@ -853,6 +879,7 @@ end
 
 function turnTo(num)
   num = num or facing
+  num = coterminal(num) --Prevent errors
   local turnRight = true
   if facing-num == 1 or facing-num == -3 then turnRight = false end --0 - 1 = -3, 1 - 0 = 1, 2 - 1 = 1
   while facing ~= num do          --The above is used to smartly turn
@@ -939,15 +966,29 @@ end
 until detected or allowSkip
 if not allowSkip then totals.cobble = totals.cobble - 1 end
 turtle.select(1)
-turnTo(0)
 end
 function dropOff() --Not local because called in mine()
 local currX,currZ,currY,currFacing = xPos, zPos, yPos, facing
+if not enderChestEnabled then --Regularly
+eventAdd("goto", 1,1,currY,2) --Need this step for "-startDown"
 eventAdd("goto(0,1,1,2)")
 eventAdd("drop", dropSide,false)
+eventAdd("turnTo(0)")
 eventAdd("mine",false,false,true,false)
 eventAdd("goto(1,1,1, 0)")
+eventAdd("goto", 1, 1, currY, 0)
 eventAdd("goto", currX,currZ,currY,currFacing)
+else --If using an enderChest
+eventAdd("turnTo",currFacing-2)
+eventAdd("dig",false)
+eventAdd("turtle.select",enderChestSlot)
+eventAdd("turtle.place()")
+eventAdd("drop","front",false)
+eventAdd("turtle.select", enderChestSlot)
+eventAdd("dig",false)
+eventAdd("turnTo",currFacing)
+eventAdd("turtle.select(1)")
+end
 runAllEvents()
 return true
 end
@@ -964,6 +1005,7 @@ for i=1, relxPos do mine(true,true); end
 end
 goto(0,1,1,2)
 drop(dropSide, true)
+turnTo(0)
 display()
 print("\nFound bedrock at these coordinates: ")
 print(origin.x," Was position in row\n",origin.z," Was row in layer\n",origin.y," Blocks down from start")
@@ -1000,7 +1042,12 @@ if not restoreFoundSwitch then --Regularly
       error("",0)
     end
   end
-  if not(y == 1 or y == 2) then mine(false, false, true) down() end --Go forward one, then down. If y is one or two, it doesn't need to do this.
+  mine(false,false,true) --Get into quarry by going forward one
+  for i = 1, startDown do
+    eventAdd("down") --Add a bunch of down events to get to where it needs to be.
+  end
+  runAllEvents()
+  if not(y == 1 or y == 2) then down() end --Go down. If y is one or two, it doesn't need to do this.
 else --restore found
   digUp(); digDown() --Get blocks missed before stopped
 end
@@ -1040,10 +1087,17 @@ if doDigDown then --This is because it doesn't mine first block in layer
     digDown()
   end
 end
+eventAdd("goto",1,1,yPos,2) --Allows for startDown variable
 eventAdd("goto",0,1,1,2)
 
 --Output to a chest or sit there
+if enderChestEnabled and not turtle.detect() then
+  eventAdd("turle.select",enderChestSlot)
+  eventAdd("turtle.place")
+  eventAdd("turtle.select(1)")
+end
 eventAdd("drop",dropSide, true)
+eventAdd("turnTo(0)")
 
 --Display was moved above to be used in bedrock function
 eventAdd("display")
