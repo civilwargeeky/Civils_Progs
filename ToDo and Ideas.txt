@@ -29,6 +29,9 @@ Changelog so far:
     Made a really cool argument display and parsing system
     turnTo function now coterminals all directions
     Removed turnTo function from end of drop function
+    Added manualPos parameter
+    Added startDown parameter with (hopefully) appropriate changes to chest drops and the like
+    Added enderChest parameter with fancy changes to drop function.    
 
 Things to add for quarry version 3.3.0:
   Use "for" loops for gps location checking on successful backup read --Cosmetic Change

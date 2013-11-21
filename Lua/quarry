@@ -478,6 +478,17 @@ neededFuel = neededFuel + fuelTable[fuelSafety] --For safety
     neededFuelItems = (neededFuel - checkFuel()) / oneFuel
   end
 end
+--Ender Chest Obtaining
+if enderChestEnabled then
+  while turtle.getItemCount(enderChestSlot) ~= 1 do
+    screen(1,1)
+    print("You have selected to use an Ender Chest!")
+    print("Please place one Ender Chest in slot ",enderChestSlot)
+    sleep(1)
+  end
+  print("Thank you, continuing your scheduled program")
+  sleep(2)
+end
 --Initial Rednet Handshake
 if rednetEnabled then
 screen(1,1)
@@ -1080,6 +1091,11 @@ eventAdd("goto",1,1,yPos,2) --Allows for startDown variable
 eventAdd("goto",0,1,1,2)
 
 --Output to a chest or sit there
+if enderChestEnabled and not turtle.detect() then
+  eventAdd("turle.select",enderChestSlot)
+  eventAdd("turtle.place")
+  eventAdd("turtle.select(1)")
+end
 eventAdd("drop",dropSide, true)
 eventAdd("turnTo(0)")
 
