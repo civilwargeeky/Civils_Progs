@@ -27,6 +27,8 @@ Changelog so far:
     Parameters are all lowered. "-DEFAULT" does the same thing as "-DeFaUlT"
     All Boolean Arguments now accept both "true" and "yes" (and "YeS" and "tRuuuuueeee", and "t" and "y", it only cares about the first letter)
     Made a really cool argument display and parsing system
+    turnTo function now coterminals all directions
+    Removed turnTo function from end of drop function
 
 Things to add for quarry version 3.3.0:
   Use "for" loops for gps location checking on successful backup read --Cosmetic Change
