@@ -41,70 +41,65 @@ confirm = "Confirm"
 }
 
 local help_paragraph = [[
--DEFAULT: This will ignore all arguments and prompts and use defaults
--vanilla: This will ignore all arguments except for dimensions
--dim: [num] [num] [num] This sets the dimensions of the quarry
--invert: [t/f] This sets whether invert is true or false
--rednet: [t/f] This sets whether it will attempt to make a rednet connection
--sendChannel: [num] This sets the channel the turtle will attempt to send on
--receiveChannel: [num] This sets the channel the turtle will attempt to receive on
--doRefuel: Changes whether or not the turtle will refuel itself with coal when fuel is low (opposite of written config)
--doCheckFuel: Changes whether or not the turtle will check its fuel level before running (opposite of written config)
--chest: [chest side] Changes what side turtle will output to
--startY: [num] Tells the turtle what y coordinate it starts at, to make bedrock checking more accurate (hopefully)
--keepOpen: [num] How many slots of the inventory turtle will try to keep open (Will then auto-empty)
--invCheckFreq: [num] How many blocks before full inventory checks
--saveFile: [word] Changes where the turtle saves its backup to.
--doBackup: [t/f] Whether or not the turtle will backup its current position to a file.
--restore: Turtle will check for a save file. If found will ignore all other arguments.
--fuelSafety: [safe/moderate/loose] How much extra fuel the turtle will request at startup
--GPS: Will toggle whether gps is on or not.
-  You must have a valid GPS network set up for this to work. It will take its starting location from this and its first position.
-  It will then store these values in its progress file in case your turtle stops for any reason.
-  On startup, the turtle will calculate its current position based on a new gps locate.
--log: Turns logging on if not already on.
-  Will publish reports of mining runs to its own folder for later reading
-Smart Fueling System: As of 3.2.0, the turtle uses a new smart fueling system
-  With this new system you can shift click in as many stacks of fuel as you want, and it will take stacks of fuel at a time
-  This makes fueling for large jobs on new turtles much, much faster.
-Examples [1]:
- The minimum amount necessary to start a turtle automatically would be one of these two
- ---------
- quarry -dim 3 3 3 -invert false -rednet false
- ---------
- quarry -dim 3 3 3 -vanilla
- ---------
- or, if you actually wanted a 3x3x3 then
- ---------
- quarry -DEFAULT
-Examples [2]: 
- If you wanted start a quarry that has 
- rednet on channels 500 and 501, outputs 
- to a chest below itself, is inverted,
- and has the dimesions 5x5x21, then here
- is what you would type: (Remember that
- order does not matter)
- ----------
- quarry -receiveChannel 501 -sendChannel 500 -invert true -dim 5 5 21 -chest bottom -rednet true
-Examples [2] (cont.):
- Now, this may be very long, but it is meant for people who want to make automated quarries with
- the same settings every time (or with variable setting)
-Examples [3]:
- If you are playing softcore then you
- can do
- ---------
- quarry -doCheckFuel false
- ---------
- Followed by any other arguments
+Welcome!: Welcome to quarry help. Below are help entries for all parameters. Examples and tips are at the bottom.
+-Default: This will force no prompts. If you use this and nothing else, only defaults will be used.
+-dim: [length] [width] [height] This sets the dimensions for the quarry
+-invert: [t/f] If true, quarry will be inverted (go up instead of down)
+-rednet: [t/f] If true and you have a wireless modem on the turtle, will attempt to make a rednet connection for sending important information to a screen
+-restore / -resume: If your quarry stopped in the middle of its run, use this to resume at the point where the turtle was. Not guarenteed to work properly. For more accurate location finding, check out the -GPS parameter
+-doRefuel: [t/f] If true, the turtle will refuel itself with coal and planks it finds on its mining run
+-doCheckFuel: [t/f] If you for some reason don't want the program to check fuel usage, set to false. This is honestly a hold-over from when the refueling algorithm was awful...
+-chest: [side] This specifies what side the chest at the end will be on. You can say "top", "bottom", "front", "left", or "right"
+-enderChest: This one is special. If you use "-enderChest true" then it will use an enderChest in the default slot. However, you can also do "-enderChest [slot]" then it will take the ender chest from whatever slot you tell it to. Like 7... or 14... or whatever.
+-GPS: [t/f] If true and there is a GPS network, then the turtle will record its first two positions to precisly calculate its position if it has to restart. This will only take two GPS readings
+-sendChannel: [number] This is what channel your turtle will send rednet messages on
+-receiveChannel: [number] This is what channel your turtle will receive rednet messages on
+-startY: [current Y coord] Randomly encountering bedrock? This is the parameter for you! Just give it what y coordinate you are at right now. If it is not within bedrock range, it will never say it found bedrock
+-logging: [t/f] If true, will record information about its mining run in a folder at the end of the mining run
+-doBackup: [t/f] If false, will not back up important information and cannot restore, but will not make an annoying file (Actually I don't really know why anyone would use this...)
+-saveFile: [word] This is what the backup file will be called
+-logFolder: [word] The folder that quarry logs will be stored in
+-logExtension: [word] The extension given to each quarry log (e.g. ".txt" or ".notepad" or whatever)
+-invCheckFreq: [number] This is how often the turtle will check if it has the proper amount of slots open
+-keepOpen: [number] This is the number of the slots the turtle will make sure are open. It will check every invCheckFreq blocks
+-careAboutResources: [t/f] Who cares about the materials! If set to false, it will just keep mining when its inventory is full
+-startDown: [number] If you set this, the turtle will go down this many blocks from the start before starting its quarry
+  =
+  C _ |
+      |
+      |
+      |
+      |_ _ _ _ >
+-manualPos: [xPos] [zPos] [yPos] [facing] This is for advanced use. If the server reset when the turtle was in the middle of a 100x100x100 quarry, fear not, you can now manually set the position of the turtle. yPos is always positive. The turtle's starting position is 0, 1, 1, 0. Facing is measured 0 - 3. 0 is forward, and it progresses clockwise. Example- "-manualPos 65 30 30 2"
+-help: Thats what this is :D
+Examples: Everything below is examples and tips for use
+Important Note:
+  None of the above parameters are necessary. They all have default values, and the above are just if you want to change them.
+Examples [1]: 
+  Want to just start a quarry from the interface, without going through menus? It's easy! Just use some parameters. Assume you called the program "quarry." To start a 10x6x3 quarry, you just type in "quarry -dim 10 6 3 -default". 
+  You just told it to start a quarry with dimensions 10x6x3, and "-default" means it won't prompt you about invert or rednet. Wasn't that easy?
+Examples [2]:
+  Okay, so you've got the basics of this now, so if you want, you can type in really long strings of stuff to make the quarry do exactly what you want. Now, say you want a 40x20x9, but you want it to go down to diamond level, and you're on the surface (at y = 64). You also want it to send rednet messages to your computer so you can see how its doing. 
+Examples [2] [cont.]:
+  Oh yeah! You also want it to use an ender chest in slot 12 and restart if the server crashes. Yeah, you can do that. You would type
+  "quarry -dim 40x20x9 -invert false -startDown 45 -rednet true -enderChest 12 -restore"
+  BAM. Now you can just let that turtle do it's thing
 Tips:
- You don't actually have to type out "false" or "true" if you don't want. It actaully just checks if the first
- letter is "t", so you (usually) don't have to put anything at all. Putting the whole word just helps with clarity
-Internal Config: 
- At the top of the program, right below the changelog is a written config. Anything not specified by arguments
- will be taken from here. If you have a quarry setup you use a lot, you could just edit the config and then
- type in the following:
- ----------
- quarry -DEFAULT
+  The order of the parameters doesn't matter. "quarry -invert false -rednet true" is the same as "quarry -rednet true -invert false"
+  
+  Capitalization doesn't matter. "quarry -iNVErt FALSe" does the same thing as "quarry -invert false"
+Tips [cont.]:
+  For [t/f] parameters, you can also use "yes" and "no" so "quarry -invert yes"
+  
+  For [t/f] parameters, it only cares about the first letter. So you can use "quarry -invert t" or "quarry -invert y"
+Tips [cont.]:
+  If you are playing with fuel turned off, the program will automatically change settings for you so you don't have to :D
+  
+  If you want, you can load this program onto a computer, and use "quarry -help" so you can have help with the parameters whenever you want.
+Internal Config:
+  At the top of this program is an internal configuration file. If there is some setup that you use all the time, you can just change the config value at the top and run "quarry -default" for a quick setup.
+  
+  You can also use this if there are settings that you don't like the default value of.
 ]]
 
 --Parsing help for display
@@ -247,8 +242,8 @@ function addParam(name, displayText, formatString, forcePrompt, trigger, variabl
 end
 
 --Check if it is a turtle
-if not turtle then
-  print("This is not a turtle, you must be looking for the \"Companion Rednet Program\" \nCheck My forum thread for that")
+if not(turtle or tArgs["help"] or tArgs["-help"] or tArgs["-?"] or tArgs["?"]) then
+  print("This is not a turtle, you might be looking for the \"Companion Rednet Program\" \nCheck My forum thread for that")
   print("Press 'q' to quit, or any other key to start help ")
   if ({os.pullEvent("char")})[2] ~= "q" then tArgs.help = true else error("",0) end
 end
@@ -419,12 +414,12 @@ local area = x*z
 local volume = x*y*z
 local lastHeight = y%3
 layers = math.ceil(y/3)
-local yMult = layers + math.ceil(lastHeight/2) --This is basically a smart y/3 for movement
+local yMult = layers --This is basically a smart y/3 for movement
 local moveVolume = (area * yMult) --Kept for display percent
 --Calculating Needed Fuel--
 local exStack = numberOfStacksPerRun --Expected stacks of items before full
 neededFuel = yMult * x * z + --This is volume it will run through
-      y*(2+1/(64*exStack)) + --This is simplified and includes the y to get up times up and down + how many times it will drop stuff off
+      (startDown + y)*(2+1/(64*exStack)) + --This is simplified and includes the y to get up times up and down + how many times it will drop stuff off
       (x+z)*(yMult + 1/(64*exStack))  --Simplified as well: It is getting to start of row plus getting to start of row how many times will drop off stuff
       --Original equation: x*z*y/3 + y * 2 + (x+z) * y/3 + (x + z + y) * (1/64*8)
 neededFuel = math.ceil(neededFuel)
@@ -471,7 +466,7 @@ neededFuel = neededFuel + fuelTable[fuelSafety] --For safety
       updateScreen()
     until (oneFuel or 0) > 0 --Not an if to prevent errors if fuel taken out prematurely.
     neededFuelItems = (neededFuel - checkFuel()) / oneFuel
-    turtle.refuel(roundTo(neededFuelItems, 64)) --Change because can only think about 64 at once.
+    turtle.refuel(math.ceil(roundTo(neededFuelItems, 64))) --Change because can only think about 64 at once.
     if turtle.getItemCount(roundTo(currSlot + 1, 16)) == 0 then --Resets if no more fuel
       currSlot = 0
     end
@@ -573,7 +568,7 @@ function eventRun(value, ...)
       end
       value = value .. ")"
     end
-    print(value) --Debug
+    --print(value) --Debug
     local func = loadstring(value)
     setfenv(func, getfenv(1))
     return func()
