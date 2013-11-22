@@ -37,6 +37,7 @@ Changelog so far:
     Fixed small issue in GPS locate
     Removed "-fuelSafety" parameter
     Updated Help section for all new use
+    Slightly modified fueling algorithm to account for "-startDown"
     
 Things to add for quarry version 3.3.1:
   Use "for" loops for gps location checking on successful backup read --Cosmetic Change
