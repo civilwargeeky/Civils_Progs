@@ -286,7 +286,7 @@ if restoreFoundSwitch then
     os.run(getfenv(1),saveFile)
     if gpsEnabled then --If it had saved gps coordinates
       print("Found GPS Start Coordinates") 
-      local currLoc = {gps.locate(gpsTimeout)}
+      local currLoc = {gps.locate(gpsTimeout)} or {}
       if #currLoc > 0 and #gpsStartPos > 0 and #gpsSecondPos > 0 then --Cover all the different positions I'm using
         print("GPS Position Successfully Read")
         if currLoc[1] == gpsStartPos[1] and currLoc[3] == gpsStartPos[3] then --X coord, y coord, z coord in that order
@@ -359,7 +359,7 @@ addParam("enderChest","Ender Chest Enabled","boolean special", nil, nil, "enderC
 addParam("enderChest", "Ender Chest Slot", "number 1-16", nil, nil, "enderChestSlot") --This will get the number slot if given
 --Rednet
 addParam("rednet", "Rednet Enabled","boolean",true, supportsRednet)
-addParam("gps", "GPS Location Services", "boolean", nil, (not restoreFoundSwitch) and supportsRednet ) --Has these triggers so that does not record position if restarted.
+addParam("gps", "GPS Location Services", "boolean", nil, (not restoreFoundSwitch) and supportsRednet, "gpsEnabled" ) --Has these triggers so that does not record position if restarted.
 if gpsEnabled then
   gpsStartPos = {gps.locate(gpsTimeout)} --Stores position in array
   gpsEnabled = #gpsStartPos > 0 --Checks if location received properly. If not, position is not saved
@@ -1039,7 +1039,7 @@ runAllEvents()
 if toQuit then error("",0) end --This means that it was stopped coming for its last drop
 
 local doDigDown, doDigUp = (lastHeight ~= 1), (lastHeight == 0) --Used in lastHeight
-if gpsEnabled and not restoreFound then --The initial locate is done in the arguments. This is so I can figure out what quadrant the turtle is in.
+if gpsEnabled and not restoreFoundSwitch then --The initial locate is done in the arguments. This is so I can figure out what quadrant the turtle is in.
   gpsSecondPos = {gps.locate(gpsTimeout)} --Note: Does not run this if it has already been restarted.
 end
 if not restoreFoundSwitch then --Regularly

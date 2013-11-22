@@ -32,6 +32,9 @@ Changelog so far:
     Added manualPos parameter
     Added startDown parameter with (hopefully) appropriate changes to chest drops and the like
     Added enderChest parameter with fancy changes to drop function.    
+    Fixed "-keepOpen" parameter
+    Made function "drop" work more smartly when dropping items
+    Fixed small issue in GPS locate
 
 Things to add for quarry version 3.3.0:
   Use "for" loops for gps location checking on successful backup read --Cosmetic Change
