@@ -188,6 +188,7 @@ changedT.new = function(key, value) table.insert(changedT,{key, value}) end --Nu
 local function capitalize(text) return (string.upper(string.sub(text,1,1))..string.sub(text,2,-1)) end
 for i=1, #tArgs do tArgsWithUpper[i] = tArgs[i]; tArgsWithUpper[tArgsWithUpper[i]] = i; tArgs[i] = tArgs[i]:lower(); tArgs[tArgs[i]] = i end --My signature key-value pair system, now with upper
 
+local restoreFound, restoreFoundSwitch = false --Initializing so they are in scope
 function addParam(name, displayText, formatString, forcePrompt, trigger, variableOverride) --To anyone that doesn't understand this very well, probably not your best idea to go in here.
   if trigger == nil then trigger = true end --Defaults to being able to run
   if not trigger then return end --This is what the trigger is for. Will not run if trigger not there
@@ -211,7 +212,7 @@ function addParam(name, displayText, formatString, forcePrompt, trigger, variabl
   if formatType == "boolean" then --All the format strings will be basically be put through a switch statement
     toRet = givenValue:sub(1,1):lower() == "y" or givenValue:sub(1,1):lower() == "t" --Accepts true or yes
     if formatString == "boolean special" then
-      toRet = givenValue:sub(1,1):lower() == "n" or givenValue:sub(1,1):lower() == "f" --Accepts anything but false or no
+      toRet = givenValue:sub(1,1):lower() ~= "n" and givenValue:sub(1,1):lower() ~= "f" --Accepts anything but false or no
     end
   elseif formatType == "string" then
     toRet = givenValue:match("^[%w%.]+") --Basically anything not a space or control character etc
@@ -275,10 +276,8 @@ end
 addParam("doBackup", "Backup Save File", "boolean")
 addParam("saveFile", "Save File Name", "string")
 
-local restoreFound = false
-
 restoreFound = fs.exists(saveFile)
-restoreFoundSwitch = restoreFound and (tArgs["-restore"] or tArgs["-resume"])
+restoreFoundSwitch = (tArgs["-restore"] or tArgs["-resume"]) and restoreFound
 if restoreFoundSwitch then
   local file = fs.open(saveFile,"r")
   local test = file.readAll() ~= ""
@@ -338,7 +337,7 @@ end
 
 --Dimesnions
 if tArgs["-dim"] then local num = tArgs["-dim"];
-x = checkNum(tArgs[num + 1],section); z = checkNum(tArgs[num + 2],section); y = checkNum(tArgs[num + 3],section)
+x = tonumber(tArgs[num + 1]) or x; z = tonumber(tArgs[num + 2]) or z; y = tonumber(tArgs[num + 3]) or y
 elseif not (tArgs["-default"] or restoreFoundSwitch) then
 print("What dimensions?")
 print("")
@@ -368,8 +367,8 @@ end
 addParam("sendChannel", "Rednet Send Channel", "number 1-65535", false, supportsRednet, "channels.send")
 addParam("receiveChannel","Rednet Receive Channel", "number 1-65535", false, supportsRednet, "channels.receive")
 --Fuel
-addParam("doRefuel", "Refuel from Inventory","boolean", nil, turtle.getFuelLevel ~= math.huge) --math.huge due to my changes
-addParam("doCheckFuel", "Check Fuel", "boolean", nil, turtle.getFuelLevel ~= math.huge)
+addParam("doRefuel", "Refuel from Inventory","boolean", nil, turtle.getFuelLevel() ~= math.huge) --math.huge due to my changes
+addParam("doCheckFuel", "Check Fuel", "boolean", nil, turtle.getFuelLevel() ~= math.huge)
 --Logging
 addParam("logging", "Logging", "boolean")
 addParam("logFolder", "Log Folder", "string")
@@ -381,9 +380,10 @@ addParam("keepOpen", "Slots to Keep Open", "number 1-15")
 addParam("careAboutResources", "Care About Resources","boolean")
 --Manual Position
 if tArgs["-manualpos"] then --Gives current coordinates in xPos,zPos,yPos, facing
-  local a = tArgs["-manualPos"]
-  xPos, zPos, yPos, facing = tonumber(tArgs[a+1]) or xPos, tonumber(tArgs[a+2]) or zPos, tonumber(tArgs[a+3]) or yPos, coterminal(tonumber(tArgs[a+4])) or facing
-  changedT.new("xPos",xPos); changedT.new("zPos",zPos); changedT.new("yPos","yPos"); changedT.new("facing",facing)
+  local a = tArgs["-manualpos"]
+  xPos, zPos, yPos, facing = tonumber(tArgs[a+1]) or xPos, tonumber(tArgs[a+2]) or zPos, tonumber(tArgs[a+3]) or yPos, tonumber(tArgs[a+4]) or facing
+  changedT.new("xPos",xPos); changedT.new("zPos",zPos); changedT.new("yPos",yPos); changedT.new("facing",facing)
+  restoreFoundSwitch = true --So it doesn't do beginning of quarry behavior
 end
 
 local function saveProgress(extras) --Session persistence
@@ -482,11 +482,11 @@ end
 if enderChestEnabled then
   while turtle.getItemCount(enderChestSlot) ~= 1 do
     screen(1,1)
-    print("You have selected to use an Ender Chest!")
+    print("You have decided to use an Ender Chest!")
     print("Please place one Ender Chest in slot ",enderChestSlot)
     sleep(1)
   end
-  print("Thank you, continuing your scheduled program")
+  print("Ender Chest in slot ",enderChestSlot, " checks out")
   sleep(2)
 end
 --Initial Rednet Handshake
@@ -563,7 +563,9 @@ function eventRun(value, ...)
       value = value .. "("
       for a, b in pairs(argsList) do --Appending arguments
         local toAppend
-        if type(b) == "table" then toAppend = textutils.serialize(b) else toAppend = tostring(b) end
+        if type(b) == "table" then toAppend = textutils.serialize(b)
+        elseif type(b) == "string" then toAppend = "\""..tostring(b).."\"" --They weren't getting strings around them
+        else toAppend = tostring(b) end
         value = value .. (toAppend or "true") .. ", "
       end
       if value:sub(-1) ~= "(" then --If no args, do not want to cut off
@@ -613,15 +615,15 @@ print("Percent Complete")
 print(percent.."%")
 print("Fuel")
 print(checkFuel())
-  screen(1,1)
-  print("Xpos: ")
-  print(xPos)
-  print("RelXPos: ")
-  print(relxPos)
-  print("Z Pos: ")
-  print(zPos)
-  print("Y pos: ")
-  print(yPos)
+  -- screen(1,1)
+  -- print("Xpos: ")
+  -- print(xPos)
+  -- print("RelXPos: ")
+  -- print(relxPos)
+  -- print("Z Pos: ")
+  -- print(zPos)
+  -- print("Y pos: ")
+  -- print(yPos)
 if rednetEnabled then
 screenLine(1,7)
 print("Connected: "..tostring(connected))
@@ -664,10 +666,10 @@ function isFull(slots)
   slots = slots or 16
   local numUsed = 0
   sleep(0)
-  for i=1, slots do
+  for i=1, 16 do
     if turtle.getItemCount(i) > 0 then numUsed = numUsed + 1 end
   end
-  if numUsed >= slots then
+  if numUsed > slots then
     return true 
   end
   return false
@@ -874,6 +876,11 @@ function coterminal(num, limit) --I knew this would come in handy :D
 limit = limit or 4 --This is for facing
 return math.abs((limit*fromBoolean(num < 0))-(math.abs(num)%limit))
 end
+if tArgs["-manualpos"] then
+  facing = coterminal(facing) --Done to improve support for "-manualPos"
+  if facing == 0 then rowCheck = "right" elseif facing == 2 then rowCheck = "left" end --Ditto
+  relativeXCalc() --Ditto
+end
 
 --Direction: Front = 0, Right = 1, Back = 2, Left = 3
 
@@ -951,10 +958,12 @@ repeat
 local detected = whereDetect()
 if detected then
   waitDrop(_1)
-  for i=2, 16 do
-    if turtle.getItemCount(i) > 0 then
-      turtle.select(i)
-      waitDrop()
+  for i=1, 2 do --This is so I quit flipping missing items when chests are partially filled
+    for i=2, 16 do
+      if turtle.getItemCount(i) > 0 then
+        turtle.select(i)
+        waitDrop(nil, i)
+      end
     end
   end
 elseif not allowSkip then
@@ -969,7 +978,7 @@ turtle.select(1)
 end
 function dropOff() --Not local because called in mine()
 local currX,currZ,currY,currFacing = xPos, zPos, yPos, facing
-if not enderChestEnabled then --Regularly
+if careAboutResources and not enderChestEnabled then --Regularly
 eventAdd("goto", 1,1,currY,2) --Need this step for "-startDown"
 eventAdd("goto(0,1,1,2)")
 eventAdd("drop", dropSide,false)
@@ -978,11 +987,11 @@ eventAdd("mine",false,false,true,false)
 eventAdd("goto(1,1,1, 0)")
 eventAdd("goto", 1, 1, currY, 0)
 eventAdd("goto", currX,currZ,currY,currFacing)
-else --If using an enderChest
+elseif careAboutResources then --If using an enderChest
 eventAdd("turnTo",currFacing-2)
 eventAdd("dig",false)
 eventAdd("turtle.select",enderChestSlot)
-eventAdd("turtle.place()")
+eventAdd("turtle.place")
 eventAdd("drop","front",false)
 eventAdd("turtle.select", enderChestSlot)
 eventAdd("dig",false)
@@ -1027,6 +1036,7 @@ end
 -------------------------------------------------------------------------------------
 --Pre-Mining Stuff dealing with session persistence
 runAllEvents()
+if toQuit then error("",0) end --This means that it was stopped coming for its last drop
 
 local doDigDown, doDigUp = (lastHeight ~= 1), (lastHeight == 0) --Used in lastHeight
 if gpsEnabled and not restoreFound then --The initial locate is done in the arguments. This is so I can figure out what quadrant the turtle is in.
@@ -1049,7 +1059,8 @@ if not restoreFoundSwitch then --Regularly
   runAllEvents()
   if not(y == 1 or y == 2) then down() end --Go down. If y is one or two, it doesn't need to do this.
 else --restore found
-  digUp(); digDown() --Get blocks missed before stopped
+  if doDigDown then digDown() end
+  if doDigUp then digUp() end  --Get blocks missed before stopped
 end
 --Mining Loops--------------------------------------------------------------------------
 turtle.select(1)
@@ -1092,7 +1103,7 @@ eventAdd("goto",0,1,1,2)
 
 --Output to a chest or sit there
 if enderChestEnabled and not turtle.detect() then
-  eventAdd("turle.select",enderChestSlot)
+  eventAdd("turtle.select",enderChestSlot)
   eventAdd("turtle.place")
   eventAdd("turtle.select(1)")
 end
@@ -1103,7 +1114,7 @@ eventAdd("turnTo(0)")
 eventAdd("display")
 --Log current mining run
 eventAdd("logMiningRun",logExtension)
-eventAdd("error('',0)") --So it doesn't start mining when its done. Probably clean this up better later.
+toQuit = true --I'll use this flag to clean up
 runAllEvents()
 --Cleanup
 turtle.getFuelLevel = getFuel
