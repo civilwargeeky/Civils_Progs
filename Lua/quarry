@@ -16,7 +16,7 @@ Recent Changes:
   Fixed small issue in GPS location that may have broken it.
 ]]
 --Defining things
-_G.civilTable = {}; civilTable = nil; setmetatable(civilTable, {__index = _G}); setfenv(1,civilTable)
+civilTable = nil; _G.civilTable = {}; setmetatable(civilTable, {__index = _G}); setfenv(1,civilTable)
 -------Defaults for Arguments----------
 --Arguments assignable by text
 x,y,z = 3,3,3 --These are just in case tonumber fails
