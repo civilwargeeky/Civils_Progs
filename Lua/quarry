@@ -1,6 +1,19 @@
 --[[ 
 Version 3.3.0
 Recent Changes:
+  New Internals: Made event system and consolidated mining loops
+  New Restarting Logic!
+    As long as position is recorded properly, it should always restart properly
+  New Argument logic!
+    Arguments are much more modular for me to make, and they are no longer case-sensitive. Improved items changed interface
+  New Arguments!
+    -enderChest [t/f or slot number] You can now use an enderchest! Try it out. There are directions
+    -startDown [number] The quarry will now start this many blocks down from its starting point (or up if invert). Great for getting diamonds and things from surface. Chest should still be placed on the top (or use ender chest)
+    -manualPos [xPos] [zPos] [yPos] [facing] Turtle ever gotten it's position wrong, but you don't want to reset? Use this! Check "quarry -help" for changes
+  Renamed several arguments
+  Arguments are no longer ignored if you use "-default", you just won't be prompted for anything. 
+  Boolean (t/f) arguments now accept "yes" as well as "true"
+  Fixed small issue in GPS location that may have broken it.
 ]]
 --Defining things
 _G.civilTable = {}; civilTable = nil; setmetatable(civilTable, {__index = _G}); setfenv(1,civilTable)
