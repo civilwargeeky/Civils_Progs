@@ -1,16 +1,19 @@
 --[[ 
-Version 3.2.3
+Version 3.3.0
 Recent Changes:
-1. Now has session persistence! Just type "quarry -restore"
-   and your turtle will pick up where it left off
-2. New Argument: startY to help stop it from getting stuck on those nasty sheep!
-3. Most directional functions take care of invert. Exception is turtle.detect
-]]
---[[ToDo:
-1. Actually get the rednet send back and forth to work
-3. Send basic commands from receiver program e.g. Stop
-6. Add in rednet stuff
-7. Massive update for rednet program
+  New Internals: Made event system and consolidated mining loops
+  New Restarting Logic!
+    As long as position is recorded properly, it should always restart properly
+  New Argument logic!
+    Arguments are much more modular for me to make, and they are no longer case-sensitive. Improved items changed interface
+  New Arguments!
+    -enderChest [t/f or slot number] You can now use an enderchest! Try it out. There are directions
+    -startDown [number] The quarry will now start this many blocks down from its starting point (or up if invert). Great for getting diamonds and things from surface. Chest should still be placed on the top (or use ender chest)
+    -manualPos [xPos] [zPos] [yPos] [facing] Turtle ever gotten it's position wrong, but you don't want to reset? Use this! Check "quarry -help" for changes
+  Renamed several arguments
+  Arguments are no longer ignored if you use "-default", you just won't be prompted for anything. 
+  Boolean (t/f) arguments now accept "yes" as well as "true"
+  Fixed small issue in GPS location that may have broken it.
 ]]
 --Defining things
 _G.civilTable = {}; civilTable = nil; setmetatable(civilTable, {__index = _G}); setfenv(1,civilTable)
@@ -35,6 +38,9 @@ gpsTimeout = 3 --The number of seconds the program will wait to get GPS coords. 
 logging = true --Whether or not the turtle will log mining runs. [Default ...still deciding]
 logFolder = "Quarry_Logs" --What folder the turtle will store logs in [Default "Quarry_Logs"]
 logExtension = "" --The extension of the file (e.g. ".txt") [Default ""]
+startDown = 0 --How many blocks to start down from the top of the mine [Default 0]
+enderChestEnabled = false --Whether or not to use an ender chest [Default false]
+enderChestSlot = 16 --What slot to put the ender chest in [Default 16]
 --Standard number slots for fuel (you shouldn't care)
 fuelTable = { --Will add in this amount of fuel to requirement.
 safe = 1000,
@@ -48,70 +54,65 @@ confirm = "Confirm"
 }
 
 local help_paragraph = [[
--DEFAULT: This will ignore all arguments and prompts and use defaults
--vanilla: This will ignore all arguments except for dimensions
--dim: [num] [num] [num] This sets the dimensions of the quarry
--invert: [t/f] This sets whether invert is true or false
--rednet: [t/f] This sets whether it will attempt to make a rednet connection
--sendChannel: [num] This sets the channel the turtle will attempt to send on
--receiveChannel: [num] This sets the channel the turtle will attempt to receive on
--doRefuel: Changes whether or not the turtle will refuel itself with coal when fuel is low (opposite of written config)
--doCheckFuel: Changes whether or not the turtle will check its fuel level before running (opposite of written config)
--chest: [chest side] Changes what side turtle will output to
--startY: [num] Tells the turtle what y coordinate it starts at, to make bedrock checking more accurate (hopefully)
--keepOpen: [num] How many slots of the inventory turtle will try to keep open (Will then auto-empty)
--invCheckFreq: [num] How many blocks before full inventory checks
--saveFile: [word] Changes where the turtle saves its backup to.
--doBackup: [t/f] Whether or not the turtle will backup its current position to a file.
--restore: Turtle will check for a save file. If found will ignore all other arguments.
--fuelSafety: [safe/moderate/loose] How much extra fuel the turtle will request at startup
--GPS: Will toggle whether gps is on or not.
-  You must have a valid GPS network set up for this to work. It will take its starting location from this and its first position.
-  It will then store these values in its progress file in case your turtle stops for any reason.
-  On startup, the turtle will calculate its current position based on a new gps locate.
--log: Turns logging on if not already on.
-  Will publish reports of mining runs to its own folder for later reading
-Smart Fueling System: As of 3.2.0, the turtle uses a new smart fueling system
-  With this new system you can shift click in as many stacks of fuel as you want, and it will take stacks of fuel at a time
-  This makes fueling for large jobs on new turtles much, much faster.
-Examples [1]:
- The minimum amount necessary to start a turtle automatically would be one of these two
- ---------
- quarry -dim 3 3 3 -invert false -rednet false
- ---------
- quarry -dim 3 3 3 -vanilla
- ---------
- or, if you actually wanted a 3x3x3 then
- ---------
- quarry -DEFAULT
-Examples [2]: 
- If you wanted start a quarry that has 
- rednet on channels 500 and 501, outputs 
- to a chest below itself, is inverted,
- and has the dimesions 5x5x21, then here
- is what you would type: (Remember that
- order does not matter)
- ----------
- quarry -receiveChannel 501 -sendChannel 500 -invert true -dim 5 5 21 -chest bottom -rednet true
-Examples [2] (cont.):
- Now, this may be very long, but it is meant for people who want to make automated quarries with
- the same settings every time (or with variable setting)
-Examples [3]:
- If you are playing softcore then you
- can do
- ---------
- quarry -doCheckFuel false
- ---------
- Followed by any other arguments
+Welcome!: Welcome to quarry help. Below are help entries for all parameters. Examples and tips are at the bottom.
+-Default: This will force no prompts. If you use this and nothing else, only defaults will be used.
+-dim: [length] [width] [height] This sets the dimensions for the quarry
+-invert: [t/f] If true, quarry will be inverted (go up instead of down)
+-rednet: [t/f] If true and you have a wireless modem on the turtle, will attempt to make a rednet connection for sending important information to a screen
+-restore / -resume: If your quarry stopped in the middle of its run, use this to resume at the point where the turtle was. Not guarenteed to work properly. For more accurate location finding, check out the -GPS parameter
+-doRefuel: [t/f] If true, the turtle will refuel itself with coal and planks it finds on its mining run
+-doCheckFuel: [t/f] If you for some reason don't want the program to check fuel usage, set to false. This is honestly a hold-over from when the refueling algorithm was awful...
+-chest: [side] This specifies what side the chest at the end will be on. You can say "top", "bottom", "front", "left", or "right"
+-enderChest: This one is special. If you use "-enderChest true" then it will use an enderChest in the default slot. However, you can also do "-enderChest [slot]" then it will take the ender chest from whatever slot you tell it to. Like 7... or 14... or whatever.
+-GPS: [t/f] If true and there is a GPS network, then the turtle will record its first two positions to precisly calculate its position if it has to restart. This will only take two GPS readings
+-sendChannel: [number] This is what channel your turtle will send rednet messages on
+-receiveChannel: [number] This is what channel your turtle will receive rednet messages on
+-startY: [current Y coord] Randomly encountering bedrock? This is the parameter for you! Just give it what y coordinate you are at right now. If it is not within bedrock range, it will never say it found bedrock
+-logging: [t/f] If true, will record information about its mining run in a folder at the end of the mining run
+-doBackup: [t/f] If false, will not back up important information and cannot restore, but will not make an annoying file (Actually I don't really know why anyone would use this...)
+-saveFile: [word] This is what the backup file will be called
+-logFolder: [word] The folder that quarry logs will be stored in
+-logExtension: [word] The extension given to each quarry log (e.g. ".txt" or ".notepad" or whatever)
+-invCheckFreq: [number] This is how often the turtle will check if it has the proper amount of slots open
+-keepOpen: [number] This is the number of the slots the turtle will make sure are open. It will check every invCheckFreq blocks
+-careAboutResources: [t/f] Who cares about the materials! If set to false, it will just keep mining when its inventory is full
+-startDown: [number] If you set this, the turtle will go down this many blocks from the start before starting its quarry
+  =
+  C _ |
+      |
+      |
+      |
+      |_ _ _ _ >
+-manualPos: [xPos] [zPos] [yPos] [facing] This is for advanced use. If the server reset when the turtle was in the middle of a 100x100x100 quarry, fear not, you can now manually set the position of the turtle. yPos is always positive. The turtle's starting position is 0, 1, 1, 0. Facing is measured 0 - 3. 0 is forward, and it progresses clockwise. Example- "-manualPos 65 30 30 2"
+-help: Thats what this is :D
+Examples: Everything below is examples and tips for use
+Important Note:
+  None of the above parameters are necessary. They all have default values, and the above are just if you want to change them.
+Examples [1]: 
+  Want to just start a quarry from the interface, without going through menus? It's easy! Just use some parameters. Assume you called the program "quarry." To start a 10x6x3 quarry, you just type in "quarry -dim 10 6 3 -default". 
+  You just told it to start a quarry with dimensions 10x6x3, and "-default" means it won't prompt you about invert or rednet. Wasn't that easy?
+Examples [2]:
+  Okay, so you've got the basics of this now, so if you want, you can type in really long strings of stuff to make the quarry do exactly what you want. Now, say you want a 40x20x9, but you want it to go down to diamond level, and you're on the surface (at y = 64). You also want it to send rednet messages to your computer so you can see how its doing. 
+Examples [2] [cont.]:
+  Oh yeah! You also want it to use an ender chest in slot 12 and restart if the server crashes. Yeah, you can do that. You would type
+  "quarry -dim 40x20x9 -invert false -startDown 45 -rednet true -enderChest 12 -restore"
+  BAM. Now you can just let that turtle do it's thing
 Tips:
- You don't actually have to type out "false" or "true" if you don't want. It actaully just checks if the first
- letter is "t", so you (usually) don't have to put anything at all. Putting the whole word just helps with clarity
-Internal Config: 
- At the top of the program, right below the changelog is a written config. Anything not specified by arguments
- will be taken from here. If you have a quarry setup you use a lot, you could just edit the config and then
- type in the following:
- ----------
- quarry -DEFAULT
+  The order of the parameters doesn't matter. "quarry -invert false -rednet true" is the same as "quarry -rednet true -invert false"
+  
+  Capitalization doesn't matter. "quarry -iNVErt FALSe" does the same thing as "quarry -invert false"
+Tips [cont.]:
+  For [t/f] parameters, you can also use "yes" and "no" so "quarry -invert yes"
+  
+  For [t/f] parameters, it only cares about the first letter. So you can use "quarry -invert t" or "quarry -invert y"
+Tips [cont.]:
+  If you are playing with fuel turned off, the program will automatically change settings for you so you don't have to :D
+  
+  If you want, you can load this program onto a computer, and use "quarry -help" so you can have help with the parameters whenever you want.
+Internal Config:
+  At the top of this program is an internal configuration file. If there is some setup that you use all the time, you can just change the config value at the top and run "quarry -default" for a quick setup.
+  
+  You can also use this if there are settings that you don't like the default value of.
 ]]
 
 --Parsing help for display
@@ -170,7 +171,7 @@ end
 
 local getFuel = turtle.getFuelLevel --This is for cleanup at the end
 do --Common variable name...
-local flag = turtle.getFuelLevel() == "Unlimited"--Unlimited screws up my calculations
+local flag = turtle.getFuelLevel() == "unlimited"--Unlimited screws up my calculations
 if flag then --Fuel is disabled
   turtle.getFuelLevel = function() return math.huge end --Infinite Fuel
 end --There is no "else" because it will already return the regular getFuel
@@ -190,19 +191,72 @@ print("----- Welcome to Quarry! -----")
 print("")
 
 local sides = {top = "top", right = "right", left = "left", bottom = "bottom", front = "front"} --Used to whitelist sides
-local errorT = {num = "Numbers not recognized", zero = "Variable is out of range", word = "String failed assertion" }
-local changedT = {}
-changedT.new = function(key, value) changedT[#changedT+1] = {[key] = value} end
-changedT.getPair = function(i) for a, b in pairs(changedT[i]) do return a, b end end
+local changedT, tArgsWithUpper = {}, {}
+changedT.new = function(key, value) table.insert(changedT,{key, value}) end --Numeric list of lists
 local function capitalize(text) return (string.upper(string.sub(text,1,1))..string.sub(text,2,-1)) end
-local function assert(condition, message, section) section = section or "[Blank]"; if condition then return condition else error("Error: "..message.."\nin section "..section, 0) end end
-local function checkNum(number, section) return assert(tonumber(number),errorT.num, section) end
-tArgs.checkStart = function(num) tArgs[tArgs[num]] = num end
-for i=1, #tArgs do tArgs.checkStart(i) end
+for i=1, #tArgs do tArgsWithUpper[i] = tArgs[i]; tArgsWithUpper[tArgsWithUpper[i]] = i; tArgs[i] = tArgs[i]:lower(); tArgs[tArgs[i]] = i end --My signature key-value pair system, now with upper
+
+local restoreFound, restoreFoundSwitch = false --Initializing so they are in scope
+function addParam(name, displayText, formatString, forcePrompt, trigger, variableOverride) --To anyone that doesn't understand this very well, probably not your best idea to go in here.
+  if trigger == nil then trigger = true end --Defaults to being able to run
+  if not trigger then return end --This is what the trigger is for. Will not run if trigger not there
+  if restoreFoundSwitch or tArgs["-default"] then forcePrompt = false end --Don't want to prompt if these
+  local toGetText = name:lower() --Because all params are now lowered
+  local formatType = formatString:match("^%a+"):lower() or error("Format String Unknown: "..formatString) --Type of format string
+  local args = formatString:sub(({formatString:find(formatType)})[2] + 2).."" --Everything in formatString but the type and space
+  local variable = variableOverride or name --Goes first to the override for name
+  local func = loadstring("return "..variable)
+  setfenv(func,getfenv(1))
+  local originalValue = assert(func)() --This is the default value, for checking to add to changed table
+  if originalValue == nil then error("From addParam, \""..variable.."\" returned nil",2) end --I may have gotten a wrong variable name
+  local givenValue, toRet --Initializing for use
+  if tArgs["-"..toGetText] then
+    givenValue = tArgsWithUpper[tArgs["-"..toGetText]+1] --This is the value after the desired parameter
+  elseif forcePrompt then
+    term.write(displayText.."? ")
+    givenValue = io.read()
+  end
+  if not givenValue then return end --Don't do anything if you aren't given anything. Leave it as default
+  if formatType == "boolean" then --All the format strings will be basically be put through a switch statement
+    toRet = givenValue:sub(1,1):lower() == "y" or givenValue:sub(1,1):lower() == "t" --Accepts true or yes
+    if formatString == "boolean special" then
+      toRet = givenValue:sub(1,1):lower() ~= "n" and givenValue:sub(1,1):lower() ~= "f" --Accepts anything but false or no
+    end
+  elseif formatType == "string" then
+    toRet = givenValue:match("^[%w%.]+") --Basically anything not a space or control character etc
+  elseif formatType == "number" then
+    toRet = tonumber(givenValue) --Note this is a local, not the above so we don't change anything
+    if not toRet then return end --We need a number... Otherwise compare errors
+    toRet = math.abs(math.floor(toRet)) --Get proper integers
+    local startNum, endNum = formatString:match("(%d+)%-(%d+)") --Gets range of numbers
+    startNum, endNum = tonumber(startNum), tonumber(endNum)
+    if not ((toRet >= startNum) and (toRet <= endNum)) then return end --Can't use these
+  elseif formatType == "side" then
+    local exclusionTab = {} --Ignore the wizardry here. Just getting arguments without format string
+    for a in args:gmatch("%S+") do exclusionTab[a] = true end --This makes a list of the sides to not include
+    if not exclusionTab[givenValue] then toRet = sides[givenValue] end --If side is not excluded
+  elseif formatType == "list" then
+    toRet = {}
+    for a in args:gmatch("[^,]") do
+      table.insert(toRet,a)
+    end
+  else error("Improper formatType",2)
+  end
+  if toRet == nil then return end --Don't want to set variables to nil... That's bad
+  tempParam = toRet --This is what loadstring will see :D
+  local func = loadstring(variable.." = tempParam")
+  setfenv(func, getfenv(1))
+  func()
+  tempParam = nil --Cleanup of global
+  if toRet ~= originalValue then
+    changedT.new(displayText, tostring(toRet))
+  end
+  return toRet
+end
 
 --Check if it is a turtle
-if not turtle then
-  print("This is not a turtle, you must be looking for the \"Companion Rednet Program\" \nCheck My forum thread for that")
+if not(turtle or tArgs["help"] or tArgs["-help"] or tArgs["-?"] or tArgs["?"]) then
+  print("This is not a turtle, you might be looking for the \"Companion Rednet Program\" \nCheck My forum thread for that")
   print("Press 'q' to quit, or any other key to start help ")
   if ({os.pullEvent("char")})[2] ~= "q" then tArgs.help = true else error("",0) end
 end
@@ -227,165 +281,132 @@ error("",0)
 end
 
 --Saving
-if tArgs["doBackup"] then doBackup = (string.lower(string.sub(tArgs[tArgs["doBackup"]+1],1,1)) ~= "f") end
-if tArgs["saveFile"] then saveFile = tArgs[tArgs["saveFile"]+1] or saveFile end
+addParam("doBackup", "Backup Save File", "boolean")
+addParam("saveFile", "Save File Name", "string")
 
-local restoreFound = false
-if tArgs["-restore"] or tArgs["-resume"] then
 restoreFound = fs.exists(saveFile)
-if restoreFound then
-fs.open(saveFile,"r")
-if file.readAll() ~= "" and file.close() then
-  os.run(getfenv(1),saveFile)
-  if gpsEnabled then --If it had saved gps coordinates
-    print("Found GPS Start Coordinates") 
-    local currLoc = {gps.locate(gpsTimeout)}
-    if #currLoc > 0 and #gpsStartPos > 0 and #gpsSecondPos > 0 then --Cover all the different positions I'm using
-      print("GPS Position Successfully Read")
-      if currLoc[1] == gpsStartPos[1] and currLoc[3] == gpsStartPos[3] then --X coord, y coord, z coord in that order
-        xPos, yPos, zPos = 0,1,1
-        if facing ~= 0 then turnTo(0) end
-        print("Is at start")
-      else
-        if inverted then --yPos setting
-        ------------------------------------------------FIX THIS
-        end
-        local function copyTable(tab) local toRet = {}; for a, b in pairs(tab) do toRet[a] = b end; return toRet end
-        local a, b = copyTable(gpsStartPos), copyTable(gpsSecondPos) --For convenience
-        if b[3] - a[3] == -1 then--If went north (-Z)
-          a[1] = a[1] - 1 --Shift x one to west to create a "zero"
-          xPos, zPos = -currLoc[3] + a[3], currLoc[1] + -a[1]
-        elseif b[1] - a[1] == 1 then--If went east (+X)
-          a[3] = a[3] - 1 --Shift z up one to north to create a "zero"
-          xPos, zPos = currLoc[1] + -a[1], currLoc[3] + -a[3]
-        elseif b[3] - a[3] == 1 then--If went south (+Z)
-          a[1] = a[1] + 1 --Shift x one to east to create a "zero"
-          xPos, zPos = currLoc[3] + a[3], -currLoc[1] + a[3]
-        elseif b[1] - a[1] == -1 then--If went west (-X)
-          a[3] = a[3] + 1 --Shift z down one to south to create a "zero"
-          xPos, zPos = -currLoc[1] + a[1], -currLoc[3] + a[3]
+restoreFoundSwitch = (tArgs["-restore"] or tArgs["-resume"]) and restoreFound
+if restoreFoundSwitch then
+  local file = fs.open(saveFile,"r")
+  local test = file.readAll() ~= ""
+  file.close()
+  if test then
+    os.run(getfenv(1),saveFile)
+    if gpsEnabled then --If it had saved gps coordinates
+      print("Found GPS Start Coordinates") 
+      local currLoc = {gps.locate(gpsTimeout)} or {}
+      if #currLoc > 0 and #gpsStartPos > 0 and #gpsSecondPos > 0 then --Cover all the different positions I'm using
+        print("GPS Position Successfully Read")
+        if currLoc[1] == gpsStartPos[1] and currLoc[3] == gpsStartPos[3] then --X coord, y coord, z coord in that order
+          xPos, yPos, zPos = 0,1,1
+          if facing ~= 0 then turnTo(0) end
+          print("Is at start")
         else
-          print("Improper Coordinates")
-          print("GPS Locate Failed, Using Standard Methods")        ----Maybe clean this up a bit to use flags instead.
-        end  
-      end
-      print("X Pos: ",xPos)
-      print("Y Pos: ",yPos)
-      print("Z Pos: ",zPos)
-      print("Facing: ",facing)
-    else
-      print("GPS Locate Failed, Using Standard Methods")
-    end    
-  print("Restore File read successfully. Starting in 3"); sleep(3)
-  end
+          if inverted then --yPos setting
+          ------------------------------------------------FIX THIS
+          end
+          local function copyTable(tab) local toRet = {}; for a, b in pairs(tab) do toRet[a] = b end; return toRet end
+          local a, b = copyTable(gpsStartPos), copyTable(gpsSecondPos) --For convenience
+          if b[3] - a[3] == -1 then--If went north (-Z)
+            a[1] = a[1] - 1 --Shift x one to west to create a "zero"
+            xPos, zPos = -currLoc[3] + a[3], currLoc[1] + -a[1]
+          elseif b[1] - a[1] == 1 then--If went east (+X)
+            a[3] = a[3] - 1 --Shift z up one to north to create a "zero"
+            xPos, zPos = currLoc[1] + -a[1], currLoc[3] + -a[3]
+          elseif b[3] - a[3] == 1 then--If went south (+Z)
+            a[1] = a[1] + 1 --Shift x one to east to create a "zero"
+            xPos, zPos = currLoc[3] + a[3], -currLoc[1] + a[3]
+          elseif b[1] - a[1] == -1 then--If went west (-X)
+            a[3] = a[3] + 1 --Shift z down one to south to create a "zero"
+            xPos, zPos = -currLoc[1] + a[1], -currLoc[3] + a[3]
+          else
+            print("Improper Coordinates")
+            print("GPS Locate Failed, Using Standard Methods")        ----Maybe clean this up a bit to use flags instead.
+          end  
+        end
+        print("X Pos: ",xPos)
+        print("Y Pos: ",yPos)
+        print("Z Pos: ",zPos)
+        print("Facing: ",facing)
+      else
+        print("GPS Locate Failed, Using Standard Methods")
+      end    
+    print("Restore File read successfully. Starting in 3"); sleep(3)
+    end
   else
-    originalFuel = checkFuel() --For use in logging. To see how much fuel is REALLY used
+    fs.delete(saveFile)
+    print("Restore file was empty, sorry, aborting")
+    error("",0)
   end
-else
-  fs.delete(saveFile)
-  print("Restore file was empty, sorry, aborting")
-  error("",0)
-end
+else --If turtle is just starting
+  events = {} --This is the event queue :D
+  originalFuel = checkFuel() --For use in logging. To see how much fuel is REALLY used
 end
 
-if not (tArgs["-DEFAULT"] or restoreFound) then 
-  --Just a note, the whole error checking section here was more of an
-  --experiment than anything else. If its ever changed in the future,
-  --it would probably be for the better.
-local section = "Dimensions"
 --Dimesnions
 if tArgs["-dim"] then local num = tArgs["-dim"];
-x = checkNum(tArgs[num + 1],section); z = checkNum(tArgs[num + 2],section); y = checkNum(tArgs[num + 3],section)
-else
+x = tonumber(tArgs[num + 1]) or x; z = tonumber(tArgs[num + 2]) or z; y = tonumber(tArgs[num + 3]) or y
+elseif not (tArgs["-default"] or restoreFoundSwitch) then
 print("What dimensions?")
 print("")
 --This will protect from negatives, letters, and decimals
-term.write("Length: ")
+term.write("Length? ")
 x = math.floor(math.abs(tonumber(io.read()) or x))
-term.write("Width: ")
+term.write("Width? ")
 z = math.floor(math.abs(tonumber(io.read()) or z))
-term.write("Height: ")
+term.write("Height? ")
 y = math.floor(math.abs(tonumber(io.read()) or y))
+changedT.new("Length",x); changedT.new("Width",z); changedT.new("Height",y)
 end
-changedT.new("x",x); changedT.new("z",z); changedT.new("y",y)
-assert(x~=0, errorT.zero, section); assert(z~=0, errorT.zero, section); assert(y~=0, errorT.zero, section)
-assert(not(x == 1 and y == 1 and z == 1) ,"1, 1, 1 dosen't work well at all, try again", section)
-if not tArgs["-vanilla"] then
 --Invert
-if tArgs["-invert"] then
-inverted = (string.lower(string.sub(tArgs[tArgs["-invert"]+1] or "",1,1)) == "t") else
-term.write("Inverted? ")
-inverted = (string.lower(string.sub(io.read(),1,1)) == "y")
-end
-changedT.new("Inverted", inverted)
+addParam("invert", "Inverted","boolean", true, nil, "inverted")
+addParam("startDown","Start Down","number 1-256")
+--Inventory
+addParam("chest", "Chest Drop Side", "side front", nil, nil, "dropSide")
+addParam("enderChest","Ender Chest Enabled","boolean special", nil, nil, "enderChestEnabled") --This will accept anything (including numbers) thats not "f" or "n"
+addParam("enderChest", "Ender Chest Slot", "number 1-16", nil, nil, "enderChestSlot") --This will get the number slot if given
 --Rednet
-if supportsRednet then
-if tArgs["-rednet"] then 
-rednetEnabled = (string.lower(string.sub(tArgs[tArgs["-rednet"]+1] or "",1,1)) == "t")
-else term.write("Rednet? "); rednetEnabled = (string.lower(string.sub(io.read(),1,1)) == "y")
-if (tArgs["-GPS"] or tArgs["-gps"]) and not restoreFound and not gpsEnabled then --The not gps enabled makes it so it is toggled
-gpsStartPos = {gps.locate(gpsTimeout)} --Stores position in array
-gpsEnabled = #gpsStartPos > 0 --Checks if location received properly
-changedT.new("GPS Location Services", gpsEnabled)
+addParam("rednet", "Rednet Enabled","boolean",true, supportsRednet)
+addParam("gps", "GPS Location Services", "boolean", nil, (not restoreFoundSwitch) and supportsRednet, "gpsEnabled" ) --Has these triggers so that does not record position if restarted.
+if gpsEnabled then
+  gpsStartPos = {gps.locate(gpsTimeout)} --Stores position in array
+  gpsEnabled = #gpsStartPos > 0 --Checks if location received properly. If not, position is not saved
 end
-changedT.new("Rednet Enabled", rednetEnabled)
-end
-if tArgs["-sendChannel"] then
-channels.send = assert(tonumber(tArgs[tArgs["-sendChannel"]+1]), errorT.num)
-assert(channels.send > 0 and channels.send < 65535, errorT.zero)
-changedT.new("Send Channel",channels.send) end
-if tArgs["-receiveChannel"] then
-channels.receive = assert(tonumber(tArgs[tArgs["-receiveChannel"]+1]), errorT.num)
-assert(channels.receive > 0 and channels.receive < 65535 and channels.receive ~= channels.send, errorT.zero)
-changedT.new("Receive Channel",channels.receive) end
-end
+addParam("sendChannel", "Rednet Send Channel", "number 1-65535", false, supportsRednet, "channels.send")
+addParam("receiveChannel","Rednet Receive Channel", "number 1-65535", false, supportsRednet, "channels.receive")
 --Fuel
-if tArgs["-doRefuel"] then doRefuel = not doRefuel; changedT.new("Do Refuel",doRefuel) end
-if turtle.getFuelLevel() == "unlimited" then
-  doCheckFuel = false
-else
-  if tArgs["-doCheckFuel"] then
-  doCheckFuel = (string.lower(string.sub(tArgs[tArgs["-doCheckFuel"]+1] or "",1,1)) == "t"); changedT.new("Do Check Fuel", doCheckFuel) end
-end
-if tArgs["-chest"] then
-dropSide = sides[tArgs[tArgs["-chest"]+1]] or dropSide; changedT.new("Chest Side",dropSide) end
-if tArgs["-fuelSafety"] then local loc = tArgs[tArgs["-fuelSafety"]+1]
-  if fuelTable[loc] then
-    fuelSafety = loc; changedT.new("Fuel Check Safety", fuelSafety)
-  end
-end
+addParam("doRefuel", "Refuel from Inventory","boolean", nil, turtle.getFuelLevel() ~= math.huge) --math.huge due to my changes
+addParam("doCheckFuel", "Check Fuel", "boolean", nil, turtle.getFuelLevel() ~= math.huge)
 --Logging
-logging = (tArgs["-log"] and true) or logging --The and will set it to true if value, or its original value if nil
-if logging then changedT.new("Logging",logging) end
-if tArgs["-logFolder"] then logFolder = tArgs[tArgs["-logFolder"]+1] or logFolder; changedT.new("Log Folder",logFolder) end
-if tArgs["-logExtension"] then logExtension = tArgs[tArgs["-logExtension"]+1] or logExtension; changedT.new("Log Extension",logExtension) end
+addParam("logging", "Logging", "boolean")
+addParam("logFolder", "Log Folder", "string")
+addParam("logExtension","Log Extension", "string")
 --Misc
-if tArgs["-startY"] then
-startY = math.abs(math.floor(checkNum(tArgs[tArgs["-startY"]+1],"Start Y")))
-changedT.new("Start Y Position",startY) end
-assert(startY >= 0, errorT.zero, "StartY")
-if tArgs["-invCheckFreq"] then
-invCheckFreq = math.abs(math.floor(checkNum(tArgs[tArgs["-invCheckFreq"]+1],"Inventory Check Frequency")))
-changedT.new("Inventory Check Frequency",invCheckFreq) end
-assert(invCheckFreq ~= 0, errorT.zero, "Inventory Check Frequency")
-if tArgs["-keepOpen"] then
-keepOpen = math.abs(math.floor(checkNum(tArgs[tArgs["-keepOpen"]+1],"Open Slots")))
-changedT.new("Slots to keep open", keepOpen) end
-assert(keepOpen ~= 0 and keepOpen < 16, errorT.zero, "Open Slots")
-if tArgs["-ignoreResources"] then careAboutResources = false; changedT.new("Ignore Resources?", not careAboutResources) end
-if tArgs["-saveFile"] then saveFile = tArgs[tArgs["-saveFile"]+1] changedT.new("Save File", saveFile) end
-assert(#saveFile >= 2,errorT.word, "Save File")
-end; end --First end is for vanilla, second is for DEFAULT
+addParam("startY", "Start Y","number 1-256")
+addParam("invCheckFreq","Inventory Check Frequency","number 1-342")
+addParam("keepOpen", "Slots to Keep Open", "number 1-15")
+addParam("careAboutResources", "Care About Resources","boolean")
+--Manual Position
+if tArgs["-manualpos"] then --Gives current coordinates in xPos,zPos,yPos, facing
+  local a = tArgs["-manualpos"]
+  xPos, zPos, yPos, facing = tonumber(tArgs[a+1]) or xPos, tonumber(tArgs[a+2]) or zPos, tonumber(tArgs[a+3]) or yPos, tonumber(tArgs[a+4]) or facing
+  changedT.new("xPos",xPos); changedT.new("zPos",zPos); changedT.new("yPos",yPos); changedT.new("facing",facing)
+  restoreFoundSwitch = true --So it doesn't do beginning of quarry behavior
+end
 
 local function saveProgress(extras) --Session persistence
+exclusions = { modem = true, }
 if doBackup then
 local toWrite = ""
 for a,b in pairs(getfenv(1)) do
-if type(b) == "string" then b = "\""..b.."\"" end
-if type(b) == "table" and a~="modem" then b = textutils.serialize(b) end
-if type(b) ~= "function" then
-toWrite = toWrite..a.." = "..tostring(b).."\n"
-end
+  if not exclusions[a] then
+      --print(a ,"   ", b, "   ", type(b)) --Debug
+    if type(b) == "string" then b = "\""..b.."\"" end
+    if type(b) == "table" then b = textutils.serialize(b) end
+    if type(b) ~= "function" then
+      toWrite = toWrite..a.." = "..tostring(b).."\n"
+    end
+  end
 end
 toWrite = toWrite.."doCheckFuel = false\n" --It has already used fuel, so calculation unnesesary
 local file
@@ -405,14 +426,13 @@ end
 local area = x*z
 local volume = x*y*z
 local lastHeight = y%3
-local dispY = y
-y = math.floor(y/3)*3
-local yMult = y/3 + math.ceil(lastHeight/2) --This is basically a smart y/3 for movement
+layers = math.ceil(y/3)
+local yMult = layers --This is basically a smart y/3 for movement
 local moveVolume = (area * yMult) --Kept for display percent
 --Calculating Needed Fuel--
 local exStack = numberOfStacksPerRun --Expected stacks of items before full
 neededFuel = yMult * x * z + --This is volume it will run through
-      dispY*(2+1/(64*exStack)) + --This is simplified and includes the y to get up times up and down + how many times it will drop stuff off
+      (startDown + y)*(2+1/(64*exStack)) + --This is simplified and includes the y to get up times up and down + how many times it will drop stuff off
       (x+z)*(yMult + 1/(64*exStack))  --Simplified as well: It is getting to start of row plus getting to start of row how many times will drop off stuff
       --Original equation: x*z*y/3 + y * 2 + (x+z) * y/3 + (x + z + y) * (1/64*8)
 neededFuel = math.ceil(neededFuel)
@@ -459,43 +479,23 @@ neededFuel = neededFuel + fuelTable[fuelSafety] --For safety
       updateScreen()
     until (oneFuel or 0) > 0 --Not an if to prevent errors if fuel taken out prematurely.
     neededFuelItems = (neededFuel - checkFuel()) / oneFuel
-    turtle.refuel(roundTo(neededFuelItems, 64)) --Change because can only think about 64 at once.
+    turtle.refuel(math.ceil(roundTo(neededFuelItems, 64))) --Change because can only think about 64 at once.
     if turtle.getItemCount(roundTo(currSlot + 1, 16)) == 0 then --Resets if no more fuel
       currSlot = 0
     end
     neededFuelItems = (neededFuel - checkFuel()) / oneFuel
   end
--- local neededFuel = moveVolume + (math.floor(volume / (64 * 8)) * (x+dispY+z)) --Standard move plus dropping off supplies
-                             -- --How many times come back to start| * If it were at the very far side
--- neededFuel = neededFuel + fuelTable[fuelSafety]
--- if neededFuel < 100 then neededFuel = 100; end
--- if checkFuel() < neededFuel then
--- screen(1,1)
--- print("More Fuel Needed")
--- print("Current Fuel: ",checkFuel()," Needed: ",neededFuel)
--- print("Place fuel in Bottom Right")
--- while turtle.getItemCount(16) == 0 do
-  -- sleep(1)
--- end
--- turtle.select(16)
--- while checkFuel() < neededFuel do
--- if not turtle.refuel(1) then
--- term.clearLine()
--- print("Still too little fuel")
--- term.clearLine()
--- print("Insert more fuel to resume")
--- while turtle.getItemCount(16) == 0 do
-  -- sleep(1)
--- end
--- end
--- local x,y = term.getCursorPos()
--- print(checkFuel().." Fuel")
--- term.setCursorPos(x,y)
--- end
--- print(checkFuel().." Units of Fuel")
--- sleep(3)
--- turtle.select(1)
--- end
+end
+--Ender Chest Obtaining
+if enderChestEnabled then
+  while turtle.getItemCount(enderChestSlot) ~= 1 do
+    screen(1,1)
+    print("You have decided to use an Ender Chest!")
+    print("Please place one Ender Chest in slot ",enderChestSlot)
+    sleep(1)
+  end
+  print("Ender Chest in slot ",enderChestSlot, " checks out")
+  sleep(2)
 end
 --Initial Rednet Handshake
 if rednetEnabled then
@@ -522,7 +522,7 @@ sleep(1.5)
 end
 local function biometrics(sendChannel)
 local commands = { Confirm = "Confirm" }
-local toSend = { ["x"] = x, ["y"] = (y/3 + math.ceil(lastHeight/2)), ["z"] = z, --The y calc is weird...
+local toSend = { ["x"] = x, ["y"] = (layers), ["z"] = z, --The y calc is weird...
     ["xPos"] = xPos, ["yPos"] = yPos, ["zPos"] = zPos, 
     ["percent"] = percent, ["mined" ]= mined, 
     ["fuel"] = checkFuel(), ["moved"] = moved, 
@@ -546,8 +546,7 @@ if #changedT == 0 then
 print("Completely Default")
 else
 for i=1, #changedT do
-local title, value = changedT.getPair(i)
-print(capitalize(title)..": ",value)
+print(changedT[i][1],": ",changedT[i][2]) --Name and Value
 end
 end
 print("\nStarting in 3"); sleep(1); print("2"); sleep(1); print("1"); sleep(1.5) --Dramatic pause at end
@@ -556,6 +555,48 @@ print("\nStarting in 3"); sleep(1); print("2"); sleep(1); print("1"); sleep(1.5)
 
 ----------------------------------------------------------------
 --Define ALL THE FUNCTIONS
+function eventAdd(...)
+  return table.insert(events,1, {...}) or true
+end
+function eventGet(pos)
+  return events[tonumber(pos) or #events]
+end
+function eventPop(pos)
+  return table.remove(events,tonumber(pos) or #events) or false --This will return value popped, tonumber returns nil if fail, so default to end
+end
+function eventRun(value, ...)
+  local argsList = {...}
+  if type(value) == "string" then
+    if value:sub(-1) ~= ")" then --So supports both "up()" and "up"
+      value = value .. "("
+      for a, b in pairs(argsList) do --Appending arguments
+        local toAppend
+        if type(b) == "table" then toAppend = textutils.serialize(b)
+        elseif type(b) == "string" then toAppend = "\""..tostring(b).."\"" --They weren't getting strings around them
+        else toAppend = tostring(b) end
+        value = value .. (toAppend or "true") .. ", "
+      end
+      if value:sub(-1) ~= "(" then --If no args, do not want to cut off
+        value = value:sub(1,-3)..""
+      end
+      value = value .. ")"
+    end
+    --print(value) --Debug
+    local func = loadstring(value)
+    setfenv(func, getfenv(1))
+    return func()
+  end
+end
+      
+function runAllEvents()
+  while #events > 0 do
+    local toRun = eventGet()
+    --print(toRun[1]) --Debug
+    eventRun(unpack(toRun))
+    eventPop()
+  end
+end
+
 function display() --This is just the last screen that displays at the end
 screen(1,1)
 print("Total Blocks Mined: "..mined)
@@ -591,7 +632,6 @@ print(checkFuel())
   -- print(zPos)
   -- print("Y pos: ")
   -- print(yPos)
-  
 if rednetEnabled then
 screenLine(1,7)
 print("Connected: "..tostring(connected))
@@ -620,7 +660,7 @@ local function write(...)
 end
 write("Welcome to the Quarry Logs!")
 write("Entry Number: ",number)
-write("Dimensions (X Z Y): ",x," ",z," ", dispY)
+write("Dimensions (X Z Y): ",x," ",z," ", y)
 write("Blocks Mined: ", mined)
 write("  Cobble: ", totals.cobble)
 write("  Usable Fuel: ", totals.fuel)
@@ -634,10 +674,10 @@ function isFull(slots)
   slots = slots or 16
   local numUsed = 0
   sleep(0)
-  for i=1, slots do
+  for i=1, 16 do
     if turtle.getItemCount(i) > 0 then numUsed = numUsed + 1 end
   end
-  if numUsed >= slots then
+  if numUsed > slots then
     return true 
   end
   return false
@@ -697,6 +737,7 @@ function up(sneak)
     end
     yPos = yPos - sneak --Oh! I feel so clever
   end                   --This works because inverted :)
+  saveProgress()
 end
 function down(sneak)
   sneak = sneak or 1
@@ -714,14 +755,15 @@ function down(sneak)
     end
     yPos = yPos + sneak
   end
+  saveProgress()
 end
 function right(num)
   num = num or 1
-  for i=1, num do facingF(1); saveProgress(); turtle.turnRight() end
+  for i=1, num do facing = coterminal(facing+1); saveProgress(); turtle.turnRight() end
 end
 function left(num)
   num = num or 1
-  for i=1, num do facingF(-1); saveProgress(); turtle.turnLeft() end
+  for i=1, num do facing = coterminal(facing-1); saveProgress(); turtle.turnLeft() end
 end
 function attack(doAdd, func)
   doAdd = doAdd or true
@@ -756,7 +798,7 @@ if doDigDown == nil then doDigDown = true end
 if doDigUp == nil then doDigUp = true end
 if outOfPath == nil then outOfPath = false end
 if inverted then
-  doDigUp, doDigDown = doDigDown, doDigUp --Just switch the two if inverted
+  doDigUp, doDigDown = doDigDown, doDigUp --Just Switch the two if inverted
 end
 if doRefuel and checkFuel() <= fuelTable[fuelSafety]/2 then
   for i=1, 16 do
@@ -790,13 +832,7 @@ while not forward(not outOfPath) do
     end
   end
 end
---Insanity Checking
-if xPos < 0 or xPos > x or zPos < 0 or zPos > z or yPos < 0 then
-  print("Oops. Detected that quarry was outside of predefined boundaries.")
-  print("Please go to my forum thread and report this with a short description of what happened")
-  print("If you could also run \"pastebin put Civil_Quarry_Restore\" and give me that code it would be great")
-  error("",0)
-end
+checkSanity() --Not kidding... This is necessary
 saveProgress(tab)
 if doDigUp then
 while turtle.detectUp() do 
@@ -822,30 +858,56 @@ if moved%invCheckFreq == 0 then
 end; end
 if rednetEnabled then biometrics() end
 end
---Direction: Front = 0, Right = 1, Back = 2, Left = 3
-function facingF(num)
-facing = facing + num
-if facing > 3 then facing = 0 end
-if facing < 0 then facing = 3 end
+--Insanity Checking
+function checkSanity()
+  if isInPath and not (facing == 0 or facing == 2) and #events == 0 then --If mining and not facing proper direction and not in a turn
+    turnTo(0)
+    rowCheck = "right"
+  end
+  if xPos < 0 or xPos > x or zPos < 0 or zPos > z or yPos < 0 then
+    saveProgress()
+    print("Oops. Detected that quarry was outside of predefined boundaries.")
+    print("Please go to my forum thread and report this with a short description of what happened")
+    print("If you could also run \"pastebin put Civil_Quarry_Restore\" and give me that code it would be great")
+    error("",0)
+  end
 end
 
-function turnTo(num, dir)
+local function fromBoolean(input) --Like a calculator
+if input then return 1 end
+return 0
+end
+local function multBoolean(first,second) --Boolean multiplication
+return (fromBoolean(first) * fromBoolean(second)) == 1
+end
+function coterminal(num, limit) --I knew this would come in handy :D
+limit = limit or 4 --This is for facing
+return math.abs((limit*fromBoolean(num < 0))-(math.abs(num)%limit))
+end
+if tArgs["-manualpos"] then
+  facing = coterminal(facing) --Done to improve support for "-manualPos"
+  if facing == 0 then rowCheck = "right" elseif facing == 2 then rowCheck = "left" end --Ditto
+  relativeXCalc() --Ditto
+end
+
+--Direction: Front = 0, Right = 1, Back = 2, Left = 3
+
+function turnTo(num)
   num = num or facing
-  dir = dir or "left"
-  while facing ~= num do
-    if dir == "left" then
-      left()
-    elseif dir == "right" then
+  num = coterminal(num) --Prevent errors
+  local turnRight = true
+  if facing-num == 1 or facing-num == -3 then turnRight = false end --0 - 1 = -3, 1 - 0 = 1, 2 - 1 = 1
+  while facing ~= num do          --The above is used to smartly turn
+    if turnRight then
       right()
-    else
-      error("TurnTo: Left or Right expected, got "..tosrting(dir))
-      end
+    else 
+      left() 
+    end
   end
 end
 function goto(x,z,y, toFace)
 --Will first go to desired z pos, then x pos, y pos varies
 x = x or 1; y = y or 1; z = z or 1; toFace = toFace or facing
-gotoX,gotoY,gotoZ,gotoFacing = xPos,yPos,zPos,facing --For use in session persistence
 if yPos > y then --Will go up first if below position
   while yPos~=y do up() end
 end
@@ -866,7 +928,6 @@ if yPos < y then --Will go down after if above position
 end
 turnTo(toFace,"right")
 saveProgress()
-gotoX,gotoY,gotoZ,gotoFacing = nil
 end
 function drop(side, final, allowSkip)
 side = sides[side] or "front"    --The final number means that it will
@@ -905,10 +966,12 @@ repeat
 local detected = whereDetect()
 if detected then
   waitDrop(_1)
-  for i=2, 16 do
-    if turtle.getItemCount(i) > 0 then
-      turtle.select(i)
-      waitDrop()
+  for i=1, 2 do --This is so I quit flipping missing items when chests are partially filled
+    for i=2, 16 do
+      if turtle.getItemCount(i) > 0 then
+        turtle.select(i)
+        waitDrop(nil, i)
+      end
     end
   end
 elseif not allowSkip then
@@ -920,15 +983,31 @@ end
 until detected or allowSkip
 if not allowSkip then totals.cobble = totals.cobble - 1 end
 turtle.select(1)
-turnTo(0)
 end
 function dropOff() --Not local because called in mine()
 local currX,currZ,currY,currFacing = xPos, zPos, yPos, facing
-goto(0,1,1,2)
-drop(dropSide,false)
-mine(false,false,true, false)
-goto(1,1,1, 0)
-goto(currX,currZ,currY,currFacing)
+if careAboutResources and not enderChestEnabled then --Regularly
+eventAdd("goto", 1,1,currY,2) --Need this step for "-startDown"
+eventAdd("goto(0,1,1,2)")
+eventAdd("drop", dropSide,false)
+eventAdd("turnTo(0)")
+eventAdd("mine",false,false,true,false)
+eventAdd("goto(1,1,1, 0)")
+eventAdd("goto", 1, 1, currY, 0)
+eventAdd("goto", currX,currZ,currY,currFacing)
+elseif careAboutResources then --If using an enderChest
+eventAdd("turnTo",currFacing-2)
+eventAdd("dig",false)
+eventAdd("turtle.select",enderChestSlot)
+eventAdd("turtle.place")
+eventAdd("drop","front",false)
+eventAdd("turtle.select", enderChestSlot)
+eventAdd("dig",false)
+eventAdd("turnTo",currFacing)
+eventAdd("turtle.select(1)")
+end
+runAllEvents()
+return true
 end
 function bedrock()
 if checkFuel() == 0 then error("No Fuel",0) end
@@ -943,18 +1022,35 @@ for i=1, relxPos do mine(true,true); end
 end
 goto(0,1,1,2)
 drop(dropSide, true)
+turnTo(0)
 display()
 print("\nFound bedrock at these coordinates: ")
 print(origin.x," Was position in row\n",origin.z," Was row in layer\n",origin.y," Blocks down from start")
 error("",0)
 end
+
+function endOfRowTurn(startZ, wasFacing, mineFunctionTable)
+local halfFacing = 1
+local toFace = coterminal(wasFacing + 2) --Opposite side
+if zPos == startZ then
+  if facing ~= halfFacing then turnTo(halfFacing) end
+  mine(unpack(mineFunctionTable or {}))
+end
+if facing ~= toFace then
+  turnTo(toFace)
+end
+end
+
 -------------------------------------------------------------------------------------
 --Pre-Mining Stuff dealing with session persistence
-local doDigDown, doDigUp = (lastHeight ~= 1), false --Used in lastHeight
-if gpsEnabled and not restoreFound then --The initial locate is done in the arguments. This is so I can figure out what quadrant the turtle is in.
+runAllEvents()
+if toQuit then error("",0) end --This means that it was stopped coming for its last drop
+
+local doDigDown, doDigUp = (lastHeight ~= 1), (lastHeight == 0) --Used in lastHeight
+if gpsEnabled and not restoreFoundSwitch then --The initial locate is done in the arguments. This is so I can figure out what quadrant the turtle is in.
   gpsSecondPos = {gps.locate(gpsTimeout)} --Note: Does not run this if it has already been restarted.
 end
-if not restoreFound then --Regularly
+if not restoreFoundSwitch then --Regularly
   --Check if it is a mining turtle
   if not isMiningTurtle then
     local a, b = turtle.dig()
@@ -964,85 +1060,69 @@ if not restoreFound then --Regularly
       error("",0)
     end
   end
-  if y~= 0 then mine(false, false, true) down() end --Get into quarry
+  mine(false,false,true) --Get into quarry by going forward one
+  for i = 1, startDown do
+    eventAdd("down") --Add a bunch of down events to get to where it needs to be.
+  end
+  runAllEvents()
+  if not(y == 1 or y == 2) then down() end --Go down. If y is one or two, it doesn't need to do this.
 else --restore found
-  digUp(); digDown() --Get blocks missed before stopped
-  if gotoX then
-    goto(gotoX,gotoZ,gotoY,gotoFacing)
-  end
-  if (relxPos == x or relxPos == 1) and not gotoX and not (facing == 0 or facing == 2) then --If not in goto loop or facing standard direction
-    if rowCheck == "right" then --If on odd rows (starting with first)
-      turnTo(0) --Face the end so will turn properly
-    else
-      turnTo(2)
-    end
-  end
+  if doDigDown then digDown() end
+  if doDigUp then digUp() end  --Get blocks missed before stopped
 end
---Mining Loops
+--Mining Loops--------------------------------------------------------------------------
 turtle.select(1)
-while layersDone <= y do -------------Height---------
+while layersDone <= layers do -------------Height---------
+local lastLayer = layersDone == layers --If this is the last layer
+local secondToLastLayer = (layersDone + 1) == layers --This is for the going down at the end of a layer.
 moved = moved + 1 --To account for the first position in row as "moved"
-if not restoreFound then rowCheck = "right"; relativeXCalc() end
-while zPos <= z do -------------Width----------
-while relxPos < x do ------------Length---------
-mine()
-end ---------------Length End-------
-if zPos ~= z then
-local func
-if rowCheck == "right" and zPos ~= z then --Swithcing to next row
-func = right; rowCheck = "left"; else func = left; rowCheck = "right" end --Which way to turn
-  func()
-  saveProgress({zPos = zPos + 1}) --This might make it so it will go back to proper spot z wise
-  mine()
-  func()
-else break
-end
-end ---------------Width End--------
-goto(1,1,yPos,0)
-if yPos+1 ~= y then 
-  for i=1, 3 do down() end
-end
-layersDone = layersDone + 3
-restoreFound = false --This is done so that rowCheck works properly upon restore
-end ---------------Height End-------
-if lastHeight ~= 0 then ---------LAST ROW--------- (copied from above)
-moved = moved + 1 --To account for the first position in row as "moved"
-if y ~= 0 then --If the basic y == 2 or 1
-  for i=1, 2 do down() end
-end 
-if not restoreFound then rowCheck = "right" end
+if not restoreFoundSwitch then rowCheck = "right" end
 relativeXCalc()
 while zPos <= z do -------------Width----------
 while relxPos < x do ------------Length---------
-mine(doDigDown,doDigUp)
+mine(not lastLayer or (doDigDown and lastLayer), not lastLayer or (doDigUp and lastLayer)) --This will be the idiom that I use for the mine function
 end ---------------Length End-------
-if zPos ~= z then
-local func
-if rowCheck == "right" and zPos ~= z then --Swithcing to next row
-  func = right; rowCheck = "left"; else func = left; rowCheck = "right" end --Which way to turn
-  func()
-  mine(doDigDown,doDigUp)
-  func()
+if zPos ~= z then --If not on last row of section
+  local func
+  if rowCheck == "right" then --Swithcing to next row
+  func = "right"; rowCheck = "left"; else func = "left"; rowCheck = "right" end --Which way to turn
+    eventAdd("endOfRowTurn", zPos, facing , {not lastLayer or (doDigDown and lastLayer), not lastLayer or (doDigUp and lastLayer)}) --The table is passed to the mine function
+    runAllEvents()
 else break
 end
 end ---------------Width End--------
-goto(1,1,yPos,0)
+eventAdd("goto",1,1,yPos,0) --Goto start of layer
+runAllEvents()
+if not lastLayer then --If there is another layer
+  for i=1, 2+fromBoolean(not(lastHeight~=0 and secondToLastLayer)) do down() end --The fromBoolean stuff means that if lastheight is 1 and last and layer, will only go down two
 end
-if doDigDown then
+layersDone = layersDone + 1
+restoreFoundSwitch = false --This is done so that rowCheck works properly upon restore
+end ---------------Height End-------
+if doDigDown then --This is because it doesn't mine first block in layer
   if inverted then
     digUp()
   else
     digDown()
   end
 end
-goto(0,1,1,2)
+eventAdd("goto",1,1,yPos,2) --Allows for startDown variable
+eventAdd("goto",0,1,1,2)
 
 --Output to a chest or sit there
-drop(dropSide, true)
---Display was moved above to be used in bedrock function
-display()
---Log current mining run
-logMiningRun(logExtension)
+if enderChestEnabled and not turtle.detect() then
+  eventAdd("turtle.select",enderChestSlot)
+  eventAdd("turtle.place")
+  eventAdd("turtle.select(1)")
+end
+eventAdd("drop",dropSide, true)
+eventAdd("turnTo(0)")
 
+--Display was moved above to be used in bedrock function
+eventAdd("display")
+--Log current mining run
+eventAdd("logMiningRun",logExtension)
+toQuit = true --I'll use this flag to clean up
+runAllEvents()
 --Cleanup
 turtle.getFuelLevel = getFuel
