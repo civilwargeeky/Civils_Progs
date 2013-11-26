@@ -693,11 +693,20 @@ function dig(doAdd, func)
   end
   return false
 end
-function digUp(doAdd)
+if not inverted then --Regular functions :) I switch definitions for optimizatoin (I thinK)
+  function digUp(doAdd)
     return dig(doAdd,turtle.digUp)
-end
-function digDown(doAdd)
+  end
+  function digDown(doAdd)
     return dig(doAdd,turtle.digDown)
+  end
+else
+  function digDown(doAdd)
+    return dig(doAdd,turtle.digUp)
+  end
+  function digUp(doAdd)
+    return dig(doAdd,turtle.digDown)
+  end
 end
 function relativeXCalc()
   if rowCheck == "right" then relxPos = xPos else relxPos = (x-xPos)+1 end
@@ -729,8 +738,8 @@ function up(sneak)
   if inverted and sneak == 1 then
     down(-1)
   else
-    while not turtle.up() do
-      if not digUp() then
+    while not turtle.up() do --Absolute dig, not relative
+      if not dig(true, turtle.digDown) then
         attackUp()
         sleep(0.5)
       end
@@ -747,7 +756,7 @@ function down(sneak)
   else
     while not turtle.down() do
       count = count + 1
-      if not digDown() then
+      if not dig(true, turtle.digDown) then --This is absolute dig down, not relative
         attackDown()
         sleep(0.2)
       end
@@ -1076,6 +1085,7 @@ while layersDone <= layers do -------------Height---------
 local lastLayer = layersDone == layers --If this is the last layer
 local secondToLastLayer = (layersDone + 1) == layers --This is for the going down at the end of a layer.
 moved = moved + 1 --To account for the first position in row as "moved"
+if doDigDown then digDown() end --This is because it doesn't mine first block in layer
 if not restoreFoundSwitch then rowCheck = "right" end
 relativeXCalc()
 while zPos <= z do -------------Width----------
@@ -1099,13 +1109,7 @@ end
 layersDone = layersDone + 1
 restoreFoundSwitch = false --This is done so that rowCheck works properly upon restore
 end ---------------Height End-------
-if doDigDown then --This is because it doesn't mine first block in layer
-  if inverted then
-    digUp()
-  else
-    digDown()
-  end
-end
+
 eventAdd("goto",1,1,yPos,2) --Allows for startDown variable
 eventAdd("goto",0,1,1,2)
 
