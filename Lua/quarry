@@ -367,7 +367,7 @@ addParam("chest", "Chest Drop Side", "side front", nil, nil, "dropSide")
 addParam("enderChest","Ender Chest Enabled","boolean special", nil, nil, "enderChestEnabled") --This will accept anything (including numbers) thats not "f" or "n"
 addParam("enderChest", "Ender Chest Slot", "number 1-16", nil, nil, "enderChestSlot") --This will get the number slot if given
 --Rednet
-addParam("rednet", "Rednet Enabled","boolean",true, supportsRednet, rednetEnabled)
+addParam("rednet", "Rednet Enabled","boolean",true, supportsRednet, "rednetEnabled")
 addParam("gps", "GPS Location Services", "boolean", nil, (not restoreFoundSwitch) and supportsRednet, "gpsEnabled" ) --Has these triggers so that does not record position if restarted.
 if gpsEnabled then
   gpsStartPos = {gps.locate(gpsTimeout)} --Stores position in array
