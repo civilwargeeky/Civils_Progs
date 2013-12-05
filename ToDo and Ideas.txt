@@ -63,6 +63,7 @@ Way in future: Add session persistence for setups
 
 Quarry Version 3.3.1:
 Changelog so far:
+  Fixed small naming bug stopping rednet from working
   Made it mine stuff at start of layer, instead of at end
 
 Things to add for quarry version 3.3.1:
