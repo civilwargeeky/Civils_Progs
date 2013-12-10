@@ -449,7 +449,7 @@ neededFuel = neededFuel + fuelTable[fuelSafety] --For safety
   local oneFuel, neededFuelItems
   local currSlot = 0
   local function output(text, x, y) --For displaying fuel
-    currX, currY = term.getCursorPos()
+    local currX, currY = term.getCursorPos()
     term.setCursorPos(x,y)
     term.clearLine()
     term.write(text)
