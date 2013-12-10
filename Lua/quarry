@@ -1,5 +1,5 @@
 --[[ 
-Version 3.3.1
+Version 3.3.2
 Recent Changes:
   Fixed bug stopping rednet from working.
   New Internals: Made event system and consolidated mining loops
@@ -214,13 +214,16 @@ function addParam(name, displayText, formatString, forcePrompt, trigger, variabl
   if tArgs["-"..toGetText] then
     givenValue = tArgsWithUpper[tArgs["-"..toGetText]+1] --This is the value after the desired parameter
   elseif forcePrompt then
-    term.write(displayText.."? ")
+    write(displayText.."? ")
     givenValue = io.read()
   end
-  if not givenValue then return end --Don't do anything if you aren't given anything. Leave it as default
+  if formatType == "force" then --This is the one exception. Should return true if givenValue is nothing
+    toRet = (tArgs["-"..toGetText] and true) or false --Will return true if param exists, otherwise false
+  end
+  if not (givenValue or toRet) then return end --Don't do anything if you aren't given anything. Leave it as default, except for "force"
   if formatType == "boolean" then --All the format strings will be basically be put through a switch statement
     toRet = givenValue:sub(1,1):lower() == "y" or givenValue:sub(1,1):lower() == "t" --Accepts true or yes
-    if formatString == "boolean special" then
+    if formatString == "boolean special" then 
       toRet = givenValue:sub(1,1):lower() ~= "n" and givenValue:sub(1,1):lower() ~= "f" --Accepts anything but false or no
     end
   elseif formatType == "string" then
@@ -241,6 +244,7 @@ function addParam(name, displayText, formatString, forcePrompt, trigger, variabl
     for a in args:gmatch("[^,]") do
       table.insert(toRet,a)
     end
+  elseif formatType == "force" then --Do nothing, everything is already done
   else error("Improper formatType",2)
   end
   if toRet == nil then return end --Don't want to set variables to nil... That's bad
@@ -368,8 +372,8 @@ addParam("enderChest","Ender Chest Enabled","boolean special", nil, nil, "enderC
 addParam("enderChest", "Ender Chest Slot", "number 1-16", nil, nil, "enderChestSlot") --This will get the number slot if given
 --Rednet
 addParam("rednet", "Rednet Enabled","boolean",true, supportsRednet, "rednetEnabled")
-addParam("gps", "GPS Location Services", "boolean", nil, (not restoreFoundSwitch) and supportsRednet, "gpsEnabled" ) --Has these triggers so that does not record position if restarted.
-if gpsEnabled then
+addParam("gps", "GPS Location Services", "force", nil, (not restoreFoundSwitch) and supportsRednet, "gpsEnabled" ) --Has these triggers so that does not record position if restarted.
+if gpsEnabled and not restoreFoundSwitch then
   gpsStartPos = {gps.locate(gpsTimeout)} --Stores position in array
   gpsEnabled = #gpsStartPos > 0 --Checks if location received properly. If not, position is not saved
 end
@@ -1057,9 +1061,6 @@ runAllEvents()
 if toQuit then error("",0) end --This means that it was stopped coming for its last drop
 
 local doDigDown, doDigUp = (lastHeight ~= 1), (lastHeight == 0) --Used in lastHeight
-if gpsEnabled and not restoreFoundSwitch then --The initial locate is done in the arguments. This is so I can figure out what quadrant the turtle is in.
-  gpsSecondPos = {gps.locate(gpsTimeout)} --Note: Does not run this if it has already been restarted.
-end
 if not restoreFoundSwitch then --Regularly
   --Check if it is a mining turtle
   if not isMiningTurtle then
@@ -1071,6 +1072,9 @@ if not restoreFoundSwitch then --Regularly
     end
   end
   mine(false,false,true) --Get into quarry by going forward one
+  if gpsEnabled and not restoreFoundSwitch then --The initial locate is done in the arguments. This is so I can figure out what quadrant the turtle is in.
+  gpsSecondPos = {gps.locate(gpsTimeout)} --Note: Does not run this if it has already been restarted.
+end
   for i = 1, startDown do
     eventAdd("down") --Add a bunch of down events to get to where it needs to be.
   end
