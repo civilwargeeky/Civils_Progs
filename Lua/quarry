@@ -1,6 +1,7 @@
 --[[ 
 Version 3.3.2
 Recent Changes:
+  Fixed GPS. Now works
   Fixed bug stopping rednet from working.
   New Internals: Made event system and consolidated mining loops
   New Restarting Logic!
