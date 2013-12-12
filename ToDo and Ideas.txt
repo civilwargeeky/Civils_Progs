@@ -61,19 +61,12 @@ Way in future: Add session persistence for setups
 
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 
-Quarry Version 3.3.2:
+Quarry Version 3.3.4:
 Changelog so far:
-  Small local variable change
-  Made GPS locate actually work
-  Added new "force" formatType in parameters. If it finds the parameter, will set it to true
-  Changed "-GPS" to be a "force" parameter
-  Used write instead of term.write in parameters
 
-Things to add for quarry version 3.3.3:
+Things to add for quarry version 3.3.5:
   Use "for" loops for gps location checking on successful backup read --Cosmetic Change
   Do some fuel checking for all your different variables and how they affect things
-  Maybe have seperate "goDown" and "goUp" variables
-  Maybe have a "-replaceStartup" parameter with string argument of what to rename other original startup to
   Maybe check so that if position gotten from GPS is different from stored, remove event queue.
   
 Things to add for quarry version 3.4.0 (Rednet update):
@@ -85,6 +78,9 @@ Things to add for quarry version 3.5.0 (After rednet update and shell is done):
   Improve end of layer logic. You should be able to just have it stop at the end of the layer and go down three with minimal hassle.
   With inclusion of certain slots not to drop or slots to drop all but one of, you could make a more ore-driven quarry that will only mine ores and things not on its list of stuff to not mine
   Fix up and down functions. They may work, and they may be clever, but they are really dumb.
+  Maybe have a "-replaceStartup" parameter with string argument of what to rename other original startup to
+  Maybe have seperate "goDown" and "goUp" parameters
+  
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
  
 Plans for a tower program:
