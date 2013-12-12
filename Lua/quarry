@@ -1,6 +1,7 @@
 --[[ 
-Version 3.3.2
+Version 3.3.3
 Recent Changes:
+  Fixed invert. Now works
   Fixed GPS. Now works
   Fixed bug stopping rednet from working.
   New Internals: Made event system and consolidated mining loops
@@ -745,7 +746,7 @@ function up(sneak)
     down(-1)
   else
     while not turtle.up() do --Absolute dig, not relative
-      if not dig(true, turtle.digDown) then
+      if not dig(true, turtle.digUp) then
         attackUp()
         sleep(0.5)
       end
@@ -852,7 +853,7 @@ saveProgress(tab)
 if doDigUp then
 while turtle.detectUp() do 
   sleep(0) --Calls coroutine.yield
-  if not digUp() then
+  if not dig(true,turtle.digUp) then --This needs to be an absolute, because we are switching doDigUp/Down
     attackUp()
     count = count + 1
   end
@@ -862,7 +863,7 @@ while turtle.detectUp() do
   end
 end
 if doDigDown then
- digDown()
+ dig(true,turtle.digDown) --This needs to be absolute as well
 end
 percent = math.ceil(moved/moveVolume*100)
 updateDisplay()
