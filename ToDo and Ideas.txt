@@ -80,6 +80,33 @@ Things to add for quarry version 3.5.0 (After rednet update and shell is done):
   Fix up and down functions. They may work, and they may be clever, but they are really dumb.
   Maybe have a "-replaceStartup" parameter with string argument of what to rename other original startup to
   Maybe have seperate "goDown" and "goUp" parameters
+    Or: Maybe just have an "offset" variable that could be positive or negative. -40 would go down 40 before it starts the quarry. Inverted or no.
+  
+-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
+Ideas for a Remote Turtle:
+  Turtle will have all commands on it, not the computer
+  It will also have an interpreter to interpret commands as loops.
+    E.G. Computer sends "forward 34" and the turtle interprets that as "for i=1, 34 do forward() end"
+  Turtle will have many different settings for things it can do. Pressing different keys will bring up context menus for different settings
+  Pressing "." and "," will cycle through the turtle's different inventory slots.
+  Different buttons for place, down, up, attack, etc.
+  Settings:
+    Aggressiveness: No attack, one attack, kill
+    Detect: None, Forward, 3 side, all side (will turn around a bunch)
+    Mining: Do not mine, mine blocks in front, select sides (will open up a checklist)
+    Track inventory: No, Selected Slot, All Slots
+    Check if item fuel: Yes, No
+  Buttons:
+    Forward, Backward, Turn left, Turn Right, Up, Down
+    Attack, Up, Down
+    Dig, Up, Down
+    Place, Up, Down
+    Drop, Up, Down
+    Refuel from slot
+    Refuel all
+    Open Console
+  Maybe ability to switch between different turtles with another button.
+  Maybe turtle will maintain a record of its detects and everywhere its been. Then you could make a map :D
   
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
  
