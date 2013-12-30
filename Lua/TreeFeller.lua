@@ -243,6 +243,7 @@ do --This will be so I have all the info I need for dropping and sucking.
   newEntry("back", 2, turtle.drop, turtle.suck, turtle.detect)
 end
 function getMaterials(what) --This function will get materials from a certain place
+  turtle.select(1) --So materials go in in the first available spot
   local toFace = facing
   local facingInfo = facingTable[materialsTable[what]] --This table contains direction specific functions, since use is the same
   turnTo(facingInfo.number) --Eg: facingTable[materialsTable["sapling"]].number --> facingTable["left"].number --> 3
