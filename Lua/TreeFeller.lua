@@ -14,8 +14,9 @@ local numDropped = 0 --Wood/things dropped off
 local slotTypes = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
 local typeTable = {sapling = 1, bonemeal = 2, wood = 0}
 local numTypes = 2 --Used in assign types function
-local materialsTable = {sapling = "left", bonemeal = "back", wood = "bottom"}
+local materialsTable = {sapling = "left", bonemeal = "back", wood = "right"}
 local restock = {sapling = 64 * 2, bonemeal = 64*4}
+local keepOpen = 5
 
 --Misc functions
 function getInvTable()
@@ -221,6 +222,7 @@ do --This will be so I have all the info I need for dropping and sucking.
   newEntry("back", 2, turtle.drop, turtle.suck, turtle.detect)
 end
 function getMaterials(what) --This function will get materials from a certain place
+  local toFace = facing
   local facingInfo = facingTable[materialsTable[what]] --This table contains direction specific functions, since use is the same
   turnTo(facingInfo.number) --Eg: facingTable[materialsTable["sapling"]].number --> facingTable["left"].number --> 3
   local doWait = false
@@ -254,9 +256,12 @@ function getMaterials(what) --This function will get materials from a certain pl
   for a,b in ipairs(getChangedSlots(getInvTable(), snapshot)) do
     slotTypes[b] = currType
   end
+  assignTypes(false)
+  turnTo(toFace)
   return getRep(typeTable[what])
 end
 function dropMaterials(what, doAdd)
+  local toFace = facing
   doAdd = doAdd or true
   local facingInfo = facingTable[materialsTable[what]] --This table contains direction specific functions, since use is the same
   turnTo(facingInfo.number) --Eg: facingTable[materialsTable["sapling"]].number --> facingTable["left"].number --> 3
@@ -266,43 +271,55 @@ function dropMaterials(what, doAdd)
     sleep(2)
   end
   for i=1, 16 do
-    if slotTypes[i] == typeTable[what] and turtle.getItemCount(i) >= 0 then
+    if slotTypes[i] == typeTable[what] and turtle.getItemCount(i) > 0 then
       turtle.select(i)
       local dropped = false
       repeat
-          local curr = turtle.getItemCount(i)
-          local amount = countChange(facingInfo.drop, curr) or 0
-          if doAdd then
-            numDropped = numDropped + amount --This is the global
-          end
-          print("Dropped ",amount," ",what)
-          if amount >= curr then 
-            dropped = true
-          else 
-            screenSet(1,1)
-            print("Cannot drop ",what," on ",materialsTable[what], " side")
-            sleep(2)
-          end
-       until dropped
-     end
-   end
---if what ~= "wood" then --Wood and 0 are special, we'll just drop everything that's not in a sapling slot.
+        local curr = turtle.getItemCount(i)
+        local amount = countChange(facingInfo.drop, curr) or 0
+        if doAdd then
+          numDropped = numDropped + amount --This is the global
+        end
+        print("Dropped ",amount," ",what)
+        if amount >= curr then 
+          dropped = true
+        else 
+          screenSet(1,1)
+          print("Cannot drop ",what," on ",materialsTable[what], " side")
+          sleep(2)
+        end
+      until dropped
+      slotTypes[i] = 0
+    end
+  end
+  turnTo(toFace)
+  turtle.select(1) --Its just nicer
+  return true
 end
+
+function isFull()
+  local areFull = 0
+  local currInv = getInvTable()
+  for i=1, #currInv do
+    if currInv[i] > 0 then
+      areFull = areFull + 1
+    end
+  end
+  return areFull >= 16-keepOpen
+end
+
 --Initial
 assignTypes(true) --Initial assign types
-getMaterials("sapling")
-os.pullEvent("char")
-dropMaterials("sapling")
-turnTo(0)
-
 
 --Main Loop
---[[
 while true do
 if turtle.detect() then mineTree() end --Dig out the tree
-  placeSapling()
-  if not useBonemeal() then
+  placeSapling() --Place a sapling
+  if not useBonemeal() then --Use the bonemeal
     turtle.select(getMaterials("bonemeal"))
     useBonemeal()
   end
-end]]
+  if isFull() then --If inventory is full, drop it
+    dropMaterials("wood")
+  end
+end
