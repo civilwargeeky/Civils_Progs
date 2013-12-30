@@ -7,19 +7,26 @@ More ideas:
   For picking up more things if out, compare inv before and after pickup. All slots that have changed are new type.
   ]]
 
-
+local insistOnStock = true --Whether or not it will force a certain amount of things to be in inventory
 local facing = 0 --0 is front, 1 is right, 2 is back, 3 is left
-local cut = 0 --Trees cut
+local numCut = 0 --Trees cut
+local numDropped = 0 --Wood/things dropped off
+local slotTypes = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+local typeTable = {sapling = 1, bonemeal = 2, wood = 0}
+local numTypes = 2 --Used in assign types function
+local materialsTable = {sapling = "left", bonemeal = "back", wood = "bottom"}
+local restock = {sapling = 64 * 2, bonemeal = 64*4}
 
 --Misc functions
-local function getInvTable()
+function getInvTable()
   local toRet = {}
   for i=1, 16 do
     toRet[i] = turtle.getItemCount(i)
   end
   return toRet
 end
-local function compareChangedSlots(input1, input2)
+
+function getChangedSlots(input1, input2)
   local toRet = {}
   for i=1, math.min(#input1, #input2) do
     if input1[i] ~= input2[i] then
@@ -28,32 +35,43 @@ local function compareChangedSlots(input1, input2)
   end
   return toRet
 end
-local function screenSet(x, y)
+function countChange(func, num)
+  local snapshot = getInvTable()
+  func(num)
+  local ending = getInvTable()
+  for i=1,16 do
+    if snapshot[i] ~= ending[i] then
+      return math.abs(snapshot[i]-ending[i])
+    end
+  end
+  return false
+end
+function screenSet(x, y)
   x, y = x or 1, y or 1
   term.clear()
   term.setCursorPos(x,y)
 end
 --Custom movement related local functions
-local function fromBoolean(input) --Like a calculator
+function fromBoolean(input) --Like a calculator
 if input then return 1 end
 return 0
 end
-local function coterminal(num, limit) --I knew this would come in handy :D TI-83 FTW!
+function coterminal(num, limit) --I knew this would come in handy :D TI-83 FTW!
 limit = limit or 4 --This is for facing
 return math.abs((limit*fromBoolean(num < 0))-(math.abs(num)%limit))
 end
-local function genericTurn(func, toAdd)
+function genericTurn(func, toAdd)
   local toRet = func()
     facing = coterminal(facing + toAdd)
   return toRet
 end
-local function right()
+function right()
   return genericTurn(turtle.turnRight, 1)
 end
-local function left()
+function left()
   return genericTurn(turtle.turnLeft, -1)
 end
-local function turnTo(toTurn)
+function turnTo(toTurn)
   toTurn = coterminal(toTurn) or facing
   local func = right
   if coterminal(facing-toTurn) == 1 then func = left end --0 - 1 = -3, 1 - 0 = 1, 2 - 1 = 1
@@ -61,22 +79,22 @@ local function turnTo(toTurn)
     func()
   end
 end
-local function turnAround()
+function turnAround()
   return turnTo(facing + 2) --Works because input is coterminaled
 end
-local function genericDig(func, doAdd)
+function genericDig(func, doAdd)
   if func() then
     if doAdd then 
-      cut = cut + 1
+      numCut = numCut + 1
     end
     return true
   end
   return false
 end
-local function dig(doAdd) return genericDig(turtle.dig, doAdd) end
-local function digUp(doAdd) return genericDig(turtle.digUp, doAdd) end
-local function digDown(doAdd) return genericDig(turtle.digDown, doAdd) end
-local function genericMove(move, dig, attack, force)
+function dig(doAdd) return genericDig(turtle.dig, doAdd) end
+function digUp(doAdd) return genericDig(turtle.digUp, doAdd) end
+function digDown(doAdd) return genericDig(turtle.digDown, doAdd) end
+function genericMove(move, dig, attack, force)
   force = force or true
   while not move() do
     if force then 
@@ -88,27 +106,23 @@ local function genericMove(move, dig, attack, force)
   end
   return true
 end
-local function forward(force)
+function forward(force)
   return genericMove(turtle.forward, dig, turtle.attack, force)
 end
 local function returnNil() return nil end --Used in back below
-local function back()
+function back()
   return genericMove(turtle.back, returnNil, returnNil, false)
 end
-local function up(force)
+function up(force)
   return genericMove(turtle.up, digUp, turtle.attackUp, force)
 end
-local function down(force)
+function down(force)
   return genericMove(turtle.down, digDown, turtle.attackDown, force)
 end
 --Specific local functions
-local slotTypes = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
-local typeTable = {sapling = 1, bonemeal = 2}
-local materialsTable = {sapling = "left", bonemeal = "back", wood = "bottom"}
---local types = 0 --Types of items
-local function getRep(which)
+function getRep(which)
   local first = false
-  for i=1, 16 do
+  for i=16, 1, -1 do --Goes backward because slots are often taken/dropped off
     --[[if turtle.getItemCount(i) > 0 and not first then --If not a rep, will return first slot with items
       first = i
     end]]
@@ -118,8 +132,9 @@ local function getRep(which)
   end
   return first
 end
-local function assignTypes(initial) --This gives all items names, if not initial, will not give newTypes
-  local currType = 0 --Types: 1 = saplings, 2 = bonemeal, >= 3 = other/wood
+function assignTypes(initial) --This gives all items names, if not initial, will not give newTypes
+  local currType --Types: 1 = saplings, 2 = bonemeal, >= 3 = other/wood
+  if initial then currType = 0 else currType = numTypes end
   for i=1, 16 do
     turtle.select(i)
     local compares = false
@@ -136,12 +151,26 @@ local function assignTypes(initial) --This gives all items names, if not initial
       slotTypes[i] = currType
       print("New Item ",currType)
     end
+    if not initial and not compares then
+      slotTypes[i] = 0
+    end
   end
   turtle.select(1)
   --types = currType
 end
+function getNumType(which)
+  local num = 0
+  turtle.select(getRep(typeTable[which] or which))
+  for i=1, 16 do
+    if turtle.compareTo(i) then
+      num = num + turtle.getItemCount(i)
+    end
+  end
+  return num
+end
 
-local function mineTree()
+
+function mineTree()
   local moveDown = 0
   forward()
   while turtle.detectUp() do
@@ -153,9 +182,7 @@ local function mineTree()
   end
   back()
 end
-
-
-local function placeSapling()
+function placeSapling()
   local currSlot = getRep(typeTable.sapling) or getMaterials("sapling")
   turtle.select(currSlot) --If no saplings, get some saplings/wait
   if not turtle.place() then
@@ -165,7 +192,7 @@ local function placeSapling()
     end
   end
 end
-local function useBonemeal()
+function useBonemeal()
   while true do
     for i=1, 10 do
       local slot = getRep(typeTable.bonemeal)
@@ -193,7 +220,7 @@ do --This will be so I have all the info I need for dropping and sucking.
   newEntry("right", 1, turtle.drop, turtle.suck, turtle.detect)
   newEntry("back", 2, turtle.drop, turtle.suck, turtle.detect)
 end
-local function getMaterials(what) --This function will get materials from a certain place
+function getMaterials(what) --This function will get materials from a certain place
   local facingInfo = facingTable[materialsTable[what]] --This table contains direction specific functions, since use is the same
   turnTo(facingInfo.number) --Eg: facingTable[materialsTable["sapling"]].number --> facingTable["left"].number --> 3
   local doWait = false
@@ -208,34 +235,74 @@ local function getMaterials(what) --This function will get materials from a cert
     os.pullEvent("char")
   end
   local snapshot = getInvTable() --Done to compare inventory
-  while facingInfo.suck() do end
+  local numObtained = 0
+  while numObtained < restock[what] do
+    local a = countChange(facingInfo.suck)
+    if a then
+      numObtained = numObtained + a
+      print("Obtained ",numObtained,"/",restock[what]," ",what)
+    else
+      if insistOnStock then
+        print("Suck failed, no more ",what,"?")
+        sleep(4)
+      else
+        break
+      end
+    end
+  end
   local currType = typeTable[what]
-  for a,b in ipairs(compareChangedSlots(getInvTable(), snapshot)) do
+  for a,b in ipairs(getChangedSlots(getInvTable(), snapshot)) do
     slotTypes[b] = currType
   end
   return getRep(typeTable[what])
 end
-
-
-
+function dropMaterials(what, doAdd)
+  doAdd = doAdd or true
+  local facingInfo = facingTable[materialsTable[what]] --This table contains direction specific functions, since use is the same
+  turnTo(facingInfo.number) --Eg: facingTable[materialsTable["sapling"]].number --> facingTable["left"].number --> 3
+  while not facingInfo.detect() do
+    screenSet()
+    print("Waiting for ",what," chest to be placed on ", materialsTable[what])
+    sleep(2)
+  end
+  for i=1, 16 do
+    if slotTypes[i] == typeTable[what] and turtle.getItemCount(i) >= 0 then
+      turtle.select(i)
+      local dropped = false
+      repeat
+          local curr = turtle.getItemCount(i)
+          local amount = countChange(facingInfo.drop, curr) or 0
+          if doAdd then
+            numDropped = numDropped + amount --This is the global
+          end
+          print("Dropped ",amount," ",what)
+          if amount >= curr then 
+            dropped = true
+          else 
+            screenSet(1,1)
+            print("Cannot drop ",what," on ",materialsTable[what], " side")
+            sleep(2)
+          end
+       until dropped
+     end
+   end
+--if what ~= "wood" then --Wood and 0 are special, we'll just drop everything that's not in a sapling slot.
+end
 --Initial
 assignTypes(true) --Initial assign types
-getMaterials("bonemeal")
-print(textutils.serialize(slotTypes))
-
+getMaterials("sapling")
+os.pullEvent("char")
+dropMaterials("sapling")
 turnTo(0)
 
 
---[[
-
-
 --Main Loop
-
+--[[
 while true do
 if turtle.detect() then mineTree() end --Dig out the tree
   placeSapling()
   if not useBonemeal() then
-    getMaterials("bonemeal")
+    turtle.select(getMaterials("bonemeal"))
     useBonemeal()
   end
 end]]
