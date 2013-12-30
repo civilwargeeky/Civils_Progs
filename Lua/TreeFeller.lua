@@ -4,10 +4,17 @@
 --Idea, if mod that lets see inv, then check if things are bonemeal/saplings
 --[[
 More ideas:
-  For picking up more things if out, compare inv before and after pickup. All slots that have changed are new type.
+  If wanting to save progress, you need these:
+    slotTypes
+    facing
+    atHome
+  On startup, if not at home, go down until you are level, then back one
+  Also on startup, turnTo 0
+  
+  MAKE IT SO ON ITEM RESTOCK, MATCHING ITEMS AND MATCHING ITEMS ONLY ARE PROPERLY MARKED
   ]]
 
-local insistOnStock = true --Whether or not it will force a certain amount of things to be in inventory
+local insistOnStock = false --Whether or not it will force a certain amount of things to be in inventory
 local facing = 0 --0 is front, 1 is right, 2 is back, 3 is left
 local numCut = 0 --Trees cut
 local numDropped = 0 --Wood/things dropped off
@@ -17,6 +24,7 @@ local numTypes = 2 --Used in assign types function
 local materialsTable = {sapling = "left", bonemeal = "back", wood = "right"}
 local restock = {sapling = 64 * 2, bonemeal = 64*4}
 local keepOpen = 5
+local atHome = true --Whether or not its in its home spot
 
 --Misc functions
 function getInvTable()
@@ -51,6 +59,11 @@ function screenSet(x, y)
   x, y = x or 1, y or 1
   term.clear()
   term.setCursorPos(x,y)
+end
+function display()
+  screenSet(1,1)
+  print("Fuel: ",turtle.getFuelLevel())
+  print("I couldn't really think of anything else to put here...")
 end
 --Custom movement related local functions
 function fromBoolean(input) --Like a calculator
@@ -88,6 +101,7 @@ function genericDig(func, doAdd)
     if doAdd then 
       numCut = numCut + 1
     end
+    display()
     return true
   end
   return false
@@ -121,9 +135,14 @@ function down(force)
   return genericMove(turtle.down, digDown, turtle.attackDown, force)
 end
 --Specific local functions
-function getRep(which)
-  local first = false
-  for i=16, 1, -1 do --Goes backward because slots are often taken/dropped off
+function getRep(which, fromBack)
+  local first, start, finish, step = false
+  if fromBack then
+    start, finish, step = 16, 1, -1
+  else
+    start, finish, step = 1, 16, 1
+  end
+  for i=start, finish, step do --Goes backward because slots are often taken/dropped off
     --[[if turtle.getItemCount(i) > 0 and not first then --If not a rep, will return first slot with items
       first = i
     end]]
@@ -140,7 +159,7 @@ function assignTypes(initial) --This gives all items names, if not initial, will
     turtle.select(i)
     local compares = false
     for a=1, currType do
-      if turtle.compareTo(getRep(a) or 1) then --There should always be a representative, unless first slot
+      if turtle.compareTo(getRep(a, true) or 1) then --There should always be a representative, unless first slot
         slotTypes[i] = a
         print("Compares to ",a)
         compares = true
@@ -174,6 +193,7 @@ end
 function mineTree()
   local moveDown = 0
   forward()
+  atHome = false
   while turtle.detectUp() do
     up()
     moveDown = moveDown + 1
@@ -182,6 +202,7 @@ function mineTree()
     down()
   end
   back()
+  atHome = true
 end
 function placeSapling()
   local currSlot = getRep(typeTable.sapling) or getMaterials("sapling")
