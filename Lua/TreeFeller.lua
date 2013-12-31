@@ -14,18 +14,21 @@ More ideas:
   MAKE IT SO ON ITEM RESTOCK, MATCHING ITEMS AND MATCHING ITEMS ONLY ARE PROPERLY MARKED
   ]]
 
-local insistOnStock = false --Whether or not it will force a certain amount of things to be in inventory
-local facing = 0 --0 is front, 1 is right, 2 is back, 3 is left
-local numCut = 0 --Trees cut
-local numDropped = 0 --Wood/things dropped off
-local slotTypes = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
-local typeTable = {sapling = 1, bonemeal = 2, wood = 0}
-local numTypes = 2 --Used in assign types function
-local materialsTable = {sapling = "left", bonemeal = "back", wood = "right"}
-local restock = {sapling = 64 * 2, bonemeal = 64*4}
-local keepOpen = 5
-local atHome = true --Whether or not its in its home spot
 
+ insistOnStock = false --Whether or not it will force a certain amount of things to be in inventory
+ facing = 0 --0 is front, 1 is right, 2 is back, 3 is left
+ numCut = 0 --Trees cut
+ dropped = 0 --Wood/things dropped off
+ slotTypes = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+ typesTable = {}
+ numTypes = 2 --Used in assign types function
+ restock = {sapling = 64 * 2, bonemeal = 64*4}
+ keepOpen = 5
+ atHome = true --Whether or not its in its home spot
+do local function assignValues(name, typeNum, side) typesTable[name] = {typeNum = typeNum, side = side} end
+  assignValues("sapling", 1, "left"); assignValues("bonemeal",2, "right"); assignValues("wood", 0, "back")
+end
+ 
 --Misc functions
 function getInvTable()
   local toRet = {}
@@ -61,11 +64,10 @@ function screenSet(x, y)
   term.setCursorPos(x,y)
 end
 function display()
-  screenSet(1,1)
+  --[[screenSet(1,1)
   print("Fuel: ",turtle.getFuelLevel())
-  print("I couldn't really think of anything else to put here...")
+  print("I couldn't really think of anything else to put here...")]]
 end
---Custom movement related local functions
 function fromBoolean(input) --Like a calculator
 if input then return 1 end
 return 0
@@ -74,6 +76,7 @@ function coterminal(num, limit) --I knew this would come in handy :D TI-83 FTW!
 limit = limit or 4 --This is for facing
 return math.abs((limit*fromBoolean(num < 0))-(math.abs(num)%limit))
 end
+--Custom movement related local functions
 function genericTurn(func, toAdd)
   local toRet = func()
     facing = coterminal(facing + toAdd)
@@ -152,14 +155,29 @@ function getRep(which, fromBack)
   end
   return first
 end
-function assignTypes(initial) --This gives all items names, if not initial, will not give newTypes
+local function purgeType(which)
+  for i=1, 16 do
+    if slotTypes[i] == which then slotTypes[i] = 0 end
+  end
+end
+function assignTypes(initial, ...) --This gives all items names, if not initial, will not give new types. ... is slot overrides
+  local overrides = {...}
+  for i=1,16 do --This handles the overrides
+    local a = overrides[i] or 0 --0 because cannot compare with number
+    if 1 <= a and a <= 16 then
+      if turtle.getItemCount(a) > 0 then
+        purgeType(i) --This makes it so this slot is the only one to compare to.
+        slotTypes[a] = i --i is the type value, a is the slot number
+      end
+    end
+  end
   local currType --Types: 1 = saplings, 2 = bonemeal, >= 3 = other/wood
   if initial then currType = 0 else currType = numTypes end
-  for i=1, 16 do
+  for i=1, 16 do --This handles comparing and new items
     turtle.select(i)
     local compares = false
     for a=1, currType do
-      if turtle.compareTo(getRep(a, true) or 1) then --There should always be a representative, unless first slot
+      if turtle.compareTo(getRep(a, true) or 1) and turtle.getItemCount(i) > 0 then --There should always be a representative, unless first slot
         slotTypes[i] = a
         print("Compares to ",a)
         compares = true
@@ -178,11 +196,10 @@ function assignTypes(initial) --This gives all items names, if not initial, will
   turtle.select(1)
   --types = currType
 end
-function getNumType(which)
+function countType(which)
   local num = 0
-  turtle.select(getRep(typeTable[which] or which))
   for i=1, 16 do
-    if turtle.compareTo(i) then
+    if slotTypes[i] == which then
       num = num + turtle.getItemCount(i)
     end
   end
@@ -191,6 +208,7 @@ end
 
 
 function mineTree()
+  print("Beginning Mine Tree") --Debug
   local moveDown = 0
   forward()
   atHome = false
@@ -205,7 +223,8 @@ function mineTree()
   atHome = true
 end
 function placeSapling()
-  local currSlot = getRep(typeTable.sapling) or getMaterials("sapling")
+  print("Beginning Place Sapling")
+  local currSlot = getRep(typesTable.sapling.typeNum) or getMaterials("sapling")
   turtle.select(currSlot) --If no saplings, get some saplings/wait
   if not turtle.place() then
     local k = not(dig(false)) or turtle.place() or print("Cannot place sapling, please fix") --Unexpected symbol crap --Digs without adding tries again, then prints that place failed
@@ -215,19 +234,28 @@ function placeSapling()
   end
 end
 function useBonemeal()
-  while true do
-    for i=1, 10 do
-      local currSlot = getRep(typeTable.bonemeal) or getMaterials("bonemeal")
-      turtle.select(currSlot)
-      turtle.place()
-      if turtle.getItemCount(currSlot) == 0 then 
-        slotTypes[currSlot] = 0
-      end
+  print("Beginning Use Bonemeal")
+  local count = 0
+  repeat
+    local currSlot = getRep(typesTable.bonemeal.typeNum) or getMaterials("bonemeal")
+    turtle.select(currSlot)
+    local test = turtle.place()
+    if test then
+      count = count + 1
     end
-    return true
-    --[[turtle.select(getRep(typeTable.sapling)) --This doesn't work because turtle.compare doesn't work with bonemealed saplings
-    if not turtle.compare() then return true end]]
+    if turtle.getItemCount(currSlot) == 0 then 
+      slotTypes[currSlot] = 0
+    end
+  until not test
+  if count == 0 then --If this happens, then its actually hitting trees, not saplings
+    print("Bonemeal place failed something's wrong")
+    print("Refreshing inventory")
+    dig(false) --Kill tree, no counting
+    getMaterials("sapling", true) --Get more saplings, this will also force a recount
+    getMaterials("bonemeal", true) --Actually, it might mean that bonemeal was misidentified too. Better get fresh
   end
+    --[[turtle.select(getRep(typesTable.sapling.typeNum)) --This doesn't work because turtle.compare doesn't work with bonemealed saplings
+    if not turtle.compare() then return true end --This would have been in a while true do loop]]
 end
 local facingTable = {}
 do --This will be so I have all the info I need for dropping and sucking.
@@ -244,13 +272,13 @@ end
 function getMaterials(what, forceWait) --This function will get materials from a certain place
   turtle.select(1) --So materials go in in the first available spot
   local toFace, forceWait = facing, forceWait or insistOnStock
-  local facingInfo = facingTable[materialsTable[what]] --This table contains direction specific functions, since use is the same
+  local facingInfo = facingTable[typesTable[what].side] --This table contains direction specific functions, since use is the same
   turnTo(facingInfo.number) --Eg: facingTable[materialsTable["sapling"]].number --> facingTable["left"].number --> 3
   local doWait = false
   while not facingInfo.detect() do
     doWait = true
     screenSet()
-    print("Waiting for ",what," chest to be placed on ", materialsTable[what])
+    print("Waiting for ",what," chest to be placed on ", typesTable[what].side)
     sleep(2)
   end
   if doWait then
@@ -258,12 +286,14 @@ function getMaterials(what, forceWait) --This function will get materials from a
     os.pullEvent("char")
   end
   local snapshot = getInvTable() --Done to compare inventory
-  local numObtained = 0
-  while numObtained < restock[what] do
+  local numObtained = countType(typesTable[what].typeNum)
+  local hasSucked = not forceWait --If forceWait is true, we want to make sure it sucks at least one stack, for flushing purposes.
+  while numObtained < restock[what] and not hasSucked do
     local a = countChange(facingInfo.suck)
     if a ~= 0 then
       numObtained = numObtained + a
       print("Obtained ",numObtained,"/",restock[what]," ",what)
+      hasSucked = true
     else
       if forceWait then
         print("Suck failed, no more ",what,"?")
@@ -273,43 +303,47 @@ function getMaterials(what, forceWait) --This function will get materials from a
       end
     end
   end
-  local currType = typeTable[what]
-  for a,b in ipairs(getChangedSlots(getInvTable(), snapshot)) do
+  local currType = typesTable[what].typeNum
+  local changedTable = getChangedSlots(getInvTable(), snapshot)
+  for a,b in ipairs(changedTable) do
     slotTypes[b] = currType
   end
-  assignTypes(false)
+  local tempTable = {}
+  tempTable[typesTable[what].typeNum] = changedTable[1] --Doesn't even matter if nil. Nil means no override.
+  assignTypes(false, unpack(tempTable)) --This call overrides whatever it just got as the proper type
   turnTo(toFace)
-  return (getRep(typeTable[what]) or getMaterials(what, true))
+  return (getRep(typesTable[what].typeNum) or getMaterials(what, true))
 end
 function dropMaterials(what, doAdd)
   local toFace = facing
   doAdd = doAdd or true
-  local facingInfo = facingTable[materialsTable[what]] --This table contains direction specific functions, since use is the same
+  local facingInfo = facingTable[typesTable[what].side] --This table contains direction specific functions, since use is the same
   turnTo(facingInfo.number) --Eg: facingTable[materialsTable["sapling"]].number --> facingTable["left"].number --> 3
+  assignTypes(false) --This will catch any saplings and things that get picked up along the way
   while not facingInfo.detect() do
     screenSet()
-    print("Waiting for ",what," chest to be placed on ", materialsTable[what])
+    print("Waiting for ",what," chest to be placed on ", typesTable[what].side)
     sleep(2)
   end
   for i=1, 16 do
-    if slotTypes[i] == typeTable[what] and turtle.getItemCount(i) > 0 then
+    if slotTypes[i] == typesTable[what].typeNum and turtle.getItemCount(i) > 0 then
       turtle.select(i)
-      local dropped = false
+      local hasDropped = false
       repeat
-        local curr = turtle.getItemCount(i)
-        local amount = countChange(facingInfo.drop, curr)
+        local currItems = turtle.getItemCount(i)
+        local amount = countChange(facingInfo.drop, currItems)
         if doAdd then
-          numDropped = numDropped + amount --This is the global
+          dropped = dropped + amount --This is the global
         end
         print("Dropped ",amount," ",what)
-        if amount >= curr then 
-          dropped = true
+        if amount >= currItems then 
+          hasDropped = true
         else 
           screenSet(1,1)
-          print("Cannot drop ",what," on ",materialsTable[what], " side")
+          print("Cannot drop ",what," on ",typesTable[what].side, " side")
           sleep(2)
         end
-      until dropped
+      until hasDropped
       slotTypes[i] = 0
     end
   end
@@ -334,7 +368,7 @@ assignTypes(true) --Initial assign types
 
 --Main Loop
 while true do
-if turtle.detect() then mineTree() end --Dig out the tree
+  if turtle.detect() then mineTree() end --Dig out the tree
   placeSapling() --Place a sapling
   useBonemeal() --Use the bonemeal
   if isFull() then --If inventory is full, drop it
