@@ -20,13 +20,25 @@ More ideas:
  numCut = 0 --Trees cut
  dropped = 0 --Wood/things dropped off
  slotTypes = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
- typesTable = {}
  numTypes = 2 --Used in assign types function
  restock = {sapling = 64 * 2, bonemeal = 64*4}
  keepOpen = 5
  atHome = true --Whether or not its in its home spot
+
+ typesTable = {}
 do local function assignValues(name, typeNum, side) typesTable[name] = {typeNum = typeNum, side = side} end
   assignValues("sapling", 1, "left"); assignValues("bonemeal",2, "right"); assignValues("wood", 0, "back")
+end
+ highScores = {tree = {0,0}, bonemeal = {0,0}}
+local function registerScore(what, score)
+  if not highScores[what] then
+    highScores[what] = {1, score}; return
+  end
+  local a = highScores[what]
+  a[1] = a[1] + 1
+  if score > a[2] then
+    a[2] = score
+  end
 end
  
 --Misc functions
@@ -64,9 +76,17 @@ function screenSet(x, y)
   term.setCursorPos(x,y)
 end
 function display()
-  --[[screenSet(1,1)
+  screenSet(1,1)
   print("Fuel: ",turtle.getFuelLevel())
-  print("I couldn't really think of anything else to put here...")]]
+  print("Blocks Cut: ",cut)
+  print("Blocks Dropped Off: ",dropped)
+  print("Current # Wood: ", countType(0))
+  print("Current # Saplings: ",countType(1))
+  print("Current # Saplings: ",countType(2))
+  print("Highest Tree: ",highScores.tree[2])
+  print("Number of Trees Cut: ",highScores.tree[1])
+  print("Bonemeal High Score: ",highScores.bonemeal[2])
+  print("Number of Bonemeal Uses: ",highScores.bonemeal[1])
 end
 function fromBoolean(input) --Like a calculator
 if input then return 1 end
@@ -208,7 +228,6 @@ end
 
 
 function mineTree()
-  print("Beginning Mine Tree") --Debug
   local moveDown = 0
   forward()
   atHome = false
@@ -216,6 +235,7 @@ function mineTree()
     up()
     moveDown = moveDown + 1
   end
+  registerScore("tree",moveDown-1) -- -1 because goes up extra
   for i=1, moveDown do
     down()
   end
@@ -223,18 +243,18 @@ function mineTree()
   atHome = true
 end
 function placeSapling()
-  print("Beginning Place Sapling")
+  print(typesTable.sapling.typeNum)
+  print(getRep(typesTable.sapling.typeNum))
   local currSlot = getRep(typesTable.sapling.typeNum) or getMaterials("sapling")
   turtle.select(currSlot) --If no saplings, get some saplings/wait
   if not turtle.place() then
     local k = not(dig(false)) or turtle.place() or print("Cannot place sapling, please fix") --Unexpected symbol crap --Digs without adding tries again, then prints that place failed
-    if turtle.getItemCount(currSlot) == 0 then
-      slotTypes[currSlot] = 0
-    end
+  end
+  if turtle.getItemCount(currSlot) == 0 then
+    slotTypes[currSlot] = 0
   end
 end
 function useBonemeal()
-  print("Beginning Use Bonemeal")
   local count = 0
   repeat
     local currSlot = getRep(typesTable.bonemeal.typeNum) or getMaterials("bonemeal")
@@ -247,6 +267,7 @@ function useBonemeal()
       slotTypes[currSlot] = 0
     end
   until not test
+  registerScore("bonemeal", count)
   if count == 0 then --If this happens, then its actually hitting trees, not saplings
     print("Bonemeal place failed something's wrong")
     print("Refreshing inventory")
@@ -270,6 +291,7 @@ do --This will be so I have all the info I need for dropping and sucking.
   newEntry("back", 2, turtle.drop, turtle.suck, turtle.detect)
 end
 function getMaterials(what, forceWait) --This function will get materials from a certain place
+  print("Getting ",what)
   turtle.select(1) --So materials go in in the first available spot
   local toFace, forceWait = facing, forceWait or insistOnStock
   local facingInfo = facingTable[typesTable[what].side] --This table contains direction specific functions, since use is the same
@@ -315,6 +337,7 @@ function getMaterials(what, forceWait) --This function will get materials from a
   return (getRep(typesTable[what].typeNum) or getMaterials(what, true))
 end
 function dropMaterials(what, doAdd)
+  print("Dropping off ",what)
   local toFace = facing
   doAdd = doAdd or true
   local facingInfo = facingTable[typesTable[what].side] --This table contains direction specific functions, since use is the same
