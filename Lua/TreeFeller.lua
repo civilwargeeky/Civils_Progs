@@ -1,17 +1,14 @@
 --Single Tree-Cutter
---Version 0.1.0
+--Version 1.0.0
 --Made by Civilwargeeky, at the request of Mr. Hohenheim
 --Idea, if mod that lets see inv, then check if things are bonemeal/saplings
 --[[
-More ideas:
   If wanting to save progress, you need these:
     slotTypes
     facing
     atHome
   On startup, if not at home, go down until you are level, then back one
   Also on startup, turnTo 0
-  
-  MAKE IT SO ON ITEM RESTOCK, MATCHING ITEMS AND MATCHING ITEMS ONLY ARE PROPERLY MARKED
   ]]
 
 
@@ -21,13 +18,13 @@ More ideas:
  dropped = 0 --Wood/things dropped off
  slotTypes = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
  numTypes = 2 --Used in assign types function
- restock = {sapling = 64 * 2, bonemeal = 64*4}
+ restock = {saplings = 64 * 2, bonemeal = 64*4}
  keepOpen = 5
  atHome = true --Whether or not its in its home spot
 
  typesTable = {}
 do local function assignValues(name, typeNum, side) typesTable[name] = {typeNum = typeNum, side = side} end
-  assignValues("sapling", 1, "left"); assignValues("bonemeal",2, "right"); assignValues("wood", 0, "back")
+  assignValues("saplings", 1, "left"); assignValues("bonemeal",2, "right"); assignValues("wood", 0, "back")
 end
  highScores = {tree = {}, bonemeal = {}}
 local function registerScore(what, score)
@@ -211,7 +208,7 @@ function assignTypes(initial, ...) --This gives all items names, if not initial,
         break
       end
     end
-    if turtle.getItemCount(i) > 0 and initial and not compares and currType < 2 then --I don't care about the slot if its not a sapling/bonemeal
+    if turtle.getItemCount(i) > 0 and initial and not compares and currType < 2 then --I don't care about the slot if its not a saplings/bonemeal
       currType = currType + 1
       slotTypes[i] = currType
       print("Slot ",i," Has New Item Type ",currType)
@@ -258,7 +255,7 @@ function mineTree()
       assignTypes(false, unpack(tab)) --Saplings are probably in there somewhere
     else
       print("Assuming no saplings, going for more to compare")
-      getMaterials("sapling")
+      getMaterials("saplings")
     end
   else
     registerScore("tree",moveDown-1) -- -1 because goes up extra
@@ -266,10 +263,10 @@ function mineTree()
   atHome = true
 end
 function placeSapling()
-  local currSlot = getRep(typesTable.sapling.typeNum) or getMaterials("sapling")
+  local currSlot = getRep(typesTable.saplings.typeNum) or getMaterials("saplings")
   turtle.select(currSlot) --If no saplings, get some saplings/wait
   if not turtle.place() then
-    local k = not(dig(false)) or turtle.place() or error("Cannot place sapling, something broke") --Unexpected symbol crap --Digs without adding tries again, then prints that place failed
+    local k = not(dig(false)) or turtle.place() or error("Cannot place saplings, something broke") --Unexpected symbol crap --Digs without adding tries again, then prints that place failed
   end
   if turtle.getItemCount(currSlot) == 0 then
     slotTypes[currSlot] = 0
@@ -294,7 +291,7 @@ function useBonemeal()
     print("Refreshing inventory")
     --[[print(textutils.serialize(slotTypes))
         os.pullEvent("char")]]
-    getMaterials("sapling", true) --Get more saplings, this will also force a recount
+    getMaterials("saplings", true) --Get more saplings, this will also force a recount
 --[[print(textutils.serialize(slotTypes))
         os.pullEvent("char")]]
     getMaterials("bonemeal", true) --Actually, it might mean that bonemeal was misidentified too. Better get fresh
@@ -303,7 +300,7 @@ function useBonemeal()
   else
     registerScore("bonemeal", count)
   end
-    --[[turtle.select(getRep(typesTable.sapling.typeNum)) --This doesn't work because turtle.compare doesn't work with bonemealed saplings
+    --[[turtle.select(getRep(typesTable.saplings.typeNum)) --This doesn't work because turtle.compare doesn't work with bonemealed saplings
     if not turtle.compare() then return true end --This would have been in a while true do loop]]
 end
 local facingTable = {}
@@ -324,7 +321,7 @@ function getMaterials(what, forceWait) --This function will get materials from a
   local toFace = facing
   if forceWait == nil then forceWait = insistOnStock end
   local facingInfo = facingTable[typesTable[what].side] --This table contains direction specific functions, since use is the same
-  turnTo(facingInfo.number) --Eg: facingTable[materialsTable["sapling"]].number --> facingTable["left"].number --> 3
+  turnTo(facingInfo.number) --Eg: facingTable[materialsTable["saplings"]].number --> facingTable["left"].number --> 3
   local doWait = false
   while not facingInfo.detect() do
     doWait = true
@@ -370,7 +367,7 @@ function dropMaterials(what, doAdd)
   local toFace = facing
   if doAdd == nil then doAdd = true end
   local facingInfo = facingTable[typesTable[what].side] --This table contains direction specific functions, since use is the same
-  turnTo(facingInfo.number) --Eg: facingTable[materialsTable["sapling"]].number --> facingTable["left"].number --> 3
+  turnTo(facingInfo.number) --Eg: facingTable[materialsTable["saplings"]].number --> facingTable["left"].number --> 3
   assignTypes(false) --This will catch any saplings and things that get picked up along the way
   while not facingInfo.detect() do
     screenSet()
@@ -422,23 +419,29 @@ end
 
 --Initial
 assignTypes(true) --Initial assign types
-if countType(typesTable.sapling.typeNum) == 0 then
-  getMaterials("sapling",true)
+if countType(typesTable.saplings.typeNum) == 0 then
+  getMaterials("saplings",true)
 end
 if countType(typesTable.bonemeal.typeNum) == 0 then
   getMaterials("bonemeal", true)
+end
+if countType(typesTable.saplings.typeNum) > restock.saplings then
+  dropMaterials("saplings", false)
+end
+if countType(typesTable.bonemeal.typeNum) > restock.bonemeal then
+  dropMaterials("bonemeal", false)
 end
 
 --Main Loop
 while true do
   if turtle.detect() then mineTree() end --Dig out the tree
-  placeSapling() --Place a sapling
+  placeSapling() --Place a saplings
   useBonemeal() --Use the bonemeal
   if isFull() then --If inventory is full, drop it
     dropMaterials("wood")
   end
-  if countType(typesTable.sapling.typeNum) > restock.sapling then
-    dropMaterials("sapling", false)
+  if countType(typesTable.saplings.typeNum) > restock.saplings then
+    dropMaterials("saplings", false)
   end
   if countType(typesTable.bonemeal.typeNum) > restock.bonemeal then
     dropMaterials("bonemeal", false)
