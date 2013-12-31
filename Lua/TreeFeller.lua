@@ -29,16 +29,21 @@ More ideas:
 do local function assignValues(name, typeNum, side) typesTable[name] = {typeNum = typeNum, side = side} end
   assignValues("sapling", 1, "left"); assignValues("bonemeal",2, "right"); assignValues("wood", 0, "back")
 end
- highScores = {tree = {0,0}, bonemeal = {0,0}}
+ highScores = {tree = {}, bonemeal = {}}
 local function registerScore(what, score)
-  if not highScores[what] then
-    highScores[what] = {1, score}; return
+  if highScores[what][1] == nil then --Initialize table
+    highScores[what] = {0, 0, tally = {}}
   end
   local a = highScores[what]
   a[1] = a[1] + 1
   if score > a[2] then
     a[2] = score
   end
+  if not a.tally[score] then 
+    a.tally[score] = 1
+  else
+    a.tally[score] = a.tally[score] + 1
+  end --Give every time something happens a tally too
 end
  
 --Misc functions
@@ -87,6 +92,7 @@ function display()
   print("Number of Trees Cut: ",highScores.tree[1])
   print("Bonemeal High Score: ",highScores.bonemeal[2])
   print("Number of Bonemeal Uses: ",highScores.bonemeal[1])
+  print("Tree height tallys: ",textutils.serialize(highScores.tree.tally))
 end
 function fromBoolean(input) --Like a calculator
 if input then return 1 end
@@ -99,7 +105,7 @@ end
 --Custom movement related local functions
 function genericTurn(func, toAdd)
   local toRet = func()
-    facing = coterminal(facing + toAdd)
+  facing = coterminal(facing + toAdd)
   return toRet
 end
 function right()
@@ -125,7 +131,6 @@ function genericDig(func, doAdd)
     if doAdd then 
       cut = cut + 1
     end
-    display()
     return true
   end
   return false
@@ -143,6 +148,7 @@ function genericMove(move, dig, attack, force)
     else print("Move Failed"); sleep(1)
     end
   end
+  display()
   return true
 end
 function forward(force)
@@ -200,7 +206,7 @@ function assignTypes(initial, ...) --This gives all items names, if not initial,
     for a=1, currType do
       if turtle.compareTo(getRep(a, true) or 1) and turtle.getItemCount(i) > 0 then --There should always be a representative, unless first slot
         slotTypes[i] = a
-        print("Compares to ",a)
+        print("Slot ", i," Compares to Type ",a)
         compares = true
         break
       end
@@ -208,7 +214,7 @@ function assignTypes(initial, ...) --This gives all items names, if not initial,
     if turtle.getItemCount(i) > 0 and initial and not compares and currType < 2 then --I don't care about the slot if its not a sapling/bonemeal
       currType = currType + 1
       slotTypes[i] = currType
-      print("New Item ",currType)
+      print("Slot ",i," Has New Item Type ",currType)
     end
     if not initial and not compares then
       slotTypes[i] = 0
@@ -220,6 +226,9 @@ end
 function countType(which)
   local num = 0
   for i=1, 16 do
+    if turtle.getItemCount(i) == 0 then
+      slotTypes[i] = 0
+    end
     if slotTypes[i] == which then
       num = num + turtle.getItemCount(i)
     end
@@ -279,11 +288,10 @@ function useBonemeal()
       slotTypes[currSlot] = 0
     end
   until not test
-  registerScore("bonemeal", count)
-  if count == 0 then --If this happens, then its actually hitting trees, not saplings
+  if count == 0 then --If this happens, then its actually hitting/using trees, not saplings
+    dig(false) --Kill tree, no counting
     print("Bonemeal place failed something's wrong")
     print("Refreshing inventory")
-    dig(false) --Kill tree, no counting
     --[[print(textutils.serialize(slotTypes))
         os.pullEvent("char")]]
     getMaterials("sapling", true) --Get more saplings, this will also force a recount
@@ -292,6 +300,8 @@ function useBonemeal()
     getMaterials("bonemeal", true) --Actually, it might mean that bonemeal was misidentified too. Better get fresh
 --[[print(textutils.serialize(slotTypes))
         os.pullEvent("char")]]
+  else
+    registerScore("bonemeal", count)
   end
     --[[turtle.select(getRep(typesTable.sapling.typeNum)) --This doesn't work because turtle.compare doesn't work with bonemealed saplings
     if not turtle.compare() then return true end --This would have been in a while true do loop]]
@@ -368,18 +378,18 @@ function dropMaterials(what, doAdd)
     sleep(2)
   end
   local currDropped = 0
-  for i=1, 16 do
+  for i=16, 1, -1 do
     if slotTypes[i] == typesTable[what].typeNum and turtle.getItemCount(i) > 0 then
       turtle.select(i)
       local hasDropped = false
       repeat
         local currItems = turtle.getItemCount(i)
         local amount = countChange(facingInfo.drop, currItems)
+        currDropped = currDropped + amount
         if doAdd then
-          currDropped = currDropped + amount
           dropped = dropped + amount --This is the global
         end
-        print("Dropped ",amount," ",what,". ",currDropped, "total")
+        print("Dropped ",amount," ",what,". ",currDropped, " total")
         if amount >= currItems then 
           hasDropped = true
         else 
@@ -389,6 +399,9 @@ function dropMaterials(what, doAdd)
         end
       until hasDropped
       slotTypes[i] = 0
+      if countType(typesTable[what].typeNum) <= (restock[what] or 0) then
+        break
+      end
     end
   end
   turnTo(toFace)
@@ -423,5 +436,11 @@ while true do
   useBonemeal() --Use the bonemeal
   if isFull() then --If inventory is full, drop it
     dropMaterials("wood")
+  end
+  if countType(typesTable.sapling.typeNum) > restock.sapling then
+    dropMaterials("sapling", false)
+  end
+  if countType(typesTable.bonemeal.typeNum) > restock.bonemeal then
+    dropMaterials("bonemeal", false)
   end
 end
