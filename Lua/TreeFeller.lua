@@ -217,12 +217,11 @@ end
 function useBonemeal()
   while true do
     for i=1, 10 do
-      local slot = getRep(typeTable.bonemeal)
-      if not slot then return false end
-      turtle.select(slot)
+      local currSlot = getRep(typeTable.bonemeal) or getMaterials("bonemeal")
+      turtle.select(currSlot)
       turtle.place()
-      if turtle.getItemCount(slot) == 0 then 
-        slotTypes[slot] = 0
+      if turtle.getItemCount(currSlot) == 0 then 
+        slotTypes[currSlot] = 0
       end
     end
     return true
@@ -242,9 +241,9 @@ do --This will be so I have all the info I need for dropping and sucking.
   newEntry("right", 1, turtle.drop, turtle.suck, turtle.detect)
   newEntry("back", 2, turtle.drop, turtle.suck, turtle.detect)
 end
-function getMaterials(what) --This function will get materials from a certain place
+function getMaterials(what, forceWait) --This function will get materials from a certain place
   turtle.select(1) --So materials go in in the first available spot
-  local toFace = facing
+  local toFace, forceWait = facing, forceWait or insistOnStock
   local facingInfo = facingTable[materialsTable[what]] --This table contains direction specific functions, since use is the same
   turnTo(facingInfo.number) --Eg: facingTable[materialsTable["sapling"]].number --> facingTable["left"].number --> 3
   local doWait = false
@@ -280,7 +279,7 @@ function getMaterials(what) --This function will get materials from a certain pl
   end
   assignTypes(false)
   turnTo(toFace)
-  return getRep(typeTable[what])
+  return (getRep(typeTable[what]) or getMaterials(what, true))
 end
 function dropMaterials(what, doAdd)
   local toFace = facing
@@ -337,10 +336,7 @@ assignTypes(true) --Initial assign types
 while true do
 if turtle.detect() then mineTree() end --Dig out the tree
   placeSapling() --Place a sapling
-  if not useBonemeal() then --Use the bonemeal
-    turtle.select(getMaterials("bonemeal"))
-    useBonemeal()
-  end
+  useBonemeal() --Use the bonemeal
   if isFull() then --If inventory is full, drop it
     dropMaterials("wood")
   end
