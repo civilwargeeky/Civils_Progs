@@ -45,15 +45,15 @@ function getChangedSlots(input1, input2)
   return toRet
 end
 function countChange(func, num)
-  local snapshot = getInvTable()
+  local snapshot, changed = getInvTable(), 0
   func(num)
   local ending = getInvTable()
   for i=1,16 do
     if snapshot[i] ~= ending[i] then
-      return math.abs(snapshot[i]-ending[i])
+      changed = changed + math.abs(snapshot[i]-ending[i])
     end
   end
-  return false
+  return changed
 end
 function screenSet(x, y)
   x, y = x or 1, y or 1
@@ -261,11 +261,11 @@ function getMaterials(what, forceWait) --This function will get materials from a
   local numObtained = 0
   while numObtained < restock[what] do
     local a = countChange(facingInfo.suck)
-    if a then
+    if a ~= 0 then
       numObtained = numObtained + a
       print("Obtained ",numObtained,"/",restock[what]," ",what)
     else
-      if insistOnStock then
+      if forceWait then
         print("Suck failed, no more ",what,"?")
         sleep(4)
       else
@@ -297,7 +297,7 @@ function dropMaterials(what, doAdd)
       local dropped = false
       repeat
         local curr = turtle.getItemCount(i)
-        local amount = countChange(facingInfo.drop, curr) or 0
+        local amount = countChange(facingInfo.drop, curr)
         if doAdd then
           numDropped = numDropped + amount --This is the global
         end
