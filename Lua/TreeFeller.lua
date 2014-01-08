@@ -418,15 +418,16 @@ function isFull()
 end
 
 --Initial
+--Session persistence stuff and loading goes here
 assignTypes(true) --Initial assign types
 if countType(typesTable.saplings.typeNum) == 0 then
   getMaterials("saplings",true)
 end
-if countType(typesTable.bonemeal.typeNum) == 0 then
-  getMaterials("bonemeal", true)
-end
 if countType(typesTable.saplings.typeNum) > restock.saplings then
   dropMaterials("saplings", false)
+end
+if countType(typesTable.bonemeal.typeNum) == 0 then
+  getMaterials("bonemeal", true)
 end
 if countType(typesTable.bonemeal.typeNum) > restock.bonemeal then
   dropMaterials("bonemeal", false)
@@ -437,13 +438,13 @@ while true do
   if turtle.detect() then mineTree() end --Dig out the tree
   placeSapling() --Place a saplings
   useBonemeal() --Use the bonemeal
-  if isFull() then --If inventory is full, drop it
-    dropMaterials("wood")
-  end
   if countType(typesTable.saplings.typeNum) > restock.saplings then
     dropMaterials("saplings", false)
   end
   if countType(typesTable.bonemeal.typeNum) > restock.bonemeal then
     dropMaterials("bonemeal", false)
+  end
+  if isFull() then --If inventory is full, drop it
+    dropMaterials("wood")
   end
 end
