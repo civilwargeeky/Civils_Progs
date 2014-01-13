@@ -7,7 +7,11 @@ For session persistence, you probably only need to save what monitor and what tu
 
 local debug = true
 
---All UI and monitor finding go here.
+
+local sendChannel, receiveChannel, modemSide
+local respondMessage = "Turtle Quarry Receiver"
+
+--All UI, handshaking, and monitor finding go here.
 
 
 --Temp:
@@ -133,7 +137,7 @@ local function tryAdd(text, color, ...) --This will try to add text if Y dimensi
   end
   if #text > sizes[screenSize[1]][1] then return false else return true end
 end
-
+local extraLine --This is used in display and set in commandSender
 function display()
   local str = tostring
   toPrint = {} --Reset table
@@ -184,21 +188,67 @@ function display()
   
   end
 
+  local pos = {mon.getCursorPos()} --Record pos so it can be reset
   reset(colors.black)
   for a, b in ipairs(toPrint) do
     say(b.text, b.color)
+  end
+  if extraLine then
+    mon.setCursorPos(1,dim[2])
+    say(extraLine[1],extraLine[2])
+  end
+  mon.setCursorPos(pos[1], pos[2]) --Reset pos for command sender
+  
+  while true do --I want specific events
+    event = os.pullEvent() --This should wait for any event to update. Function rednet queues an event once info is set
+    if event == "monitor_resize" then
+      setSize(); break
+    elseif event == "updateScreen" or (debug and event == "char") then
+      break
+    end
   end
   
 end
 
 display()
 
+local messageToSend --This will be a command string sent to turtle
+
 function rednet()
 --Will send rednet message to send if it exists, otherwise sends default message.
+  local event, sideCheck, receiveCheck, sendCheck, message, distance = os.pullEvent("modem_message")
+  if side == sideCheck and receiveCheck == receiveChannel and sendCheck == sendChannel then
+    rec = textutils.unserialize(message) or {}
+    if rec then
+      os.queueEvent("updateScreen") --Tell display that there is new information
+    else
+      print("IMPROPER MESSAGE RECEIVED")
+      if debug then error("expected Table, got "..message) end
+    end
+    
+    local toSend
+    if messageToSend then
+      toSend = messageToSend
+      messageToSend = nil
+    else
+      toSend = respondMessage
+    end
+    modem.transmit(sendChannel, receiveChannel, toSend)
+  else
+    print("Message is not in proper order") --Maybe here do something about other channels?
+    if debug then error("improper message received") end
+  end
 end
 
-local rednetMessageToSend --This will be a command string sent to turtle
+
 
 function commandSender()
-
+  if screenSize.isComputer or screenSize.isTurtle then
+    extraLine = {"Command: ", colors.lightBlue}
+    mon.setCursorPos(#extraLine[1]+1, dim[2])
+    messageToSend = input()
+    os.queueEvent("updateScreen") --Update Screen
+  else
+    extraLine = nil
+  end
 end
