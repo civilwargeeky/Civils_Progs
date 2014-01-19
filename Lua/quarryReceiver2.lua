@@ -7,7 +7,7 @@ For session persistence, you probably only need to save what monitor and what tu
 
 local debug = true
 
-local mon, modem
+local mon, modem, sendChannel, receiveChannel
 local currBackgroundColor = colors.black
 local currTextColor = colors.white
 local function setTextColor(color)
@@ -159,14 +159,15 @@ print("Waiting for turtle message")
 repeat
   local event, modemSide, recCheck, sendCheck, message, distance = os.pullEvent("modem_message")
   if debug then print("Message Received") end
-  if message == expectedMessage then
-    break --Temp
-  
+  if message == expectedMessage and recCheck == receiveChannel and modemSide == periphSides.modem then
+    sendChannel = sendCheck
+    modem.transmit(recieveChannel, sendChannel, respondMessage)
+    print("Successfully paired, sending back on channel ",sendChannel)
   else
     if debug then print("Invalid message received: ",message) end
   end
   
-until sendingChannel --This will be assigned when message is received
+until sendChannel --This will be assigned when message is received
 
 
 
@@ -184,6 +185,7 @@ Items to add:
 +Number of blocks moved
 +If going to next layer, if going back to start, if it home position.
 +Any errors, like chest is full or something.
+Distance to turtle might be cool
 ]]
 --[[
 Needed Fields:
@@ -470,4 +472,4 @@ function commandSender()
 end
 
 ------------------------------------------
-parallel.waitForAny(display, rednetHandler, commandSender)
+--parallel.waitForAny(display, rednetHandler, commandSender)
