@@ -35,7 +35,7 @@ local function copyTable(tab)
   end
   return toRet
 end
-local function assertChannel(num)
+local function checkChannel(num)
   if 1 <= num and num <= 65535 then
     return num
   end
@@ -43,10 +43,25 @@ end
 
 --Initializing Variables
 local sendChannel, receiveChannel
-local varSides = {monitor = nil, modem = nil}
+local periphSides = {monitor = nil, modem = nil}
 local expectedMessage = "Civil's Quarry"
 local respondMessage = "Turtle Quarry Receiver"
 local sides = swapKeyValue({"top","bottom","right","left","front","back"}) --This allows sides[1] and sides.front
+--tArgs and peripheral list init
+local tArgs = {...}
+local tArgsWithUpper = swapKeyValue(copyTable(tArgs))
+for a, b in pairs(tArgs) do --Lower arguments
+  tArgs[a] = string.lower(b)
+end
+tArgs = swapKeyValue(tArgs)
+local foundSides = {}
+for a, b in pairs(sides) do
+  if type(a) == "string" then
+    foundSides[a] = peripheral.getType(a)
+  end
+end
+foundSides = swapKeyValue(foundSides)
+
 --Size functions
 local sizes = {monitor = {51, 19}, turtle = {39,13}, {7, 5}, {18, 12}, {29, 19}, 39, 50} --Monitor dimensions
 local sizesEnum = {small = 1, medium = 2, large = 3, monitor = 4, turtle = 5} --For reference
@@ -76,82 +91,79 @@ local function setSize()
   end
 end
 
---tArgs and peripheral list init
-local tArgs = {...}
-local tArgsWithUpper = swapKeyValue(copyTable(tArgs))
-for a, b in pairs(tArgs) do --Lower arguments
-  tArgs[a] = string.lower(b)
-end
-tArgs = swapKeyValue(tArgs)
-local peripherals = {}
-for a, b in pairs(sides) do
-  if type(a) == "string" then
-    peripherals[a] = peripheral.getType(a)
-  end
-end
-peripherals = swapKeyValue(peripherals)
-
 --Arguments and such
 local function getNext(str)
   return tArgs[tArgs[str]+1]
 end
 
 
---Note to self, split these up again. Modem goes in outer if, monitor goes in inner
-for _, a in pairs({"modem", "monitor"}) do --Its like literally the exact same thing
-  if tArgs["-"..a] then
-    if sides[getNext("-"..a)] then
-      varSides[a] = getNext("-"..a)
-    end
+if tArgs["-modem"] then
+  if sides[getNext("-modem")] then
+    periphSides["modem"] = getNext("-modem")
+  end
+else --This will check for a modem only if argument isn't specified
+  periphSides["modem"] = foundSides["modem"]
+end
+if tArgs["-monitor"] then
+  if sides[getNext("-monitor")] then --Checks if the argument following monitor is a valid side
+    periphSides.monitor = getNext("-monitor")
   else
-    varSides[a] = peripherals[a]
+    periphSides.monitor = foundSides.monitor --This differs from above so if no argument, will default to screen.
   end
 end
+
 if tArgs["-channel"] then
-  receiveChannel = assertChannel(getNext("-channel")) --This will be nil if it doesn't exist
+  receiveChannel = checkChannel(getNext("-channel")) --This will be nil if it doesn't exist
 end
 
 if debug then
-  print(textutils.serialize(peripherals))
-  print("Screen Side: ",monitorSide)
-  print("Modem Side: ",varSides[modem])
+  print(textutils.serialize(foundSides))
+  print("Screen Side: ",periphSides.monitor)
+  print("Modem Side: ",periphSides.modem)
   os.pullEvent("char")
 end
 
 
 --All UI, handshaking, and monitor finding go here.
 print("Welcome to Quarry Receiver!")
-while not varSides["modem"] do
-  write("Which side is the modem on?" )
+while peripheral.getType(periphSides["modem"]) ~= "modem" do
+  write("Which side is the modem on? " )
   local temp = read()
-  if peripheral.getType(temp:lower()) == "modem" then
-    varSides.modem = temp
+  if peripheral.getType(temp:lower()) == "modem" then --If the input side is a modem
+    periphSides.modem = temp
   else print("That side does not have a modem on it \n") end
 end
 while not receiveChannel do
   write("What channel? (Check turtle) ")
   local temp = tonumber(read()) or 0
-  if assertChannel(temp) then
+  if checkChannel(temp) then
     receiveChannel = temp
   end
 end
 
 --Init
-local a = peripheral.wrap(varSides.monitor)
-if a then
-  mon = a
+local a = peripheral.wrap(periphSides.monitor or "")
+if a then --If a is a valid monitor then
+  mon = a --Monitor variable is a
 else
-  mon = term
+  mon = term --Monitor variable is just the screen variable
 end
-modem = peripheral.wrap(varSides.modem)
+setSize()
+modem = peripheral.wrap(periphSides.modem)
 
 
 --Handshake
+print("Opening channel ",receiveChannel)
 modem.open(receiveChannel)
+print("Waiting for turtle message")
 repeat
   local event, modemSide, recCheck, sendCheck, message, distance = os.pullEvent("modem_message")
+  if debug then print("Message Received") end
   if message == expectedMessage then
+    break --Temp
   
+  else
+    if debug then print("Invalid message received: ",message) end
   end
   
 until sendingChannel --This will be assigned when message is received
@@ -418,7 +430,7 @@ end
 
 local messageToSend --This will be a command string sent to turtle
 
-function rednet()
+function rednetHandler()
 --Will send rednet message to send if it exists, otherwise sends default message.
   local event, sideCheck, receiveCheck, sendCheck, message, distance = os.pullEvent("modem_message")
   if side == sideCheck and receiveCheck == receiveChannel and sendCheck == sendChannel then
@@ -456,3 +468,6 @@ function commandSender()
     extraLine = nil
   end
 end
+
+------------------------------------------
+parallel.waitForAny(display, rednetHandler, commandSender)
