@@ -191,7 +191,7 @@ Distance to turtle might be cool
 Needed Fields:
 label
 percent
-relXPos,zPos,layersDone
+relxPos,zPos,layersDone
 x, z, layers
 openSlots
 mined
@@ -206,7 +206,7 @@ local rec = {
 label = "Quarry Bot",
 id = 5, 
 percent = 55,
-relXPos = 165,
+relxPos = 165,
 zPos = 200,
 layersDone = 111,
 x = 200,
@@ -221,6 +221,7 @@ isGoingToNextLayer = true,
 foundBedrock = true,
 fuel = 5000000000001515,
 volume = 200*201*202
+--Maybe add in some things like if going to then add a field
 }
 
 local typeColors = {}
@@ -307,7 +308,7 @@ function display()
     tryAdd(center(str(rec.percent).."%"), typeColors.pos, true) --I want it to be centered on 1x1
     
     tryAdd("--Pos--", typeColors.subtitle, false, true, true)
-    tryAdd("X:"..align(str(rec.relXPos), 5), typeColors.pos, true, true, true)
+    tryAdd("X:"..align(str(rec.relxPos), 5), typeColors.pos, true, true, true)
     tryAdd("Z:"..align(str(rec.zPos), 5), typeColors.pos , true, true, true)
     tryAdd("Y:"..align(str(rec.layersDone), 5), typeColors.pos , true, true, true)
     
@@ -345,7 +346,7 @@ function display()
     tryAdd(str(rec.percent).."% Complete", typeColors.pos , true, true, true) --This can be an example. Print (receivedMessage).percent in blue on all different screen sizes
     
     tryAdd("-------Pos--------", typeColors.subtitle, false, true, true)
-    tryAdd("X Coordinate:"..align(str(rec.relXPos), 5), typeColors.pos, true, true, true)
+    tryAdd("X Coordinate:"..align(str(rec.relxPos), 5), typeColors.pos, true, true, true)
     tryAdd("Z Coordinate:"..align(str(rec.zPos), 5), typeColors.pos , true, true, true)
     tryAdd("On Layer:"..align(str(rec.layersDone), 9), typeColors.pos , true, true, true)
     
@@ -380,7 +381,7 @@ function display()
     local var1 = math.max(#str(rec.x), #str(rec.z), #str(rec.layers))
     local var2 = (dim[1]-5-var1+3)/3
     print(var2)
-    tryAdd("Pos: "..align(" X:"..align(str(rec.relXPos),var1),var2)..align(" Z:"..align(str(rec.zPos),var1),var2)..align(" Y:"..align(str(rec.layersDone),var1),var2), typeColors.pos, true, true, true)
+    tryAdd("Pos: "..align(" X:"..align(str(rec.relxPos),var1),var2)..align(" Z:"..align(str(rec.zPos),var1),var2)..align(" Y:"..align(str(rec.layersDone),var1),var2), typeColors.pos, true, true, true)
     tryAdd("Size:"..align(" X:"..align(str(rec.x),var1),var2)..align(" Z:"..align(str(rec.z),var1),var2)..align(" Y:"..align(str(rec.layers),var1),var2), typeColors.dim, true, true, true)
     tryAdd("Volume: "..str(rec.volume), typeColors.dim, false, true, true)
     tryAdd("",nil, false, false, true)

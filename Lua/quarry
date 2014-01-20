@@ -1,5 +1,5 @@
 --[[ 
-Version 3.3.3
+Version 3.4.0
 Recent Changes:
   Fixed invert. Now works
   Fixed GPS. Now works
@@ -529,13 +529,11 @@ sleep(1.5)
 end
 local function biometrics(sendChannel)
 local commands = { Confirm = "Confirm" }
-local toSend = { ["x"] = x, ["y"] = (layers), ["z"] = z, --The y calc is weird...
-    ["xPos"] = xPos, ["yPos"] = yPos, ["zPos"] = zPos, 
-    ["percent"] = percent, ["mined" ]= mined, 
-    ["fuel"] = checkFuel(), ["moved"] = moved, 
-    ["remainingBlocks"] = (volume-mined), ["ID"] = os.getComputerID(),
-    ["isInPath"] = isInPath, --Whether it is going back to start
-    ["volume"] = volume, ["area"] = area}
+local toSend = { label = os.getComputerLabel(), id = os.getComputerID(),
+  percent = percent, relxPos = relxPos, zPos = zPos, 
+  layersDone = layersDone, x = x, z = z, layers = layers,
+  openSlots = getNumOpenSlots()
+  }
 modem.transmit(channels.send, channels.receive, textutils.serialize(toSend))
 id = os.startTimer(0.1)
 local event, message
@@ -944,6 +942,15 @@ if yPos < y then --Will go down after if above position
 end
 turnTo(toFace,"right")
 saveProgress()
+end
+function getNumOpenSlots()
+  local toRet = 0
+  for i=1, 16 do
+    if turtle.getItemCount(i) == 0 then
+      toRet = toRet + 1
+    end
+  end
+  return toRet
 end
 function drop(side, final, allowSkip)
 side = sides[side] or "front"    --The final number means that it will

@@ -61,18 +61,22 @@ Way in future: Add session persistence for setups
 
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 
-Quarry Version 3.3.4:
+Quarry Version 3.4.0:
 Changelog so far:
 
-Things to add for quarry version 3.3.5:
+Things to add for quarry version 3.4.0 (Rednet update):
+  Rednet support...
+
+Things to add for quarry version 3.4.1:
   Use "for" loops for gps location checking on successful backup read --Cosmetic Change
   Do some fuel checking for all your different variables and how they affect things
   Maybe check so that if position gotten from GPS is different from stored, remove event queue.
-  
-Things to add for quarry version 3.4.0 (Rednet update):
-  Rednet support...
-  "You could already do that if you want, though. Just put it in front of the chest and do "quarry -resume -manualPos 0 1 1 0". I'll add something like "-chestResume" or something as an alias for that, though.
-  Ooh, also, I could try out having an "-offset" parameter. Since it oftentimes is off by one position, this parameter would offset the position saved by 1 / -1 or whatever number you put in. Then people could help me test to make it better :)  "
+  Add in a "-atChest" parameter that resets position to 0,1,1,0 and rowCheck to right
+  See if you can change rowCheck "right" and "left" to true and false
+  Quotes: 
+    "You could already do that if you want, though. Just put it in front of the chest and do "quarry -resume -manualPos 0 1 1 0". I'll add something like "-chestResume" or something as an alias for that, though.
+    Ooh, also, I could try out having an "-offset" parameter. Since it oftentimes is off by one position, this parameter would offset the position saved by 1 / -1 or whatever number you put in. Then people could help me test to make it better :)  "
+
   
 Things to add for quarry version 3.5.0 (After rednet update and shell is done):
   Add support for mods. Like openperipheral chest finding.
