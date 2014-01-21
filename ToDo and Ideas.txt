@@ -63,6 +63,10 @@ Way in future: Add session persistence for setups
 
 Quarry Version 3.4.0:
 Changelog so far:
+  Changed "biometrics" function for new rednet
+  Added in a few different calls to it.
+  Added new parameter for goto: destination
+  Fixed bug where it would error if run on a computer
 
 Things to add for quarry version 3.4.0 (Rednet update):
   Rednet support...
@@ -73,6 +77,8 @@ Things to add for quarry version 3.4.1:
   Maybe check so that if position gotten from GPS is different from stored, remove event queue.
   Add in a "-atChest" parameter that resets position to 0,1,1,0 and rowCheck to right
   See if you can change rowCheck "right" and "left" to true and false
+  Suck it up and have bedrock just check if it detects a block. If you can't detect, its not bedrock.
+  Have sanity check just put the turtle back on track. Like go back to layer start or something. If it gets called, pos system is working fine.
   Quotes: 
     "You could already do that if you want, though. Just put it in front of the chest and do "quarry -resume -manualPos 0 1 1 0". I'll add something like "-chestResume" or something as an alias for that, though.
     Ooh, also, I could try out having an "-offset" parameter. Since it oftentimes is off by one position, this parameter would offset the position saved by 1 / -1 or whatever number you put in. Then people could help me test to make it better :)  "

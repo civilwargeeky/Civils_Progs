@@ -5,7 +5,8 @@ Ideas:
 For session persistence, you probably only need to save what monitor and what turtle to connect with.
 ]]
 
-local debug = true
+local debug = false
+local sloppyHandshake = true --If receiver can pick back up in the middle w/o handshake
 
 local mon, modem, sendChannel, receiveChannel
 local currBackgroundColor = colors.black
@@ -36,6 +37,7 @@ local function copyTable(tab)
   return toRet
 end
 local function checkChannel(num)
+  num = tonumber(num)
   if 1 <= num and num <= 65535 then
     return num
   end
@@ -67,13 +69,25 @@ local sizes = {monitor = {51, 19}, turtle = {39,13}, {7, 5}, {18, 12}, {29, 19},
 local sizesEnum = {small = 1, medium = 2, large = 3, monitor = 4, turtle = 5} --For reference
 local dim, screenSize
 local function setSize()
+  if mon == term or not mon.getCursorPos() then --You should be able to swap out screens
+    local a = peripheral.wrap(periphSides.monitor or "")
+    if a then --If a is a valid monitor then
+      mon = a --Monitor variable is a
+    else
+      mon = term --Monitor variable is just the screen variable
+    end
+  end
   screenSize = {}
-  dim = {mon.getSize()}
+  dim = {mon.getSize()} --Just pretend its large if it doesn't exist
   if dim[1] == sizes.monitor[1] and dim[2] == sizes.monitor[2] then
     screenSize.isComputer = true
+  else
+    screenSize.isComputer = false
   end
   if dim[1] == sizes.turtle[1] and dim[2] == sizes.turtle[2] then
     screenSize.isTurtle = true
+  else 
+    screenSize.isTurtle = false
   end
   for a=1, 2 do --X and Y
     for i=3, 1, -1 do --Different sizes 1 - 3
@@ -125,6 +139,8 @@ end
 
 
 --All UI, handshaking, and monitor finding go here.
+term.clear()
+term.setCursorPos(1,1)
 print("Welcome to Quarry Receiver!")
 while peripheral.getType(periphSides["modem"]) ~= "modem" do
   write("Which side is the modem on? " )
@@ -151,6 +167,12 @@ end
 setSize()
 modem = peripheral.wrap(periphSides.modem)
 
+if debug then
+  print("Is computer: ",screenSize.isComputer)
+  print("Is turtle: ",screenSize.isTurtle)
+  os.pullEvent("char")
+end
+
 
 --Handshake
 print("Opening channel ",receiveChannel)
@@ -159,9 +181,10 @@ print("Waiting for turtle message")
 repeat
   local event, modemSide, recCheck, sendCheck, message, distance = os.pullEvent("modem_message")
   if debug then print("Message Received") end
-  if message == expectedMessage and recCheck == receiveChannel and modemSide == periphSides.modem then
+  if (message == expectedMessage or (sloppyHandshake and textutils.unserialize(message))) and recCheck == receiveChannel and modemSide == periphSides.modem then
     sendChannel = sendCheck
-    modem.transmit(recieveChannel, sendChannel, respondMessage)
+    sleep(0.5) --Give it a second to catch up?
+    modem.transmit(sendChannel, receiveChannel, respondMessage)
     print("Successfully paired, sending back on channel ",sendChannel)
   else
     if debug then print("Invalid message received: ",message) end
@@ -202,25 +225,27 @@ fuel
 volume
 ]]
 --This is for testing purposes. Rec will be "receivedMessage"
+--Nevermind, I actually need a default thing with keys in it.
 local rec = {
 label = "Quarry Bot",
-id = 5, 
-percent = 55,
-relxPos = 165,
-zPos = 200,
-layersDone = 111,
-x = 200,
-z = 201,
-layers = 202,
-openSlots = 4,
-mined = 50,
-moved = 20,
-chestFull = true,
-isAtChest = true,
-isGoingToNextLayer = true,
-foundBedrock = true,
-fuel = 5000000000001515,
-volume = 200*201*202
+id = 1, 
+percent = 0,
+relxPos = 0,
+zPos = 0,
+layersDone = 0,
+x = 0,
+z = 0,
+layers = 0,
+openSlots = 0,
+mined = 0,
+moved = 0,
+chestFull = false,
+isAtChest = false,
+isGoingToNextLayer = false,
+foundBedrock = false,
+fuel = 0,
+volume = 0,
+distance = 0
 --Maybe add in some things like if going to then add a field
 }
 
@@ -253,7 +278,7 @@ local function say(text, color, inc)
   end
   mon.write(text)
   setBackgroundColor(currColor)
-  local pos = ({mon.getCursorPos()})[2]
+  local pos = ({mon.getCursorPos()})[2] or setSize() or 1
   mon.setCursorPos(1, pos+1)
 end
 
@@ -288,8 +313,9 @@ local function center(text)
 end
 
 local extraLine --This is used in display and set in commandSender
-function display()
+function display() while true do sleep(0)
   local str = tostring
+  local pos = {mon.getCursorPos()}--Record pos so it can be reset
   toPrint = {} --Reset table
   if screenSize[1] == sizesEnum.small then
     if not tryAdd(rec.label or "Quarry!", typeColors.title, false, false, true) then --This will be a title, basically
@@ -390,6 +416,7 @@ function display()
     tryAdd("Open Inventory Slots: "..align(str(rec.openSlots),dim[1]-22), typeColors.extra, false, true, true)
     tryAdd("Blocks Mined: "..align(str(rec.mined),dim[1]-14), typeColors.extra, false, true, true)
     tryAdd("Blocks Moved: "..align(str(rec.moved),dim[1]-14), typeColors.extra, false, true, true)
+    tryAdd("Distance to Turtle: "..align(str(rec.distance), dim[1]-20), typeColors.extra, false, false, true)
     
     if rec.chestFull then
       tryAdd("Dropoff is Full, Please Fix", typeColors.error, false, true, true)
@@ -405,7 +432,6 @@ function display()
     end
   end
 
-  local pos = {mon.getCursorPos()} --Record pos so it can be reset
   reset(colors.black)
   for a, b in ipairs(toPrint) do
     say(b.text, b.color)
@@ -418,26 +444,23 @@ function display()
   
   while true do --I want specific events
     event = os.pullEvent() --This should wait for any event to update. Function rednet queues an event once info is set
-    if event == "monitor_resize" or event == "peripheral" then
-      setSize(); break
+    if event == "monitor_resize" or event == "peripheral" or event == "peripheral_detach" then
+      setSize(); extraLine = nil; break
     elseif event == "updateScreen" or (debug and event == "char") then
       break
     end
   end
   
-end
-
-while true do
-display()
-end
+end end
 
 local messageToSend --This will be a command string sent to turtle
 
-function rednetHandler()
+function rednetHandler() while true do sleep(0)--Super sneaky loop
 --Will send rednet message to send if it exists, otherwise sends default message.
   local event, sideCheck, receiveCheck, sendCheck, message, distance = os.pullEvent("modem_message")
-  if side == sideCheck and receiveCheck == receiveChannel and sendCheck == sendChannel then
+  if periphSides.modem == sideCheck and receiveCheck == receiveChannel and sendCheck == sendChannel then
     rec = textutils.unserialize(message) or {}
+    rec.distance = math.floor(distance)
     if rec then
       os.queueEvent("updateScreen") --Tell display that there is new information
     else
@@ -454,23 +477,28 @@ function rednetHandler()
     end
     modem.transmit(sendChannel, receiveChannel, toSend)
   else
-    print("Message is not in proper order") --Maybe here do something about other channels?
-    if debug then error("improper message received") end
+    print("Message was not sent on proper channel/ modem") --Maybe here do something about other channels?
+    if debug then
+      print("ReceiveCheck: ",receiveCheck," ReceiveChannel: ",receiveChannel)
+      print("SendCheck: ",sendCheck," SendChannel: ",sendChannel)
+      print("Side: ",periphSides.modem, " SideCheck: ",sideCheck)
+      error("improper message received") end
   end
-end
+end end
 
 
 
-function commandSender()
+function commandSender() while true do sleep(0)
   if screenSize.isComputer or screenSize.isTurtle then
-    extraLine = {"Command: ", colors.lightBlue}
+    extraLine = {"Command: ", {text = colors.lightBlue}}
     mon.setCursorPos(#extraLine[1]+1, dim[2])
     messageToSend = read()
     os.queueEvent("updateScreen") --Update Screen
   else
     extraLine = nil
   end
-end
+end end
 
 ------------------------------------------
---parallel.waitForAny(display, rednetHandler, commandSender)
+sleep(0.5)
+parallel.waitForAny( commandSender, display, rednetHandler)

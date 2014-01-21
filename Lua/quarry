@@ -53,7 +53,8 @@ loose = 0 } --Default 1000, 200, 0
 channels = {
 send = os.getComputerID()  ,
 receive = os.getComputerID() + 100 ,
-confirm = "Confirm"
+confirm = "Turtle Quarry Receiver",
+message = "Civil's Quarry",
 }
 
 local help_paragraph = [[
@@ -145,8 +146,10 @@ local supportsRednet = (peripheral.wrap("right") ~= nil)
 
 local tArgs = {...}
 --You don't care about these
-      xPos,yPos,zPos,facing,percent,mined,moved,relxPos, rowCheck, connected, isInPath, layersDone, attacked, startY
-    = 0,   1,   1,   0,     0,      0,    0,    1,       "right",  false,     true,     1,          0,        0
+      xPos,yPos,zPos,facing,percent,mined,moved,relxPos, rowCheck, connected, isInPath, layersDone, attacked, startY, chestFull, gotoDest
+    = 0,   1,   1,   0,     0,      0,    0,    1,       "right",  false,     true,     1,          0,        0,      false,     ""
+    
+local foundBedrock = false
 
 local totals = {cobble = 0, fuel = 0, other = 0} -- Total for display (cannot go inside function)
 local function count() --Done any time inventory dropped and at end
@@ -172,14 +175,17 @@ end
 turtle.select(1)
 end
 
-local getFuel = turtle.getFuelLevel --This is for cleanup at the end
-do --Common variable name...
-local flag = turtle.getFuelLevel() == "unlimited"--Unlimited screws up my calculations
-if flag then --Fuel is disabled
-  turtle.getFuelLevel = function() return math.huge end --Infinite Fuel
-end --There is no "else" because it will already return the regular getFuel
+local getFuel, checkFuel
+if turtle then
+  getFuel = turtle.getFuelLevel  --This is for cleanup at the end
+  do --Common variable name...
+  local flag = turtle.getFuelLevel() == "unlimited"--Unlimited screws up my calculations
+  if flag then --Fuel is disabled
+    turtle.getFuelLevel = function() return math.huge end --Infinite Fuel
+  end --There is no "else" because it will already return the regular getFuel
+  end
+  checkFuel = turtle.getFuelLevel --Just an alias for backwards compat
 end
-local checkFuel = turtle.getFuelLevel --Just an alias for backwards compat
 
  -----------------------------------------------------------------
 --Input Phase
@@ -262,12 +268,11 @@ function addParam(name, displayText, formatString, forcePrompt, trigger, variabl
 end
 
 --Check if it is a turtle
-if not(turtle or tArgs["help"] or tArgs["-help"] or tArgs["-?"] or tArgs["?"]) then
+if not(turtle or tArgs["help"] or tArgs["-help"] or tArgs["-?"] or tArgs["?"]) then --If all of these are false then
   print("This is not a turtle, you might be looking for the \"Companion Rednet Program\" \nCheck My forum thread for that")
   print("Press 'q' to quit, or any other key to start help ")
   if ({os.pullEvent("char")})[2] ~= "q" then tArgs.help = true else error("",0) end
 end
-
 
 if tArgs["help"] or tArgs["-help"] or tArgs["-?"] or tArgs["?"] then
 print("You have selected help, press any key to continue"); print("Use arrow keys to naviate, q to quit"); os.pullEvent("key")
@@ -512,37 +517,45 @@ print("The Channel to open is "..channels.send)
 modem = peripheral.wrap("right")
 modem.open(channels.receive)
 local i = 0
-repeat
-local id = os.startTimer(3)
-i=i+1
-print("Sending Initial Message "..i)
-modem.transmit(channels.send, channels.receive, "{ 'Initial' }")
-local message
-repeat
-local event, idCheck, channel,_,locMessage, distance = os.pullEvent()
-message = locMessage
-until (event == "timer" and idCheck == id) or (event == "modem_message" and channel == channels.receive and message == channels.confirm)
-until message == channels.confirm
+  repeat
+    local id = os.startTimer(3)
+    i=i+1
+    print("Sending Initial Message "..i)
+    modem.transmit(channels.send, channels.receive, channels.message)
+    local message
+    repeat
+      local event, idCheck, channel,_,locMessage, distance = os.pullEvent()
+      message = locMessage
+    until (event == "timer" and idCheck == id) or (event == "modem_message" and channel == channels.receive and message == channels.confirm)
+  until message == channels.confirm
 connected = true
 print("Connection Confirmed!")
 sleep(1.5)
 end
-local function biometrics(sendChannel)
-local commands = { Confirm = "Confirm" }
-local toSend = { label = os.getComputerLabel(), id = os.getComputerID(),
-  percent = percent, relxPos = relxPos, zPos = zPos, 
-  layersDone = layersDone, x = x, z = z, layers = layers,
-  openSlots = getNumOpenSlots()
-  }
-modem.transmit(channels.send, channels.receive, textutils.serialize(toSend))
-id = os.startTimer(0.1)
-local event, message
-repeat
-local locEvent, idCheck, confirm, _, locMessage, distance = os.pullEvent()
-event, message = locEvent, locMessage
-until (event == "timer" and idCheck == id) or (event == "modem_message" and confirm == channels.receive)
-if event == "modem_message" then connected = true else connected = false end
---Stuff to do for different commands
+local function biometrics(isAtBedrock)
+  local toSend = { label = os.getComputerLabel(), id = os.getComputerID(),
+    percent = percent, relxPos = relxPos, zPos = zPos, 
+    layersDone = layersDone, x = x, z = z, layers = layers,
+    openSlots = getNumOpenSlots(), mined = mined, moved = moved,
+    chestFull = chestFull, isAtChest = (xPos == 0 and yPos == 1 and zPos == 1),
+    isGoingToNextLayer = (gotoDest == "layerStart"), foundBedrock = foundBedrock,
+    fuel = turtle.getFuelLevel(), volume = volume,
+    }
+  modem.transmit(channels.send, channels.receive, textutils.serialize(toSend))
+  id = os.startTimer(0.1)
+  local event, message
+  repeat
+    local locEvent, idCheck, confirm, _, locMessage, distance = os.pullEvent()
+    event, message = locEvent, locMessage
+  until (event == "timer" and idCheck == id) or (event == "modem_message" and confirm == channels.receive)
+  if event == "modem_message" then connected = true else connected = false end
+  if message == "Stop" then error("Rednet said to stop...",0) end
+  if message == "Return" then
+    eventAdd("goto",1,1,yPos,2,"quarryStart") --Allows for startDown variable
+    eventAdd("goto",0,1,1,0, "quarryStart") --Go back to base
+    eventAdd("error('Rednet said go back to start...',0)")
+    runAllEvents()
+  end
 end
 --Showing changes to settings
 screen(1,1)
@@ -919,29 +932,32 @@ function turnTo(num)
     end
   end
 end
-function goto(x,z,y, toFace)
---Will first go to desired z pos, then x pos, y pos varies
-x = x or 1; y = y or 1; z = z or 1; toFace = toFace or facing
-if yPos > y then --Will go up first if below position
-  while yPos~=y do up() end
-end
-if zPos > z then
-  turnTo(3)
-elseif zPos < z then 
-  turnTo(1)
-end
-while zPos ~= z do mine(false,false,true,false) end
-if xPos > x then
-  turnTo(2)
-elseif xPos < x then
-  turnTo(0)
-end
-while xPos ~= x do mine(false,false,true,false) end
-if yPos < y then --Will go down after if above position
-  while yPos~=y do down() end
-end
-turnTo(toFace,"right")
-saveProgress()
+function goto(x,z,y, toFace, destination)
+  --Will first go to desired z pos, then x pos, y pos varies
+  x = x or 1; y = y or 1; z = z or 1; toFace = toFace or facing
+  gotoDest = destination or "" --This is used by biometrics
+  --Possible destinations: layerStart, quarryStart
+  if yPos > y then --Will go up first if below position
+    while yPos~=y do up() end
+  end
+  if zPos > z then
+    turnTo(3)
+  elseif zPos < z then 
+    turnTo(1)
+  end
+  while zPos ~= z do mine(false,false,true,false) end
+  if xPos > x then
+    turnTo(2)
+  elseif xPos < x then
+    turnTo(0)
+  end
+  while xPos ~= x do mine(false,false,true,false) end
+  if yPos < y then --Will go down after if above position
+    while yPos~=y do down() end
+  end
+  turnTo(toFace)
+  saveProgress()
+  gotoDest = ""
 end
 function getNumOpenSlots()
   local toRet = 0
@@ -981,9 +997,14 @@ local function waitDrop(val) --This will just drop, but wait if it can't
   local try = 1
   while not whereDrop(val) do
     print("Chest Full, Try "..try)
+    chestFull = true
+    if rednetEnabled then --To send that the chest is full
+      biometrics()
+    end
     try = try + 1
     sleep(2)
   end
+  chestFull = false
 end
 repeat
 local detected = whereDetect()
@@ -1008,31 +1029,35 @@ if not allowSkip then totals.cobble = totals.cobble - 1 end
 turtle.select(1)
 end
 function dropOff() --Not local because called in mine()
-local currX,currZ,currY,currFacing = xPos, zPos, yPos, facing
-if careAboutResources and not enderChestEnabled then --Regularly
-eventAdd("goto", 1,1,currY,2) --Need this step for "-startDown"
-eventAdd("goto(0,1,1,2)")
-eventAdd("drop", dropSide,false)
-eventAdd("turnTo(0)")
-eventAdd("mine",false,false,true,false)
-eventAdd("goto(1,1,1, 0)")
-eventAdd("goto", 1, 1, currY, 0)
-eventAdd("goto", currX,currZ,currY,currFacing)
-elseif careAboutResources then --If using an enderChest
-eventAdd("turnTo",currFacing-2)
-eventAdd("dig",false)
-eventAdd("turtle.select",enderChestSlot)
-eventAdd("turtle.place")
-eventAdd("drop","front",false)
-eventAdd("turtle.select", enderChestSlot)
-eventAdd("dig",false)
-eventAdd("turnTo",currFacing)
-eventAdd("turtle.select(1)")
-end
-runAllEvents()
+  local currX,currZ,currY,currFacing = xPos, zPos, yPos, facing
+  if careAboutResources then
+    if not enderChestEnabled then --Regularly
+    eventAdd("goto", 1,1,currY,2) --Need this step for "-startDown"
+    eventAdd("goto(0,1,1,2)")
+    eventAdd("drop", dropSide,false)
+    eventAdd("turnTo(0)")
+    eventAdd("mine",false,false,true,false)
+    eventAdd("goto(1,1,1, 0)")
+    eventAdd("goto", 1, 1, currY, 0)
+    eventAdd("goto", currX,currZ,currY,currFacing)
+    else --If using an enderChest
+    eventAdd("turnTo",currFacing-2)
+    eventAdd("dig",false)
+    eventAdd("turtle.select",enderChestSlot)
+    eventAdd("turtle.place")
+    eventAdd("drop","front",false)
+    eventAdd("turtle.select", enderChestSlot)
+    eventAdd("dig",false)
+    eventAdd("turnTo",currFacing)
+    eventAdd("turtle.select(1)")
+    end
+  runAllEvents()
+  end
 return true
 end
 function bedrock()
+foundBedrock = true --Let everyone know
+if rednetEnabled then biometrics() end
 if checkFuel() == 0 then error("No Fuel",0) end
 local origin = {x = xPos, y = yPos, z = zPos}
 print("Bedrock Detected")
@@ -1115,7 +1140,7 @@ if zPos ~= z then --If not on last row of section
 else break
 end
 end ---------------Width End--------
-eventAdd("goto",1,1,yPos,0) --Goto start of layer
+eventAdd("goto",1,1,yPos,0, "layerStart") --Goto start of layer
 runAllEvents()
 if not lastLayer then --If there is another layer
   for i=1, 2+fromBoolean(not(lastHeight~=0 and secondToLastLayer)) do down() end --The fromBoolean stuff means that if lastheight is 1 and last and layer, will only go down two
@@ -1124,8 +1149,8 @@ layersDone = layersDone + 1
 restoreFoundSwitch = false --This is done so that rowCheck works properly upon restore
 end ---------------Height End-------
 
-eventAdd("goto",1,1,yPos,2) --Allows for startDown variable
-eventAdd("goto",0,1,1,2)
+eventAdd("goto",1,1,yPos,2,"quarryStart") --Allows for startDown variable
+eventAdd("goto",0,1,1,2, "quarryStart") --Go back to base
 
 --Output to a chest or sit there
 if enderChestEnabled and not turtle.detect() then
