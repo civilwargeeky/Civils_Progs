@@ -1,8 +1,9 @@
 --[[ 
 Version 3.4.0
 Recent Changes:
-  Added New Rednet Support
-  Fixed bug that stopped program from working on computers
+  Fixed invert. Now works
+  Fixed GPS. Now works
+  Fixed bug stopping rednet from working.
   New Internals: Made event system and consolidated mining loops
   New Restarting Logic!
     As long as position is recorded properly, it should always restart properly
@@ -533,7 +534,7 @@ sleep(1.5)
 end
 local function biometrics(isAtBedrock)
   local toSend = { label = os.getComputerLabel(), id = os.getComputerID(),
-    percent = percent, relxPos = relxPos, zPos = zPos, 
+    percent = percent, relxPos = relxPos, zPos = zPos, xPos = xPos, yPos = yPos,
     layersDone = layersDone, x = x, z = z, layers = layers,
     openSlots = getNumOpenSlots(), mined = mined, moved = moved,
     chestFull = chestFull, isAtChest = (xPos == 0 and yPos == 1 and zPos == 1),
@@ -615,22 +616,23 @@ function runAllEvents()
 end
 
 function display() --This is just the last screen that displays at the end
-screen(1,1)
-print("Total Blocks Mined: "..mined)
-print("Current Fuel Level: "..turtle.getFuelLevel())
-print("Cobble: "..totals.cobble)
-print("Usable Fuel: "..totals.fuel)
-print("Other: "..totals.other)
-if rednetEnabled then
-print("")
-print("Sent Stop Message")
-finalTable = {{["Mined: "] = mined}, {["Cobble: "] = totals.cobble}, {["Fuel: "] = totals.fuel},
-    {["Other: "] = totals.other}, {["Fuel: "] = checkFuel()} }
-modem.transmit(channels.send,channels.receive,"stop")
-modem.transmit(channels.send,channels.receive,textutils.serialize(finalTable))
-modem.close(channels.receive)
-end
-if doBackup then fs.delete(saveFile) end
+  screen(1,1)
+  print("Total Blocks Mined: "..mined)
+  print("Current Fuel Level: "..turtle.getFuelLevel())
+  print("Cobble: "..totals.cobble)
+  print("Usable Fuel: "..totals.fuel)
+  print("Other: "..totals.other)
+  if rednetEnabled then
+    print("")
+    print("Sent Stop Message")
+    local finalTable = {mined = mined, cobble = totals.cobble, fuelblocks = totals.fuel,
+        other = totals.other, fuel = checkFuel() }
+    modem.transmit(channels.send,channels.receive,"stop")
+    sleep(0.5)
+    modem.transmit(channels.send,channels.receive,textutils.serialize(finalTable))
+    modem.close(channels.receive)
+  end
+  if doBackup then fs.delete(saveFile) end
 end
 function updateDisplay() --Runs in Mine(), display information to the screen in a certain place
 screen(1,1)
@@ -764,6 +766,7 @@ function up(sneak)
     yPos = yPos - sneak --Oh! I feel so clever
   end                   --This works because inverted :)
   saveProgress()
+  if rednetEnabled then biometrics() end
 end
 function down(sneak)
   sneak = sneak or 1
@@ -782,6 +785,7 @@ function down(sneak)
     yPos = yPos + sneak
   end
   saveProgress()
+  if rednetEnabled then biometrics() end
 end
 function right(num)
   num = num or 1

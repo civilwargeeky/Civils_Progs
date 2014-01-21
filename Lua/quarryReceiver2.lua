@@ -4,15 +4,12 @@
 Ideas:
 For session persistence, you probably only need to save what monitor and what turtle to connect with.
 ]]
---[[
-Recent Changes:
-  Made from scratch!
-]]
 
 local debug = false
 local sloppyHandshake = true --If receiver can pick back up in the middle w/o handshake
+local defaultCheckScreen = false --If this is true, it will automatically check for a screen around it.
 
-local mon, modem, sendChannel, receiveChannel
+local mon, modem, sendChannel, receiveChannel, isDone
 local currBackgroundColor = colors.black
 local currTextColor = colors.white
 local function setTextColor(color)
@@ -52,6 +49,7 @@ local sendChannel, receiveChannel
 local periphSides = {monitor = nil, modem = nil}
 local expectedMessage = "Civil's Quarry"
 local respondMessage = "Turtle Quarry Receiver"
+local stopMessage = "stop"
 local sides = swapKeyValue({"top","bottom","right","left","front","back"}) --This allows sides[1] and sides.front
 --tArgs and peripheral list init
 local tArgs = {...}
@@ -122,11 +120,15 @@ if tArgs["-modem"] then
 else --This will check for a modem only if argument isn't specified
   periphSides["modem"] = foundSides["modem"]
 end
-if tArgs["-monitor"] then
-  if sides[getNext("-monitor")] then --Checks if the argument following monitor is a valid side
-    periphSides.monitor = getNext("-monitor")
-  else
-    periphSides.monitor = foundSides.monitor --This differs from above so if no argument, will default to screen.
+for _, a in pairs({"-monitor","-screen"}) do
+  if tArgs[a] then
+    if sides[getNext(a)] then --Checks if the argument following monitor is a valid side
+      periphSides.monitor = getNext(a)
+    else
+      periphSides.monitor = foundSides.monitor --This differs from above so if no argument, will default to screen.
+    end
+  elseif defaultCheckScreen then
+    periphSides.monitor = foundSides.monitor
   end
 end
 
@@ -249,7 +251,8 @@ isGoingToNextLayer = false,
 foundBedrock = false,
 fuel = 0,
 volume = 0,
-distance = 0
+distance = 0,
+yPos = 0
 --Maybe add in some things like if going to then add a field
 }
 
@@ -265,6 +268,7 @@ addColor("dim", colors.lightBlue)
 addColor("extra", colors.lightGray)
 addColor("error", colors.red, colors.white)
 addColor("info", colors.blue, colors.lightGray)
+addColor("inverse", colors.yellow, colors.lightGray)
 
 
 local function reset(color)
@@ -321,118 +325,138 @@ function display() while true do sleep(0)
   local str = tostring
   local pos = {mon.getCursorPos()}--Record pos so it can be reset
   toPrint = {} --Reset table
-  if screenSize[1] == sizesEnum.small then
-    if not tryAdd(rec.label or "Quarry!", typeColors.title, false, false, true) then --This will be a title, basically
-      toPrint[#toPrint] = nil
-      tryAdd("Quarry!", typeColors.title, false, false, true)
+  if not isDone then --Normally
+    if screenSize[1] == sizesEnum.small then
+      if not tryAdd(rec.label or "Quarry!", typeColors.title, false, false, true) then --This will be a title, basically
+        toPrint[#toPrint] = nil
+        tryAdd("Quarry!", typeColors.title, false, false, true)
+      end
+      
+      tryAdd("-Fuel-", typeColors.subtitle , false, true, true)
+      if not tryAdd(str(rec.fuel), nil, false, true, true) then --The fuel number may be bigger than the screen
+        toPrint[#toPrint] = nil
+        tryAdd("A lot", nil, false, true, true)
+      end
+      
+      tryAdd("--%%%--", typeColors.subtitle, false, true, true)
+      tryAdd(align(str(rec.percent).."%", 7), typeColors.pos , false, true, true) --This can be an example. Print (receivedMessage).percent in blue on all different screen sizes
+      tryAdd(center(str(rec.percent).."%"), typeColors.pos, true) --I want it to be centered on 1x1
+      
+      tryAdd("--Pos--", typeColors.subtitle, false, true, true)
+      tryAdd("X:"..align(str(rec.relxPos), 5), typeColors.pos, true, true, true)
+      tryAdd("Z:"..align(str(rec.zPos), 5), typeColors.pos , true, true, true)
+      tryAdd("Y:"..align(str(rec.layersDone), 5), typeColors.pos , true, true, true)
+      
+      if not tryAdd(str(rec.x).."x"..str(rec.z).."x"..str(rec.layers), typeColors.dim , true) then --If you can't display the y, then don't
+        toPrint[#toPrint] = nil --Remove element
+        tryAdd(str(rec.x).."x"..str(rec.z), typeColors.dim , true)
+      end
+      tryAdd("--Dim--", typeColors.subtitle, false, true, true)
+      tryAdd("X:"..align(str(rec.x), 5), typeColors.dim, false, true, true)
+      tryAdd("Z:"..align(str(rec.z), 5), typeColors.dim, false, true, true)
+      tryAdd("Y:"..align(str(rec.layers), 5), typeColors.dim, false, true, true)
+      
+      tryAdd("-Extra-", typeColors.subtitle, false, false, true)
+      tryAdd(align(textutils.formatTime(os.time()):gsub(" ","").."", 7), typeColors.extra, false, false, true) --Adds the current time, formatted, without spaces.
+      tryAdd("Open:"..align(str(rec.openSlots),2), typeColors.extra, false, false, true)
+      tryAdd("Dug"..align(str(rec.mined), 4), typeColors.extra, false, false, true)
+      tryAdd("Mvd"..align(str(rec.moved), 4), typeColors.extra, false, false, true)
+      if rec.chestFull then
+        tryAdd("ChstFll", typeColors.error, false, false, true)
+      end
+      
     end
-    
-    tryAdd("-Fuel-", typeColors.subtitle , false, true, true)
-    if not tryAdd(str(rec.fuel), nil, false, true, true) then --The fuel number may be bigger than the screen
-      toPrint[#toPrint] = nil
-      tryAdd("A lot", nil, false, true, true)
+    if screenSize[1] == sizesEnum.medium then
+      if not tryAdd(rec.label or "Quarry!", typeColors.title, false, false, true) then --This will be a title, basically
+        toPrint[#toPrint] = nil
+        tryAdd("Quarry!", typeColors.title, false, false, true)
+      end
+      
+      tryAdd("-------Fuel-------", typeColors.subtitle , false, true, true)
+      if not tryAdd(str(rec.fuel), nil, false, true, true) then --The fuel number may be bigger than the screen
+        toPrint[#toPrint] = nil
+        tryAdd("A lot", nil, false, true, true)
+      end
+      
+      tryAdd(str(rec.percent).."% Complete", typeColors.pos , true, true, true) --This can be an example. Print (receivedMessage).percent in blue on all different screen sizes
+      
+      tryAdd("-------Pos--------", typeColors.subtitle, false, true, true)
+      tryAdd("X Coordinate:"..align(str(rec.relxPos), 5), typeColors.pos, true, true, true)
+      tryAdd("Z Coordinate:"..align(str(rec.zPos), 5), typeColors.pos , true, true, true)
+      tryAdd("On Layer:"..align(str(rec.layersDone), 9), typeColors.pos , true, true, true)
+      
+      if not tryAdd("Size: "..str(rec.x).."x"..str(rec.z).."x"..str(rec.layers), typeColors.dim , true) then --This is already here... I may as well give an alternative for those people with 1000^3quarries
+        toPrint[#toPrint] = nil --Remove element
+        tryAdd(str(rec.x).."x"..str(rec.z).."x"..str(rec.layers), typeColors.dim , true)
+      end
+      tryAdd("-------Dim--------", typeColors.subtitle, false, true, true)
+      tryAdd("Total X:"..align(str(rec.x), 10), typeColors.dim, false, true, true)
+      tryAdd("Total Z:"..align(str(rec.z), 10), typeColors.dim, false, true, true)
+      tryAdd("Total Layers:"..align(str(rec.layers), 5), typeColors.dim, false, true, true)
+      tryAdd("Volume"..align(str(rec.volume),12), typeColors.dim, false, false, true)
+      
+      tryAdd("------Extras------", typeColors.subtitle, false, false, true)
+      tryAdd("Time: "..align(textutils.formatTime(os.time()):gsub(" ","").."", 12), typeColors.extra, false, false, true) --Adds the current time, formatted, without spaces.
+      tryAdd("Used Slots:"..align(str(16-rec.openSlots),7), typeColors.extra, false, false, true)
+      tryAdd("Blocks Mined:"..align(str(rec.mined), 5), typeColors.extra, false, false, true)
+      tryAdd("Spaces Moved:"..align(str(rec.moved), 5), typeColors.extra, false, false, true)
+      if rec.chestFull then
+        tryAdd("Chest Full, Fix It", typeColors.error, false, true, true)
+      end
     end
-    
-    tryAdd("--%%%--", typeColors.subtitle, false, true, true)
-    tryAdd(align(str(rec.percent).."%", 7), typeColors.pos , false, true, true) --This can be an example. Print (receivedMessage).percent in blue on all different screen sizes
-    tryAdd(center(str(rec.percent).."%"), typeColors.pos, true) --I want it to be centered on 1x1
-    
-    tryAdd("--Pos--", typeColors.subtitle, false, true, true)
-    tryAdd("X:"..align(str(rec.relxPos), 5), typeColors.pos, true, true, true)
-    tryAdd("Z:"..align(str(rec.zPos), 5), typeColors.pos , true, true, true)
-    tryAdd("Y:"..align(str(rec.layersDone), 5), typeColors.pos , true, true, true)
-    
-    if not tryAdd(str(rec.x).."x"..str(rec.z).."x"..str(rec.layers), typeColors.dim , true) then --If you can't display the y, then don't
-      toPrint[#toPrint] = nil --Remove element
-      tryAdd(str(rec.x).."x"..str(rec.z), typeColors.dim , true)
+    if screenSize[1] == sizesEnum.large then
+      if not tryAdd(rec.label..align(" Turtle #"..str(rec.id),dim[1]-#rec.label), typeColors.title, true, true, true) then
+        toPrint[#toPrint] = nil
+        tryAdd("Your turtle's name is long...", typeColors.title, true, true, true)
+      end
+      tryAdd("Fuel: "..align(str(rec.fuel),dim[1]-6), nil, true, true, true)
+      
+      tryAdd("Percentage Done: "..align(str(rec.percent).."%",dim[1]-17), typeColors.pos, true, true, true)
+      
+      local var1 = math.max(#str(rec.x), #str(rec.z), #str(rec.layers))
+      local var2 = (dim[1]-5-var1+3)/3
+      tryAdd("Pos: "..align(" X:"..align(str(rec.relxPos),var1),var2)..align(" Z:"..align(str(rec.zPos),var1),var2)..align(" Y:"..align(str(rec.layersDone),var1),var2), typeColors.pos, true, true, true)
+      tryAdd("Size:"..align(" X:"..align(str(rec.x),var1),var2)..align(" Z:"..align(str(rec.z),var1),var2)..align(" Y:"..align(str(rec.layers),var1),var2), typeColors.dim, true, true, true)
+      tryAdd("Volume: "..str(rec.volume), typeColors.dim, false, true, true)
+      tryAdd("",nil, false, false, true)
+      tryAdd(center("____---- EXTRAS ----____"), typeColors.subtitle, false, false, true)
+      tryAdd(center("Time:"..align(textutils.formatTime(os.time()),8)), typeColors.extra, false, true, true)
+      tryAdd(center("Current Day: "..str(os.day())), typeColors.extra, false, false, true)
+      tryAdd("Used Inventory Slots: "..align(str(16-rec.openSlots),dim[1]-22), typeColors.extra, false, true, true)
+      tryAdd("Blocks Mined: "..align(str(rec.mined),dim[1]-14), typeColors.extra, false, true, true)
+      tryAdd("Blocks Moved: "..align(str(rec.moved),dim[1]-14), typeColors.extra, false, true, true)
+      tryAdd("Distance to Turtle: "..align(str(rec.distance), dim[1]-20), typeColors.extra, false, false, true)
+      tryAdd("Actual Y Pos (Not Layer): "..align(str(rec.yPos), dim[1]-26), typeColors.extra, false, false, true)
+      
+      if rec.chestFull then
+        tryAdd("Dropoff is Full, Please Fix", typeColors.error, false, true, true)
+      end
+      if rec.foundBedrock then
+        tryAdd("Found Bedrock! Please Check!!", typeColors.error, false, true, true)
+      end
+      if rec.isAtChest then
+        tryAdd("Turtle is at home chest", typeColors.info, false, true, true)
+      end
+      if rec.isGoingToNextLayer then
+        tryAdd("Turtle is going to next layer", typeColors.info, false, true, true)
+      end
     end
-    tryAdd("--Dim--", typeColors.subtitle, false, true, true)
-    tryAdd("X:"..align(str(rec.x), 5), typeColors.dim, false, true, true)
-    tryAdd("Z:"..align(str(rec.z), 5), typeColors.dim, false, true, true)
-    tryAdd("Y:"..align(str(rec.layers), 5), typeColors.dim, false, true, true)
-    
-    tryAdd("-Extra-", typeColors.subtitle, false, false, true)
-    tryAdd(align(textutils.formatTime(os.time()):gsub(" ","").."", 7), typeColors.extra, false, false, true) --Adds the current time, formatted, without spaces.
-    tryAdd("Open:"..align(str(rec.openSlots),2), typeColors.extra, false, false, true)
-    tryAdd("Dug"..align(str(rec.mined), 4), typeColors.extra, false, false, true)
-    tryAdd("Mvd"..align(str(rec.moved), 4), typeColors.extra, false, false, true)
-    if rec.chestFull then
-      tryAdd("ChstFll", typeColors.error, false, false, true)
-    end
-    
-  end
-  if screenSize[1] == sizesEnum.medium then
-    if not tryAdd(rec.label or "Quarry!", typeColors.title, false, false, true) then --This will be a title, basically
-      toPrint[#toPrint] = nil
-      tryAdd("Quarry!", typeColors.title, false, false, true)
-    end
-    
-    tryAdd("-------Fuel-------", typeColors.subtitle , false, true, true)
-    if not tryAdd(str(rec.fuel), nil, false, true, true) then --The fuel number may be bigger than the screen
-      toPrint[#toPrint] = nil
-      tryAdd("A lot", nil, false, true, true)
-    end
-    
-    tryAdd(str(rec.percent).."% Complete", typeColors.pos , true, true, true) --This can be an example. Print (receivedMessage).percent in blue on all different screen sizes
-    
-    tryAdd("-------Pos--------", typeColors.subtitle, false, true, true)
-    tryAdd("X Coordinate:"..align(str(rec.relxPos), 5), typeColors.pos, true, true, true)
-    tryAdd("Z Coordinate:"..align(str(rec.zPos), 5), typeColors.pos , true, true, true)
-    tryAdd("On Layer:"..align(str(rec.layersDone), 9), typeColors.pos , true, true, true)
-    
-    if not tryAdd("Size: "..str(rec.x).."x"..str(rec.z).."x"..str(rec.layers), typeColors.dim , true) then --This is already here... I may as well give an alternative for those people with 1000^3quarries
-      toPrint[#toPrint] = nil --Remove element
-      tryAdd(str(rec.x).."x"..str(rec.z).."x"..str(rec.layers), typeColors.dim , true)
-    end
-    tryAdd("-------Dim--------", typeColors.subtitle, false, true, true)
-    tryAdd("Total X:"..align(str(rec.x), 10), typeColors.dim, false, true, true)
-    tryAdd("Total Z:"..align(str(rec.z), 10), typeColors.dim, false, true, true)
-    tryAdd("Total Layers:"..align(str(rec.layers), 5), typeColors.dim, false, true, true)
-    tryAdd("Volume"..align(str(rec.volume),12), typeColors.dim, false, false, true)
-    
-    tryAdd("------Extras------", typeColors.subtitle, false, false, true)
-    tryAdd("Time: "..align(textutils.formatTime(os.time()):gsub(" ","").."", 12), typeColors.extra, false, false, true) --Adds the current time, formatted, without spaces.
-    tryAdd("Open Slots:"..align(str(rec.openSlots),7), typeColors.extra, false, false, true)
-    tryAdd("Blocks Mined:"..align(str(rec.mined), 5), typeColors.extra, false, false, true)
-    tryAdd("Spaces Moved:"..align(str(rec.moved), 5), typeColors.extra, false, false, true)
-    if rec.chestFull then
-      tryAdd("Chest Full, Fix It", typeColors.error, false, true, true)
-    end
-  end
-  if screenSize[1] == sizesEnum.large then
-    if not tryAdd(rec.label..align(" Turtle #"..str(rec.id),dim[1]-#rec.label), typeColors.title, true, true, true) then
-      toPrint[#toPrint] = nil
-      tryAdd("Your turtle's name is long...", typeColors.title, true, true, true)
-    end
-    tryAdd("Fuel: "..align(str(rec.fuel),dim[1]-6), nil, true, true, true)
-    
-    tryAdd("Percentage Done: "..align(str(rec.percent).."%",dim[1]-17), typeColors.pos, true, true, true)
-    
-    local var1 = math.max(#str(rec.x), #str(rec.z), #str(rec.layers))
-    local var2 = (dim[1]-5-var1+3)/3
-    print(var2)
-    tryAdd("Pos: "..align(" X:"..align(str(rec.relxPos),var1),var2)..align(" Z:"..align(str(rec.zPos),var1),var2)..align(" Y:"..align(str(rec.layersDone),var1),var2), typeColors.pos, true, true, true)
-    tryAdd("Size:"..align(" X:"..align(str(rec.x),var1),var2)..align(" Z:"..align(str(rec.z),var1),var2)..align(" Y:"..align(str(rec.layers),var1),var2), typeColors.dim, true, true, true)
-    tryAdd("Volume: "..str(rec.volume), typeColors.dim, false, true, true)
-    tryAdd("",nil, false, false, true)
-    tryAdd(center("____---- EXTRAS ----____"), typeColors.subtitle, false, false, true)
-    tryAdd(center("Time:"..align(textutils.formatTime(os.time()),8)), typeColors.extra, false, true, true)
-    tryAdd("Open Inventory Slots: "..align(str(rec.openSlots),dim[1]-22), typeColors.extra, false, true, true)
-    tryAdd("Blocks Mined: "..align(str(rec.mined),dim[1]-14), typeColors.extra, false, true, true)
-    tryAdd("Blocks Moved: "..align(str(rec.moved),dim[1]-14), typeColors.extra, false, true, true)
-    tryAdd("Distance to Turtle: "..align(str(rec.distance), dim[1]-20), typeColors.extra, false, false, true)
-    
-    if rec.chestFull then
-      tryAdd("Dropoff is Full, Please Fix", typeColors.error, false, true, true)
-    end
-    if rec.foundBedrock then
-      tryAdd("Found Bedrock! Please Check!!", typeColors.error, false, true, true)
-    end
-    if rec.isAtChest then
-      tryAdd("Turtle is at home chest", typeColors.info, false, true, true)
-    end
-    if rec.isGoingToNextLayer then
-      tryAdd("Turtle is going to next layer", typeColors.info, false, true, true)
+  else --If is done
+    if screenSize[1] == sizesEnum.small then --Special case for small monitors
+      tryAdd("Done", typeColors.title, true, true, true)
+      tryAdd("Dug"..align(str(rec.mined),4), typeColors.pos, true, true, true)
+      tryAdd("Fuel"..align(str(rec.fuel),3), typeColors.pos, true, true, true)
+      tryAdd("-------", typeColors.subtitle, false,true,true)
+      tryAdd("Turtle", typeColors.subtitle, false, true, true)
+      tryAdd(center("is"), typeColors.subtitle, false, true, true)
+      tryAdd(center("Done!"), typeColors.subtitle, false, true, true)
+    else
+      tryAdd("Done!", typeColors.title, true, true, true)
+      tryAdd("Blocks Dug: "..str(rec.mined), typeColors.inverse, true, true, true)
+      tryAdd("Cobble Dug: "..str(rec.cobble), typeColors.pos, false, true, true)
+      tryAdd("Fuel Dug: "..str(rec.fuelblocks), typeColors.pos, false, true, true)
+      tryAdd("Others Dug: "..str(rec.other), typeColors.pos, false, true, true)
+      tryAdd("Curr Fuel: "..str(rec.fuel), typeColors.inverse, true, true, true)
     end
   end
 
@@ -446,6 +470,10 @@ function display() while true do sleep(0)
   end
   mon.setCursorPos(pos[1], pos[2]) --Reset pos for command sender
   
+  if isDone then --Is done :D
+    return true
+  end
+  
   while true do --I want specific events
     event = os.pullEvent() --This should wait for any event to update. Function rednet queues an event once info is set
     if event == "monitor_resize" or event == "peripheral" or event == "peripheral_detach" then
@@ -454,7 +482,7 @@ function display() while true do sleep(0)
       break
     end
   end
-  
+
 end end
 
 local messageToSend --This will be a command string sent to turtle
@@ -462,31 +490,46 @@ local messageToSend --This will be a command string sent to turtle
 function rednetHandler() while true do sleep(0)--Super sneaky loop
 --Will send rednet message to send if it exists, otherwise sends default message.
   local event, sideCheck, receiveCheck, sendCheck, message, distance = os.pullEvent("modem_message")
-  if periphSides.modem == sideCheck and receiveCheck == receiveChannel and sendCheck == sendChannel then
-    rec = textutils.unserialize(message) or {}
-    rec.distance = math.floor(distance)
+  if periphSides.modem == sideCheck and receiveCheck == receiveChannel and sendCheck == sendChannel and message == stopMessage then isDone = true end --Flag for other programs
+  if not isDone then --Normally
+    if periphSides.modem == sideCheck and receiveCheck == receiveChannel and sendCheck == sendChannel then
+      rec = textutils.unserialize(message) or {}
+      rec.distance = math.floor(distance)
+      if rec then
+        os.queueEvent("updateScreen") --Tell display that there is new information
+      else
+        print("IMPROPER MESSAGE RECEIVED")
+        if debug then error("expected Table, got "..message) end
+      end
+      
+      local toSend
+      if messageToSend then
+        toSend = messageToSend
+        messageToSend = nil
+      else
+        toSend = respondMessage
+      end
+      modem.transmit(sendChannel, receiveChannel, toSend)
+    else
+      print("Message was not sent on proper channel/ modem") --Maybe here do something about other channels?
+      if debug then
+        print("ReceiveCheck: ",receiveCheck," ReceiveChannel: ",receiveChannel)
+        print("SendCheck: ",sendCheck," SendChannel: ",sendChannel)
+        print("Side: ",periphSides.modem, " SideCheck: ",sideCheck)
+        error("improper message received") end
+    end
+  elseif message ~= stopMessage then --If is done
+    if debug then print("Received final final message") end
+    modem.close(receiveChannel)
+    rec = textutils.unserialize(message)
     if rec then
-      os.queueEvent("updateScreen") --Tell display that there is new information
+      os.queueEvent("updateScreen")
     else
-      print("IMPROPER MESSAGE RECEIVED")
-      if debug then error("expected Table, got "..message) end
+      error("Finished with program, but received bad message", 0)
     end
-    
-    local toSend
-    if messageToSend then
-      toSend = messageToSend
-      messageToSend = nil
-    else
-      toSend = respondMessage
-    end
-    modem.transmit(sendChannel, receiveChannel, toSend)
-  else
-    print("Message was not sent on proper channel/ modem") --Maybe here do something about other channels?
-    if debug then
-      print("ReceiveCheck: ",receiveCheck," ReceiveChannel: ",receiveChannel)
-      print("SendCheck: ",sendCheck," SendChannel: ",sendChannel)
-      print("Side: ",periphSides.modem, " SideCheck: ",sideCheck)
-      error("improper message received") end
+    print("Done with program")
+  else --If is done, before final message
+    if debug then print("Received final: ", message) end
   end
 end end
 
