@@ -67,6 +67,7 @@ Changelog so far:
   Added in a few different calls to it.
   Added new parameter for goto: destination
   Fixed bug where it would error if run on a computer
+  Added in rednet orders "Stop" and "Return" (case sensitive)
 
 Things to add for quarry version 3.4.0 (Rednet update):
   Rednet support...

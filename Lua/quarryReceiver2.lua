@@ -4,6 +4,10 @@
 Ideas:
 For session persistence, you probably only need to save what monitor and what turtle to connect with.
 ]]
+--[[
+Recent Changes:
+  Made from scratch!
+]]
 
 local debug = false
 local sloppyHandshake = true --If receiver can pick back up in the middle w/o handshake

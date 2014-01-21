@@ -1,9 +1,8 @@
 --[[ 
 Version 3.4.0
 Recent Changes:
-  Fixed invert. Now works
-  Fixed GPS. Now works
-  Fixed bug stopping rednet from working.
+  Added New Rednet Support
+  Fixed bug that stopped program from working on computers
   New Internals: Made event system and consolidated mining loops
   New Restarting Logic!
     As long as position is recorded properly, it should always restart properly
