@@ -179,6 +179,16 @@ pygame.display.update()
 waitForGeneric([KEYUP,MOUSEBUTTONUP],3)
 pygame.event.get() #Get rid of excess events
 
+title = titleFont.render("TicTacToe", True, (255,255,255))
+pixelBorder = 1 #Width of pixel border
+startButton = titleFont.render("Start", True, (255,255,255))
+startWidth, startHeight = startButton.get_size()
+startBackground = pygame.Surface((startWidth+pixelBorder*2, startHeight + pixelBorder*2))
+startBackground.blit(startButton)
+
+
+
+
 
 while True:
   if twoPlayer:
