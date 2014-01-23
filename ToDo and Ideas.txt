@@ -84,6 +84,8 @@ Things to add for quarry version 3.4.1:
   Quotes: 
     "You could already do that if you want, though. Just put it in front of the chest and do "quarry -resume -manualPos 0 1 1 0". I'll add something like "-chestResume" or something as an alias for that, though.
     Ooh, also, I could try out having an "-offset" parameter. Since it oftentimes is off by one position, this parameter would offset the position saved by 1 / -1 or whatever number you put in. Then people could help me test to make it better :)  "
+  Session Persistance: http://www.computercraft.info/forums2/index.php?/topic/13919-lama-location-aware-movement-api-v14/
+  "This API only works on turtles that have a label and that use fuel. The label is required for state persistence, the fuel is used for checking whether the turtle finished a move that was interrupted by a forced shut down (game quit / chunk unloaded)." Credit Sangar, from Lama - Location Aware Movement API V1.4
 
   
 Things to add for quarry version 3.5.0 (After rednet update and shell is done):
