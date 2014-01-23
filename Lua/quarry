@@ -532,7 +532,7 @@ print("Connection Confirmed!")
 sleep(1.5)
 end
 local function biometrics(isAtBedrock)
-  local toSend = { label = os.getComputerLabel(), id = os.getComputerID(),
+  local toSend = { label = os.getComputerLabel() or "No Label", id = os.getComputerID(),
     percent = percent, relxPos = relxPos, zPos = zPos, xPos = xPos, yPos = yPos,
     layersDone = layersDone, x = x, z = z, layers = layers,
     openSlots = getNumOpenSlots(), mined = mined, moved = moved,
