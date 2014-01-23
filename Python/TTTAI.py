@@ -179,12 +179,32 @@ pygame.display.update()
 waitForGeneric([KEYUP,MOUSEBUTTONUP],3)
 pygame.event.get() #Get rid of excess events
 
-title = titleFont.render("TicTacToe", True, (255,255,255))
-pixelBorder = 1 #Width of pixel border
-startButton = titleFont.render("Start", True, (255,255,255))
-startWidth, startHeight = startButton.get_size()
-startBackground = pygame.Surface((startWidth+pixelBorder*2, startHeight + pixelBorder*2))
-startBackground.blit(startButton)
+title = titleFont.render("TicTacToe", True, (0,0,0))
+pixelBorder = 5 #Width of pixel border
+def makeButton (text, textColor, backgroundColor, borderWidth):
+  borderTuple = (borderWidth, borderWidth)
+  button = titleFont.render(text, True, textColor, (255,255,255))
+  x, y = button.get_size()
+  background = pygame.Surface((x+borderWidth*2, y+borderWidth*2))
+  background.fill(backgroundColor)
+  background.blit(button, (borderWidth, borderWidth))
+  return background
+colorBlack = (255,0,0)
+start = makeButton("Start", colorBlack, colorBlack, pixelBorder)
+quit = makeButton("Quit", colorBlack, colorBlack, pixelBorder)
+def center (target, toPlace):
+  xMax, yMax = target.get_size()
+  x, y = toPlace.get_size()
+  return (xMax-x)/2, (yMax-y)/2
+
+windowObj.fill((255,255,255))
+windowObj.blit(title, (center(windowObj,title)[0],1))
+windowObj.blit(start, tuple(center(windowObj,start)))
+a = tuple(center(windowObj,quit))
+windowObj.blit(quit, (a[0],a[1]+start.get_size()[1]+5))
+pygame.display.update()
+waitForClick()
+  
 
 
 
