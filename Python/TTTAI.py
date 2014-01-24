@@ -41,7 +41,7 @@ clockObj = pygame.time.Clock() #Creates a clock object to control fps
 windowObj = pygame.display.set_mode((resX,resY)) #Opens window at given resolution
 pygame.display.set_caption("TicTacToe") #Sets window title
 
-titleFont = pygame.font.SysFont(fontType, int(fontPixels*3)) #These are the two fonts I will use
+titleFont = pygame.font.SysFont(fontType, int(fontPixels*5)) #These are the two fonts I will use
 printFont = pygame.font.SysFont(fontType, fontPixels)
 
 #Config
@@ -53,6 +53,17 @@ turn = 1 #Because updated at beginning of turn
 slots = [0] * 9 #These are all board positions
 
 action = False #Quit Flag. Can be set to 'quit' or 'menu'
+
+def init(): #???
+  global player, humanPlayer, twoPlayer, difficulty, turn, slots, action
+  player = False #Current player is a bit. False is X, True is O. This variable assigns who goes first
+  humanPlayer = False #Which player is human
+  twoPlayer = False #If true, player is always human
+  difficulty = 2 #Difficulties 0 - 2 in increasing difficulty
+  turn = 1 #Because updated at beginning of turn
+  slots = [0] * 9 #These are all board positions
+
+  action = False #Quit Flag. Can be set to 'quit' or 'menu'
 
 def update(slot,currPlayer, board = slots):
   try:
@@ -173,13 +184,13 @@ def switchPlayer():
   turn += 1
   
 #Title Sequence
-title = titleFont.render("Welcome to TTTClick!", True, (0,255,0))
+"""title = titleFont.render("Welcome to TTTClick!", True, (0,255,0))
 windowObj.blit(title, ((resX-title.get_size()[0])/2,0))
 pygame.display.update()
 waitForGeneric([KEYUP,MOUSEBUTTONUP],3)
-pygame.event.get() #Get rid of excess events
+pygame.event.get() #Get rid of excess events"""
 
-title = titleFont.render("TicTacToe", True, (0,0,0))
+title = titleFont.render("Tic Tac Toe", True, (0,0,0))
 pixelBorder = 5 #Width of pixel border
 def makeButton (text, textColor, backgroundColor, borderWidth):
   borderTuple = (borderWidth, borderWidth)
@@ -197,19 +208,33 @@ def center (target, toPlace):
   x, y = toPlace.get_size()
   return (xMax-x)/2, (yMax-y)/2
 
-windowObj.fill((255,255,255))
-windowObj.blit(title, (center(windowObj,title)[0],1))
-windowObj.blit(start, tuple(center(windowObj,start)))
-a = tuple(center(windowObj,quit))
-windowObj.blit(quit, (a[0],a[1]+start.get_size()[1]+5))
-pygame.display.update()
-waitForClick()
-  
 
 
+def menu(): #This should work since I don't redeclare anything?
+  windowObj.fill((255,255,255))
+  windowObj.blit(title, (center(windowObj,title)[0], pixelBorder))
+  startPos = tuple(center(windowObj,start))
+  startRect = start.get_rect(topleft = startPos)
+  windowObj.blit(start, startPos )
+  a = tuple(center(windowObj,quit))
+  quitPos = (a[0],a[1]+start.get_size()[1]+pixelBorder)
+  quitRect = quit.get_rect(topleft = quitPos)
+  windowObj.blit(quit, quitPos)
+  pygame.display.update()
 
-
-
+  while True:
+    event = waitForClick(5)
+    if not event:
+      break
+    if event.button == 1:
+      print(event.pos)
+      if startRect.collidepoint(event.pos):
+        break
+      if quitRect.collidepoint(event.pos):
+        raise(SystemExit)
+menu()
+      
+      
 while True:
   if twoPlayer:
     humanPlayer = player #Tell computer that player always human
@@ -268,7 +293,11 @@ while True:
   
   pygame.display.update()
   clockObj.tick(20)
-  if action:
+  if action == "menu":
+    sleep(2)
+    menu()
+    init()
+  if action == "quit":
     sleep(2)
     break
 
