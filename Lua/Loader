@@ -7,7 +7,7 @@ These will be registered in a config file specific to this program.]]
 --Will have optional parameter of "-quarry" to just run a quarry from the config file.
 
 --Changing global namespace to avoid conflicts
-_G.globalTable = {}; globalTable = nil; setmetatable(globalTable, {__index = getfenv(1)}); setfenv(1,globalTable)
+globalTable = nil; _G.globalTable = {}; setmetatable(globalTable, {__index = getfenv(1)}); setfenv(1,globalTable)
 
 --Filenames
 names = {
