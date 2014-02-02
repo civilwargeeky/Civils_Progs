@@ -65,6 +65,8 @@ Things to add for quarry version 3.4.1:
   Quotes: 
     Ooh, also, I could try out having an "-offset" parameter. Since it oftentimes is off by one position, this parameter would offset the position saved by 1 / -1 or whatever number you put in. Then people could help me test to make it better :)  "
   Maybe have an option to change the home position. Like at 1,1,1 instead of 0,1,1
+  Investigate EnderChest ending behavior. See recent comments on page:
+    "what the turtle is doing is after its finished its quarry, rather than deploying the enderchest for the last drop off its just dumping its load on to the ground back at the start. So you still need a normal chest there to catch the last drop off that has the enderchest in it otherwise it will just dump its final load and after like 5 minutes or so you lose everything that the turtle dumps. it doesn't even wait for a chest to be deployed before dumping it load as it normally would. "
   
 
 Things to add for quarry version 3.4.2
