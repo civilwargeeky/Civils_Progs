@@ -56,6 +56,7 @@ Welcome!: Welcome to quarry help. Below are help entries for all parameters. Exa
 -invert: [t/f] If true, quarry will be inverted (go up instead of down)
 -rednet: [t/f] If true and you have a wireless modem on the turtle, will attempt to make a rednet connection for sending important information to a screen
 -restore / -resume: If your quarry stopped in the middle of its run, use this to resume at the point where the turtle was. Not guarenteed to work properly. For more accurate location finding, check out the -GPS parameter
+-atChest: [force] This is for use with "-restore," this will tell the restarting turtle that it is at its home chest, so that if it had gotten lost, it now knows where it is.
 -doRefuel: [t/f] If true, the turtle will refuel itself with coal and planks it finds on its mining run
 -doCheckFuel: [t/f] If you for some reason don't want the program to check fuel usage, set to false. This is honestly a hold-over from when the refueling algorithm was awful...
 -chest: [side] This specifies what side the chest at the end will be on. You can say "top", "bottom", "front", "left", or "right"
@@ -347,7 +348,7 @@ else --If turtle is just starting
   originalFuel = checkFuel() --For use in logging. To see how much fuel is REALLY used
 end
 
---Dimesnions
+--Dimensions
 if tArgs["-dim"] then local num = tArgs["-dim"];
 x = tonumber(tArgs[num + 1]) or x; z = tonumber(tArgs[num + 2]) or z; y = tonumber(tArgs[num + 3]) or y
 elseif not (tArgs["-default"] or restoreFoundSwitch) then
@@ -397,6 +398,10 @@ if tArgs["-manualpos"] then --Gives current coordinates in xPos,zPos,yPos, facin
   changedT.new("xPos",xPos); changedT.new("zPos",zPos); changedT.new("yPos",yPos); changedT.new("facing",facing)
   restoreFoundSwitch = true --So it doesn't do beginning of quarry behavior
 end
+if addParam("atChest", "Is at Chest", "number 0-3", nil, nil, "facing") then --This sets position to 0,1,1 and sets facing to the number given
+  xPos, zPos, yPos, rowCheck = 0,1,1, "right"
+end
+
 
 local function saveProgress(extras) --Session persistence
 exclusions = { modem = true, }
