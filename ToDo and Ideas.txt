@@ -54,13 +54,14 @@ Way in future: Add session persistence for setups
 Quarry Version 3.4.1:
 Changelog so far:
   Added in "atChest" parameter. It wants a number between 0 and 3 for facing direction. Added appropriate help entry
+  Using "for" loops in GPS checking deemed unnessesary
+  If turtle x or z coords are different from saved coords on GPS startup, will remove event queue to prevent unessesary turning/going out of bounds (hopefully)
+  Added in "if turtle.detect()" before the turtle calls bedrock. Now the turtle will only stop if the block is unbreakable (or more than 50 sand stacked on top of each other)
+  Added in "maxTries" parameter with appropriate help section
 
 Things to add for quarry version 3.4.1:
-  Use "for" loops for gps location checking on successful backup read --Cosmetic Change
-  Maybe check so that if position gotten from GPS is different from stored, remove event queue.
   Make the current rednet commands better. Like "Return" will go through the full end-of-quarry routine.
   See if you can change rowCheck "right" and "left" to true and false
-  Suck it up and have bedrock just check if it detects a block. If you can't detect, its not bedrock.
   Have sanity check just put the turtle back on track. Like go back to layer start or something. If it gets called, pos system is working fine.
   Quotes: 
     Ooh, also, I could try out having an "-offset" parameter. Since it oftentimes is off by one position, this parameter would offset the position saved by 1 / -1 or whatever number you put in. Then people could help me test to make it better :)  "
