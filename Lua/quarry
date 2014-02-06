@@ -340,6 +340,7 @@ if restoreFoundSwitch then
           if backupPos[i] ~= currLoc[i] then
             events = {} --We want to remove event queue if not in proper place, so won't turn at end of row or things.
           end
+        end
       else
         print("GPS Locate Failed, Using Standard Methods")
       end    
@@ -1042,24 +1043,24 @@ function dropOff() --Not local because called in mine()
   local currX,currZ,currY,currFacing = xPos, zPos, yPos, facing
   if careAboutResources then
     if not enderChestEnabled then --Regularly
-    eventAdd("goto", 1,1,currY,2) --Need this step for "-startDown"
-    eventAdd("goto(0,1,1,2)")
-    eventAdd("drop", dropSide,false)
-    eventAdd("turnTo(0)")
-    eventAdd("mine",false,false,true,false)
-    eventAdd("goto(1,1,1, 0)")
-    eventAdd("goto", 1, 1, currY, 0)
-    eventAdd("goto", currX,currZ,currY,currFacing)
+      eventAdd("goto", 1,1,currY,2) --Need this step for "-startDown"
+      eventAdd("goto(0,1,1,2)")
+      eventAdd("drop", dropSide,false)
+      eventAdd("turnTo(0)")
+      eventAdd("mine",false,false,true,false)
+      eventAdd("goto(1,1,1, 0)")
+      eventAdd("goto", 1, 1, currY, 0)
+      eventAdd("goto", currX,currZ,currY,currFacing)
     else --If using an enderChest
-    eventAdd("turnTo",currFacing-2)
-    eventAdd("dig",false)
-    eventAdd("turtle.select",enderChestSlot)
-    eventAdd("turtle.place")
-    eventAdd("drop","front",false)
-    eventAdd("turtle.select", enderChestSlot)
-    eventAdd("dig",false)
-    eventAdd("turnTo",currFacing)
-    eventAdd("turtle.select(1)")
+      eventAdd("turnTo",currFacing-2)
+      eventAdd("dig",false)
+      eventAdd("turtle.select",enderChestSlot)
+      eventAdd("turtle.place")
+      eventAdd("drop","front",false)
+      eventAdd("turtle.select", enderChestSlot)
+      eventAdd("dig",false)
+      eventAdd("turnTo",currFacing)
+      eventAdd("turtle.select(1)")
     end
   runAllEvents()
   end
