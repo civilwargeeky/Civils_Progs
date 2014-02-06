@@ -538,7 +538,7 @@ connected = true
 print("Connection Confirmed!")
 sleep(1.5)
 end
-local function biometrics(isAtBedrock)
+function biometrics(isAtBedrock)
   local toSend = { label = os.getComputerLabel() or "No Label", id = os.getComputerID(),
     percent = percent, relxPos = relxPos, zPos = zPos, xPos = xPos, yPos = yPos,
     layersDone = layersDone, x = x, z = z, layers = layers,
@@ -555,12 +555,14 @@ local function biometrics(isAtBedrock)
     event, message = locEvent, locMessage
   until (event == "timer" and idCheck == id) or (event == "modem_message" and confirm == channels.receive)
   if event == "modem_message" then connected = true else connected = false end
-  if message == "Stop" then error("Rednet said to stop...",0) end
-  if message == "Return" then
-    eventAdd("goto",1,1,yPos,2,"quarryStart") --Allows for startDown variable
-    eventAdd("goto",0,1,1,0, "quarryStart") --Go back to base
-    eventAdd("error('Rednet said go back to start...',0)")
-    runAllEvents()
+  message = message.lower()
+  if message == "stop" then error("Rednet said to stop...",0) end
+  if message == "return" then
+    endingProcedure()
+    error('Rednet said go back to start...',0)
+  end
+  if message == "drop" then
+    dropOff()
   end
 end
 --Showing changes to settings
@@ -1066,6 +1068,29 @@ function dropOff() --Not local because called in mine()
   end
 return true
 end
+function endingProcedure() --Used both at the end and in "biometrics"
+  eventAdd("goto",1,1,yPos,2,"quarryStart") --Allows for startDown variable
+  eventAdd("goto",0,1,1,2, "quarryStart") --Go back to base
+
+  --Output to a chest or sit there
+  if enderChestEnabled then
+    while turtle.detect() do dig() end
+    eventAdd("turtle.select",enderChestSlot)
+    eventAdd("turtle.place")
+    eventAdd("turtle.select(1)")
+  end
+  eventAdd("drop",dropSide, true)
+  eventAdd("turnTo(0)")
+
+  --Display was moved above to be used in bedrock function
+  eventAdd("display")
+  --Log current mining run
+  eventAdd("logMiningRun",logExtension)
+  toQuit = true --I'll use this flag to clean up
+  runAllEvents()
+  --Cleanup
+  turtle.getFuelLevel = getFuel
+end
 function bedrock()
 foundBedrock = true --Let everyone know
 if rednetEnabled then biometrics() end
@@ -1079,10 +1104,7 @@ if facing == 0 then var = 2 elseif facing == 2 then var = 0 else error("Was faci
 goto(xPos,zPos,yPos,var)
 for i=1, relxPos do mine(true,true); end
 end
-goto(0,1,1,2)
-drop(dropSide, true)
-turnTo(0)
-display()
+endingProcedure()
 print("\nFound bedrock at these coordinates: ")
 print(origin.x," Was position in row\n",origin.z," Was row in layer\n",origin.y," Blocks down from start")
 error("",0)
@@ -1160,23 +1182,4 @@ layersDone = layersDone + 1
 restoreFoundSwitch = false --This is done so that rowCheck works properly upon restore
 end ---------------Height End-------
 
-eventAdd("goto",1,1,yPos,2,"quarryStart") --Allows for startDown variable
-eventAdd("goto",0,1,1,2, "quarryStart") --Go back to base
-
---Output to a chest or sit there
-if enderChestEnabled and not turtle.detect() then
-  eventAdd("turtle.select",enderChestSlot)
-  eventAdd("turtle.place")
-  eventAdd("turtle.select(1)")
-end
-eventAdd("drop",dropSide, true)
-eventAdd("turnTo(0)")
-
---Display was moved above to be used in bedrock function
-eventAdd("display")
---Log current mining run
-eventAdd("logMiningRun",logExtension)
-toQuit = true --I'll use this flag to clean up
-runAllEvents()
---Cleanup
-turtle.getFuelLevel = getFuel
+endingProcedure() --This takes care of getting to start, dropping in chest, and displaying ending screen

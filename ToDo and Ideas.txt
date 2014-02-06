@@ -58,17 +58,19 @@ Changelog so far:
   If turtle x or z coords are different from saved coords on GPS startup, will remove event queue to prevent unessesary turning/going out of bounds (hopefully)
   Added in "if turtle.detect()" before the turtle calls bedrock. Now the turtle will only stop if the block is unbreakable (or more than 50 sand stacked on top of each other)
   Added in "maxTries" parameter with appropriate help section
+  Added a "dig" before turtle tries to place enderchest at the end.
+  Made ending procedure a function, so it can be used anywhere.
+  Calling endingProcedure in "bedrock", "biometrics", and the end.
+  Due to above, when "Return" rednet message is used, the turtle will drop everything off and log its run.
+  Added in new rednet message: "Drop" that will go back to start/use enderchest to drop things off.
+  All rednet messages are no longer case-sensitive.
+  
 
 Things to add for quarry version 3.4.1:
-  Make the current rednet commands better. Like "Return" will go through the full end-of-quarry routine.
   See if you can change rowCheck "right" and "left" to true and false
   Have sanity check just put the turtle back on track. Like go back to layer start or something. If it gets called, pos system is working fine.
   Quotes: 
     Ooh, also, I could try out having an "-offset" parameter. Since it oftentimes is off by one position, this parameter would offset the position saved by 1 / -1 or whatever number you put in. Then people could help me test to make it better :)  "
-  Maybe have an option to change the home position. Like at 1,1,1 instead of 0,1,1
-  Investigate EnderChest ending behavior. See recent comments on page:
-    "what the turtle is doing is after its finished its quarry, rather than deploying the enderchest for the last drop off its just dumping its load on to the ground back at the start. So you still need a normal chest there to catch the last drop off that has the enderchest in it otherwise it will just dump its final load and after like 5 minutes or so you lose everything that the turtle dumps. it doesn't even wait for a chest to be deployed before dumping it load as it normally would. "
-  
 
 Things to add for quarry version 3.4.2
   Do some fuel checking for all your different variables and how they affect things
@@ -86,6 +88,7 @@ Things to add for quarry version 3.5.0 (After rednet update and shell is done):
   Maybe have a "-replaceStartup" parameter with string argument of what to rename other original startup to
   Maybe have seperate "goDown" and "goUp" parameters
     Or: Maybe just have an "offset" variable that could be positive or negative. -40 would go down 40 before it starts the quarry. Inverted or no.
+  Maybe have an option to change the home position. Like at 1,1,1 instead of 0,1,1  
   
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 Ideas for a Remote Turtle:
