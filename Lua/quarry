@@ -506,6 +506,11 @@ neededFuel = neededFuel + fuelTable[fuelSafety] --For safety
 end
 --Ender Chest Obtaining
 if enderChestEnabled then
+    if restoreFoundSwitch and turtle.getItemCount(enderChestSlot) == 0 then --If the turtle was stopped while dropping off items.
+      turtle.select(enderChestSlot)
+      turtle.dig()
+      turtle.select(1)
+    end
   while turtle.getItemCount(enderChestSlot) ~= 1 do
     screen(1,1)
     print("You have decided to use an Ender Chest!")
@@ -1074,7 +1079,7 @@ function endingProcedure() --Used both at the end and in "biometrics"
 
   --Output to a chest or sit there
   if enderChestEnabled then
-    while turtle.detect() do dig() end
+    while turtle.detect() do dig(false) end --This gets rid of blocks in front of the turtle.
     eventAdd("turtle.select",enderChestSlot)
     eventAdd("turtle.place")
     eventAdd("turtle.select(1)")
