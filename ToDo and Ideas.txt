@@ -54,6 +54,7 @@ Way in future: Add session persistence for setups
 Quarry Version 3.4.1:
 Changelog so far:
   Added in "atChest" parameter. It wants a number between 0 and 3 for facing direction. Added appropriate help entry
+  Modified the above. It will attempt to restart the layer it was on. It is a force parameter.
   Using "for" loops in GPS checking deemed unnessesary
   If turtle x or z coords are different from saved coords on GPS startup, will remove event queue to prevent unessesary turning/going out of bounds (hopefully)
   Added in "if turtle.detect()" before the turtle calls bedrock. Now the turtle will only stop if the block is unbreakable (or more than 50 sand stacked on top of each other)
@@ -67,11 +68,11 @@ Changelog so far:
   Fixed turtle prompting for enderchest if restarted while dropping off materials.
   
 
-Things to add for quarry version 3.4.1:
+Things to add for quarry version 3.4.2:
   See if you can change rowCheck "right" and "left" to true and false
   Have sanity check just put the turtle back on track. Like go back to layer start or something. If it gets called, pos system is working fine.
 
-Things to add for quarry version 3.4.2
+Things to add for quarry version 3.4.3
   Do some fuel checking for all your different variables and how they affect things
   Investigate fuel usage again. "Number of stacks per run" has a much smaller effect than intended. Might even be moot.
   Session Persistance: http://www.computercraft.info/forums2/index.php?/topic/13919-lama-location-aware-movement-api-v14/

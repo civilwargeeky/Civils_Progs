@@ -1,12 +1,12 @@
 --[[ 
 Version 3.4.1
 Recent Changes:
+  Bedrock check only runs if there is a block in the way
   Added New Rednet Support
-  Fixed bug that stopped program from working on computers
+  Rednet messages work better
   New Arguments!
-    -enderChest [t/f or slot number] You can now use an enderchest! Try it out. There are directions
-    -startDown [number] The quarry will now start this many blocks down from its starting point (or up if invert). Great for getting diamonds and things from surface. Chest should still be placed on the top (or use ender chest)
-    -manualPos [xPos] [zPos] [yPos] [facing] Turtle ever gotten it's position wrong, but you don't want to reset? Use this! Check "quarry -help" for changes
+    -atChest [force] Using this with -resume will tell the turtle that it is at its chest, and needs to go back to where it was
+    -maxTries [number 1-9000] This is the number of times the turtle will try to mine something before it checks for bedrock
   Arguments are no longer ignored if you use "-default", you just won't be prompted for anything. 
   Boolean (t/f) arguments now accept "yes" as well as "true"
 ]]
@@ -407,8 +407,15 @@ if tArgs["-manualpos"] then --Gives current coordinates in xPos,zPos,yPos, facin
   changedT.new("xPos",xPos); changedT.new("zPos",zPos); changedT.new("yPos",yPos); changedT.new("facing",facing)
   restoreFoundSwitch = true --So it doesn't do beginning of quarry behavior
 end
-if addParam("atChest", "Is at Chest", "number 0-3", nil, nil, "facing") then --This sets position to 0,1,1 and sets facing to the number given
-  xPos, zPos, yPos, rowCheck = 0,1,1, "right"
+if addParam("atChest", "Is at Chest", "force") then --This sets position to 0,1,1, facing forward, and queues the turtle to go back to proper row.
+  local neededLayer = yPos
+  if yPos > 2 and yPos%3 ~= 2 then --If turtle was not on a proper mining layer
+    print("Last known pos was not in proper layer, restarting quarry")
+    sleep(4)
+    neededLayer = 2
+  end
+  xPos, zPos, yPos, facing, rowCheck = 0,1,1, 0, "right"
+  events = {"goto",1,1,neededLayer, 0}
 end
 
 
