@@ -40,7 +40,7 @@ class gameBoard(object):
          return i
      if [board.slots[0],board.slots[4],board.slots[8]] == [i,i,i] or [board.slots[2],board.slots[4],board.slots[6]] == [i,i,i]:
        return i
-    if not 0 in board and doRaise:
+    if not 0 in board.slots and doRaise:
       raise(AssertionError)
     return 0
   def isFree(board, slot): #For AI. This checks if a slot is free
@@ -62,14 +62,14 @@ class gameBoard(object):
       difficultyCheck = random.randint(0,10) #Lower difficulties have a chance of AI not realizing what its doing
       if difficulty >= 2 or (difficulty == 2 and not difficultyCheck == 0) or (difficulty == 0 and difficultyCheck in [i for i in range(6)]):
         for x in range(0, 9):
-            copy = board + [0] #This is so checkwin does not think its "slots". Should not affect calculations
+            copy = gameBoard() #This is so checkwin does not think its "slots". Should not affect calculations
             if isFree(copy, x):
                 update(x, player, copy)
                 if checkWin(copy)-1 == player: #If current player (AI) is winner
                     return x
        
         for y in range(0, 9):
-            copy = board + [0] 
+            copy = gameBoard()
             if isFree(copy, y):
                 update(y,not player, copy)
                 if checkWin(copy)-1 == (not player): #CheckWin returns player 1 or 2
@@ -78,16 +78,16 @@ class gameBoard(object):
       if difficulty >= 2: #I consider this a "hard" level behavior    
         tableOfCorners = [board.slots[0],board.slots[2],board.slots[6],board.slots[8]]            
         if tableOfCorners.count(player+1) == 2: #If has two corners, pick the third
-          copy = board + [0]
+          copy = gameBoard()
           for i in [0,2,6,8]:
             if isFree(copy,i):
               return i
         if tableOfCorners.count((not player) + 1) == 2: #Prevents opposite corner start trick
-          return randomMove(board,[1,3,7,5])
+          return board.randomMove([1,3,7,5])
       
-      cornerMove = not(isFree(board,0) and isFree(board,2) and isFree(board,6) and isFree(board,8))
-      edgeMove = not(isFree(board,1) and isFree(board,3) and isFree(board,7) and isFree(board,5))
-      cornerMove2 = (not(isFree(board,0) or isFree(board,8))) or (not(isFree(board,2) or isFree(board,6)))
+      cornerMove = not(board.isFree(0) and board.isFree(2) and board.isFree(6) and board.isFree(8))
+      edgeMove = not(board.isFree(1) and board.isFree(3) and board.isFree(7) and board.isFree(5))
+      cornerMove2 = (not(board.isFree(0) or board.isFree(8))) or (not(board.isFree(2) or board.isFree(6)))
       firstTurn, secondTurn = None, None #Defining out of local
       if turn <= 2: #This is basically what Cedrick did, right?
         firstTurn = 0
@@ -103,18 +103,18 @@ class gameBoard(object):
       if firstTurn==0 and edgeMove:
               firstTurn=3
               return 5
-      move = randomMove(board, [0, 2, 6, 8])
+      move = board.randomMove([0, 2, 6, 8])
       if move != None:
           return move
      
-      if isFree(board, 4):
+      if board.isFree(4):
           return 4
           
-      return randomMove(board, [1, 3, 7, 5])
+      return board.randomMove([1, 3, 7, 5])
       
       for a in range(0,9): #If nothing else worked...
-        checkWin() #Will raise assertion error if board full
-        if slots[a] == 0:
+        board.checkWin() #Will raise assertion error if board full
+        if board.slots[a] == 0:
           return a
     
 
@@ -267,7 +267,7 @@ while True:
   windowObj.blit(images["board"],(0,0))
 
   try: #Checking for winner
-    winner = checkWin() #Main board, raise exception if full
+    winner = board.checkWin() #Main board, raise exception if full
     if winner:
       userEvent("Winner", "Player %d has won!" % (winner))
   except AssertionError:
@@ -290,14 +290,14 @@ while True:
           print("KEY DOWN")
           print(event.key)
           if event.key in list(range(K_1,K_9+1)) + list(range(K_KP1,K_KP9+1)):
-            if update(event.key-K_1 if event.key in range(K_1,K_9+1) else event.key-K_KP1,player): #Works because key - first number. First is top numbers, second is keypad
+            if update(event.key-K_1 if event.key in range(K_1,K_9+1) else event.key-K_KP1,board.player): #Works because key - first number. First is top numbers, second is keypad
               board.switchPlayer()
         if event.type in (MOUSEBUTTONUP,): #Mouse button up
           for a in range(3):
             for b in range(3):
               c = slotsPos[a][b] #For ease of use
               if not False in list((c[i]<=event.pos[i]<=c[i]+piecesPixels) for i in range(2)): #I think this is to see if the mouse is in a certain square
-                if update(a*3+b,player): #+1 because first slot is 1, not 0
+                if update(a*3+b,board.player): #+1 because first slot is 1, not 0
                   board.switchPlayer()
     else:
       print("Computer Starting Move")
@@ -307,14 +307,14 @@ while True:
       board.switchPlayer()
 
   for a in range(9): #Blitting all pieces to screen
-    if slots[a] == 1:
+    if board.slots[a] == 1:
       windowObj.blit(images["x"], slotsPos[int(a/3)][a%3])
-    elif slots[a] == 2:
+    elif board.slots[a] == 2:
       windowObj.blit(images["o"], slotsPos[int(a/3)][a%3])
 
   #Blitting turn and player counters
-  windowObj.blit(printFont.render("Player %d" % (int(player)+1), True, (0,0,0)), (images["board"].get_size()[0],25))
-  windowObj.blit(printFont.render("Turn %d" % turn, True, (0,0,0)), (images["board"].get_size()[0],50))
+  windowObj.blit(printFont.render("Player %d" % (int(board.player)+1), True, (0,0,0)), (images["board"].get_size()[0],25))
+  windowObj.blit(printFont.render("Turn %d" % board.turn, True, (0,0,0)), (images["board"].get_size()[0],50))
   
   pygame.display.update()
   clockObj.tick(20)
