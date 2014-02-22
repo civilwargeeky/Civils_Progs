@@ -53,7 +53,7 @@ Way in future: Add session persistence for setups
 
 Quarry Version 3.4.1:
 Changelog so far:
-  Added in "atChest" parameter. It wants a number between 0 and 3 for facing direction. Added appropriate help entry
+  Added in "atChest" parameter. This will also resume the quarry. Added appropriate help entry
   Modified the above. It will attempt to restart the layer it was on. It is a force parameter.
   Using "for" loops in GPS checking deemed unnessesary
   If turtle x or z coords are different from saved coords on GPS startup, will remove event queue to prevent unessesary turning/going out of bounds (hopefully)
