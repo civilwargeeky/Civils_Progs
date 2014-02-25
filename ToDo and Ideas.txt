@@ -88,7 +88,7 @@ Things to add for quarry version 3.5.0 (After rednet update and shell is done):
   Maybe have a "-replaceStartup" parameter with string argument of what to rename other original startup to
   Maybe have seperate "goDown" and "goUp" parameters
     Or: Maybe just have an "offset" variable that could be positive or negative. -40 would go down 40 before it starts the quarry. Inverted or no.
-  Maybe have an option to change the home position. Like at 1,1,1 instead of 0,1,1  
+  Maybe have an option to change the home position. Like at 1,1,1 instead of 0,1,1. You could just replace all the "goto 1,1,1 goto 0,1,1" with a "go home" command
   
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 Ideas for a Remote Turtle:

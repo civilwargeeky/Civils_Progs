@@ -44,8 +44,8 @@ moderate = 200,
 loose = 0 } --Default 1000, 200, 0
 --Standard rednet channels
 channels = {
-send = os.getComputerID()  ,
-receive = os.getComputerID() + 100 ,
+send = os.getComputerID() + 1  ,
+receive = os.getComputerID() + 101 ,
 confirm = "Turtle Quarry Receiver",
 message = "Civil's Quarry",
 }
@@ -567,7 +567,7 @@ function biometrics(isAtBedrock)
     event, message = locEvent, locMessage
   until (event == "timer" and idCheck == id) or (event == "modem_message" and confirm == channels.receive)
   if event == "modem_message" then connected = true else connected = false end
-  message = message.lower()
+  message = message:lower()
   if message == "stop" then error("Rednet said to stop...",0) end
   if message == "return" then
     endingProcedure()
