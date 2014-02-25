@@ -140,7 +140,9 @@ local supportsRednet = (peripheral.wrap("right") ~= nil)
 local tArgs = {...}
 --You don't care about these
       xPos,yPos,zPos,facing,percent,mined,moved,relxPos, rowCheck, connected, isInPath, layersDone, attacked, startY, chestFull, gotoDest, atChest
-    = 0,   1,   1,   0,     0,      0,    0,    1,       "right",  false,     true,     1,          0,        0,      false,     "",       false
+    = 0,   1,   1,   0,     0,      0,    0,    1,       true   ,  false,     true,     1,          0,        0,      false,     "",       false
+    
+--NOTE: rowCheck is a bit. true = "right", false = "left"
     
 local foundBedrock = false
 
@@ -412,7 +414,7 @@ if addParam("atChest", "Is at Chest", "force") then --This sets position to 0,1,
     sleep(4)
     neededLayer = 2
   end
-  xPos, zPos, yPos, facing, rowCheck, layersDone = 0,1,1, 0, "right", math.ceil(neededLayer/3)
+  xPos, zPos, yPos, facing, rowCheck, layersDone = 0,1,1, 0, true, math.ceil(neededLayer/3)
   events = {{"goto",1,1,neededLayer, 0}}
 end
 
@@ -746,7 +748,7 @@ else
   end
 end
 function relativeXCalc()
-  if rowCheck == "right" then relxPos = xPos else relxPos = (x-xPos)+1 end
+  if rowCheck then relxPos = xPos else relxPos = (x-xPos)+1 end
 end
 function forward(doAdd)
   if doAdd == nil then doAdd = true end
@@ -912,7 +914,7 @@ end
 function checkSanity()
   if isInPath and not (facing == 0 or facing == 2) and #events == 0 then --If mining and not facing proper direction and not in a turn
     turnTo(0)
-    rowCheck = "right"
+    rowCheck = true
   end
   if xPos < 0 or xPos > x or zPos < 0 or zPos > z or yPos < 0 then
     saveProgress()
@@ -936,7 +938,7 @@ return math.abs((limit*fromBoolean(num < 0))-(math.abs(num)%limit))
 end
 if tArgs["-manualpos"] then
   facing = coterminal(facing) --Done to improve support for "-manualPos"
-  if facing == 0 then rowCheck = "right" elseif facing == 2 then rowCheck = "left" end --Ditto
+  if facing == 0 then rowCheck = true elseif facing == 2 then rowCheck = false end --Ditto
   relativeXCalc() --Ditto
 end
 
@@ -1168,7 +1170,7 @@ local lastLayer = layersDone == layers --If this is the last layer
 local secondToLastLayer = (layersDone + 1) == layers --This is for the going down at the end of a layer.
 moved = moved + 1 --To account for the first position in row as "moved"
 if doDigDown then digDown() end --This is because it doesn't mine first block in layer
-if not restoreFoundSwitch then rowCheck = "right" end
+if not restoreFoundSwitch then rowCheck = true end
 relativeXCalc()
 while zPos <= z do -------------Width----------
 while relxPos < x do ------------Length---------
@@ -1176,8 +1178,8 @@ mine(not lastLayer or (doDigDown and lastLayer), not lastLayer or (doDigUp and l
 end ---------------Length End-------
 if zPos ~= z then --If not on last row of section
   local func
-  if rowCheck == "right" then --Swithcing to next row
-  func = "right"; rowCheck = "left"; else func = "left"; rowCheck = "right" end --Which way to turn
+  if rowCheck == true then --Swithcing to next row
+  func = "right"; rowCheck = false; else func = false; rowCheck = true end --Which way to turn
     eventAdd("endOfRowTurn", zPos, facing , {not lastLayer or (doDigDown and lastLayer), not lastLayer or (doDigUp and lastLayer)}) --The table is passed to the mine function
     runAllEvents()
 else break

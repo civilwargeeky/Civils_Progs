@@ -53,9 +53,9 @@ Way in future: Add session persistence for setups
 
 Quarry Version 3.4.2:
 Changelog so far:
+  Changed rowCheck to true and false instead of right and left
 
 Things to add for quarry version 3.4.2:
-  See if you can change rowCheck "right" and "left" to true and false
   Have sanity check just put the turtle back on track. Like go back to layer start or something. If it gets called, pos system is working fine.
 
 Things to add for quarry version 3.4.3
