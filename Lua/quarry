@@ -1,9 +1,7 @@
 --[[ 
-Version 3.4.1
+Version 3.4.2
 Recent Changes:
-  Bedrock check only runs if there is a block in the way
   Added New Rednet Support
-  Rednet messages work better
   New Arguments!
     -atChest [force] Using this with -resume will tell the turtle that it is at its chest, and needs to go back to where it was
     -maxTries [number 1-9000] This is the number of times the turtle will try to mine something before it checks for bedrock

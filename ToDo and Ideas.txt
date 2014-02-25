@@ -51,22 +51,8 @@ Way in future: Add session persistence for setups
 
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 
-Quarry Version 3.4.1:
+Quarry Version 3.4.2:
 Changelog so far:
-  Added in "atChest" parameter. This will also resume the quarry. Added appropriate help entry
-  Modified the above. It will attempt to restart the layer it was on. It is a force parameter.
-  Using "for" loops in GPS checking deemed unnessesary
-  If turtle x or z coords are different from saved coords on GPS startup, will remove event queue to prevent unessesary turning/going out of bounds (hopefully)
-  Added in "if turtle.detect()" before the turtle calls bedrock. Now the turtle will only stop if the block is unbreakable (or more than 50 sand stacked on top of each other)
-  Added in "maxTries" parameter with appropriate help section
-  Added a "dig" before turtle tries to place enderchest at the end.
-  Made ending procedure a function, so it can be used anywhere.
-  Calling endingProcedure in "bedrock", "biometrics", and the end.
-  Due to above, when "Return" rednet message is used, the turtle will drop everything off and log its run.
-  Added in new rednet message: "Drop" that will go back to start/use enderchest to drop things off.
-  All rednet messages are no longer case-sensitive.
-  Fixed turtle prompting for enderchest if restarted while dropping off materials.
-  
 
 Things to add for quarry version 3.4.2:
   See if you can change rowCheck "right" and "left" to true and false
