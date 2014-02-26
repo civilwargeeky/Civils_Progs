@@ -1,8 +1,6 @@
 --[[ 
 Version 3.4.3
 Recent Changes:
-  Improved session restoring for those using fuel
-  Improved refueling algorithm
   Added New Rednet Support
   New Arguments!
     -atChest [force] Using this with -resume will tell the turtle that it is at its chest, and needs to go back to where it was
@@ -1250,12 +1248,14 @@ else break
 end
 end ---------------Width End--------
 eventAdd("goto",1,1,yPos,0, "layerStart") --Goto start of layer
-runAllEvents()
 if not lastLayer then --If there is another layer
-  for i=1, 2+fromBoolean(not(lastHeight~=0 and secondToLastLayer)) do down() end --The fromBoolean stuff means that if lastheight is 1 and last and layer, will only go down two
+  for i=1, 2+fromBoolean(not(lastHeight~=0 and secondToLastLayer)) do eventAdd("down()") end --The fromBoolean stuff means that if lastheight is 1 and last and layer, will only go down two
 end
+eventAdd("setRowCheckFromPos")
+eventAdd("relxCalc")
 layersDone = layersDone + 1
 restoreFoundSwitch = false --This is done so that rowCheck works properly upon restore
+runAllEvents()
 end ---------------Height End-------
 
 endingProcedure() --This takes care of getting to start, dropping in chest, and displaying ending screen

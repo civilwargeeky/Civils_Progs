@@ -63,6 +63,7 @@ Changelog so far:
   Added "uniqueExtras" parameter. Accepts a number 1-15
   Fixed bug where turtle would not mine blocks above and below on restore if y dim was not divisible by 3
   Turtle now keeps track of how many times it goes to drop off items
+  Fixed bug where turtle would get lost if it was restarted when going to the next layer.
 
 Things for 3.4.4:
   Improve drop function
