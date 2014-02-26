@@ -1,5 +1,5 @@
 --[[ 
-Version 3.4.3
+Version 3.4.4
 Recent Changes:
   Improved session restoring for those using fuel
   Improved refueling algorithm
@@ -1233,7 +1233,7 @@ while layersDone <= layers do -------------Height---------
 local lastLayer = layersDone == layers --If this is the last layer
 local secondToLastLayer = (layersDone + 1) == layers --This is for the going down at the end of a layer.
 moved = moved + 1 --To account for the first position in row as "moved"
-if doDigDown then digDown() end --This is because it doesn't mine first block in layer
+if not(layersDone == layers and not doDigDown) then digDown() end --This is because it doesn't mine first block in layer
 if not restoreFoundSwitch then rowCheck = true end
 relxCalc()
 while zPos <= z do -------------Width----------

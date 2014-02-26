@@ -51,19 +51,10 @@ Way in future: Add session persistence for setups
 
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 
-Quarry Version 3.4.3:
+Quarry Version 3.4.4:
 Changelog so far:
-  Possibly may have fixed position being off by one in X-Z Plane through fuel checking.
-  Big thanks to Sangar, from Lama - Location Aware Movement API V1.4.
-  http://www.computercraft.info/forums2/index.php?/topic/13919-lama-location-aware-movement-api-v14/
-  If you use "-default", but still specify dimensions, these will show up in the changed items menu
-  Redid fuel checking numbers. Size now greatly affects how many times it thinks it will drop off its inventory
-  Fuel system will take into account that enderchests do not have to go back to start to drop off things.
-  If enderchest is missing when turtle attempts to drop off items, it will prompt for enderchest instead of dropping things off
-  Added "uniqueExtras" parameter. Accepts a number 1-15
-  Fixed bug where turtle would not mine blocks above and below on restore if y dim was not divisible by 3
-  Turtle now keeps track of how many times it goes to drop off items
-  Fixed bug where turtle would get lost if it was restarted when going to the next layer.
+  Fixed turtle not mining first block in layer if size is not multiple of 3
+
 
 Things for 3.4.4:
   Improve drop function
