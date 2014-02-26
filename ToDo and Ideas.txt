@@ -57,10 +57,14 @@ Changelog so far:
   Big thanks to Sangar, from Lama - Location Aware Movement API V1.4.
   http://www.computercraft.info/forums2/index.php?/topic/13919-lama-location-aware-movement-api-v14/
   If you use "-default", but still specify dimensions, these will show up in the changed items menu
+  Redid fuel checking numbers. Size now greatly affects how many times it thinks it will drop off its inventory
+  Fuel system will take into account that enderchests do not have to go back to start to drop off things.
+  If enderchest is missing when turtle attempts to drop off items, it will prompt for enderchest instead of dropping things off
+  Added "uniqueExtras" parameter. Accepts a number 1-15
+  Fixed bug where turtle would not mine blocks above and below on restore if y dim was not divisible by 3
+  Turtle now keeps track of how many times it goes to drop off items
 
 Things to add for quarry version 3.4.3
-  Do some fuel checking for all your different variables and how they affect things
-  Investigate fuel usage again. "Number of stacks per run" has a much smaller effect than intended. Might even be moot.
   
 Things to add for quarry version 3.5.0 (After rednet update and shell is done):
   Add support for mods. Like openperipheral chest finding.
