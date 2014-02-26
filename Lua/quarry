@@ -1,6 +1,8 @@
 --[[ 
 Version 3.4.3
 Recent Changes:
+  Improved session restoring for those using fuel
+  Improved refueling algorithm
   Added New Rednet Support
   New Arguments!
     -atChest [force] Using this with -resume will tell the turtle that it is at its chest, and needs to go back to where it was
