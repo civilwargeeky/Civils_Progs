@@ -1,4 +1,5 @@
-side = "bottom"
+tArgs = {...}
+side = (tArgs[1] or "bottom"):lower()
 
 basic = {["13"] = 178,
 cat = 185,
