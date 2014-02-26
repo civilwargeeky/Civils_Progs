@@ -1,5 +1,5 @@
 --[[ 
-Version 3.4.2
+Version 3.4.3
 Recent Changes:
   Added New Rednet Support
   New Arguments!
@@ -139,8 +139,8 @@ local supportsRednet = (peripheral.wrap("right") ~= nil)
 
 local tArgs = {...}
 --You don't care about these
-      xPos,yPos,zPos,facing,percent,mined,moved,relxPos, rowCheck, connected, isInPath, layersDone, attacked, startY, chestFull, gotoDest, atChest
-    = 0,   1,   1,   0,     0,      0,    0,    1,       true   ,  false,     true,     1,          0,        0,      false,     "",       false
+      xPos,yPos,zPos,facing,percent,mined,moved,relxPos, rowCheck, connected, isInPath, layersDone, attacked, startY, chestFull, gotoDest, atChest, fuelLevel
+    = 0,   1,   1,   0,     0,      0,    0,    1,       true   ,  false,     true,     1,          0,        0,      false,     "",       false,   0
     
 --NOTE: rowCheck is a bit. true = "right", false = "left"
     
@@ -298,7 +298,21 @@ if restoreFoundSwitch then
   local test = file.readAll() ~= ""
   file.close()
   if test then
-    os.run(getfenv(1),saveFile)
+    os.run(getfenv(1),saveFile) --This is where the actual magic happens
+    if turtle.getFuelLevel ~= math.huge then --If turtle uses fuel
+      if fuelLevel - turtle.getFuelLevel() == 1 then
+        if facing == 0 then xPos = xPos + 1
+        elseif facing == 2 then xPos = xPos - 1
+        elseif facing == 1 then zPos = zPos + 1
+        elseif facing == 3 then zPos = zPos - 1 end
+      elseif fuelLevel - turtle.getFuelLevel() ~= 0 then
+        print("Very Strange Fuel in Restore Section...")
+        print("Current: ",turtle.getFuelLevel())
+        print("Saved: ",fuelLevel)
+        print("Difference: ",fuelLevel - turtle.getFuelLevel())
+        os.pullEvent("char")
+      end
+     end
     if gpsEnabled then --If it had saved gps coordinates
       print("Found GPS Start Coordinates") 
       local currLoc = {gps.locate(gpsTimeout)} or {}
@@ -357,19 +371,24 @@ else --If turtle is just starting
 end
 
 --Dimensions
-if tArgs["-dim"] then local num = tArgs["-dim"];
-x = tonumber(tArgs[num + 1]) or x; z = tonumber(tArgs[num + 2]) or z; y = tonumber(tArgs[num + 3]) or y
+if tArgs["-dim"] then 
+  local a,b,c = x,y,z
+  local num = tArgs["-dim"]
+  x = tonumber(tArgs[num + 1]) or x; z = tonumber(tArgs[num + 2]) or z; y = tonumber(tArgs[num + 3]) or y
+  if a ~= x then changedT.new("Length", x) end
+  if c ~= z then changedT.new("Width", z) end
+  if b ~= y then changedT.new("Height", y) end
 elseif not (tArgs["-default"] or restoreFoundSwitch) then
-print("What dimensions?")
-print("")
---This will protect from negatives, letters, and decimals
-term.write("Length? ")
-x = math.floor(math.abs(tonumber(io.read()) or x))
-term.write("Width? ")
-z = math.floor(math.abs(tonumber(io.read()) or z))
-term.write("Height? ")
-y = math.floor(math.abs(tonumber(io.read()) or y))
-changedT.new("Length",x); changedT.new("Width",z); changedT.new("Height",y)
+  print("What dimensions?")
+  print("")
+  --This will protect from negatives, letters, and decimals
+  term.write("Length? ")
+  x = math.floor(math.abs(tonumber(io.read()) or x))
+  term.write("Width? ")
+  z = math.floor(math.abs(tonumber(io.read()) or z))
+  term.write("Height? ")
+  y = math.floor(math.abs(tonumber(io.read()) or y))
+  changedT.new("Length",x); changedT.new("Width",z); changedT.new("Height",y)
 end
 --Invert
 addParam("invert", "Inverted","boolean", true, nil, "inverted")
@@ -443,6 +462,9 @@ if type(extras) == "table" then
   for a, b in pairs(extras) do
     file.write(a.." = "..tostring(b))
   end
+end
+if turtle.getFuelLevel() ~= math.huge then --Used for location comparing
+  file.write("fuelLevel = "..tostring(turtle.getFuelLevel()))
 end
 file.close()
 end

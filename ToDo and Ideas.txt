@@ -51,17 +51,16 @@ Way in future: Add session persistence for setups
 
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 
-Quarry Version 3.4.2:
+Quarry Version 3.4.3:
 Changelog so far:
-  Changed rowCheck to true and false instead of right and left
-  Sanity Check will now attempt to put turtle back on track instead of erroring. That was lazy
+  Possibly may have fixed position being off by one in X-Z Plane through fuel checking.
+  Big thanks to Sangar, from Lama - Location Aware Movement API V1.4.
+  http://www.computercraft.info/forums2/index.php?/topic/13919-lama-location-aware-movement-api-v14/
+  If you use "-default", but still specify dimensions, these will show up in the changed items menu
 
 Things to add for quarry version 3.4.3
   Do some fuel checking for all your different variables and how they affect things
   Investigate fuel usage again. "Number of stacks per run" has a much smaller effect than intended. Might even be moot.
-  Session Persistance: http://www.computercraft.info/forums2/index.php?/topic/13919-lama-location-aware-movement-api-v14/
-  "This API only works on turtles that have a label and that use fuel. The label is required for state persistence, the fuel is used for checking whether the turtle finished a move that was interrupted by a forced shut down (game quit / chunk unloaded)." Credit Sangar, from Lama - Location Aware Movement API V1.4
-
   
 Things to add for quarry version 3.5.0 (After rednet update and shell is done):
   Add support for mods. Like openperipheral chest finding.
