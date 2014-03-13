@@ -1,4 +1,6 @@
-side = "front"
+#Designed to go on a 1x1 screen
+tArgs = {...}
+side = (tArgs[1] or "front"):lower()
 sunrise = {start = 4.75, ending = 6 }
 sunset = {start = 17.75, ending = 19 }
 
