@@ -1168,22 +1168,24 @@ function endingProcedure() --Used both at the end and in "biometrics"
   turtle.getFuelLevel = getFuel
 end
 function bedrock()
-foundBedrock = true --Let everyone know
-if rednetEnabled then biometrics() end
-if checkFuel() == 0 then error("No Fuel",0) end
-local origin = {x = xPos, y = yPos, z = zPos}
-print("Bedrock Detected")
-if turtle.detectUp() then
-print("Block Above")
-local var
-if facing == 0 then var = 2 elseif facing == 2 then var = 0 else error("Was facing left or right on bedrock") end
-goto(xPos,zPos,yPos,var)
-for i=1, relxPos do mine(true,true); end
-end
-endingProcedure()
-print("\nFound bedrock at these coordinates: ")
-print(origin.x," Was position in row\n",origin.z," Was row in layer\n",origin.y," Blocks down from start")
-error("",0)
+  foundBedrock = true --Let everyone know
+  if rednetEnabled then biometrics() end
+  if checkFuel() == 0 then error("No Fuel",0) end
+  local origin = {x = xPos, y = yPos, z = zPos}
+  print("Bedrock Detected")
+  if turtle.detectUp() then
+    print("Block Above")
+    local var
+    if facing == 0 then var = 2 elseif facing == 2 then var = 0 else error("Was facing left or right on bedrock") end
+    goto(xPos,zPos,yPos,var)
+    for i=1, relxPos do mine(false, false); end
+  end
+  goto(xPos,zPos,yPos-3,0) --This will make the turtle go up three before it tries going to start of layer.
+  eventClear() --Get rid of any excess events that may be run. Don't want that.
+  endingProcedure()
+  print("\nFound bedrock at these coordinates: ")
+  print(origin.x," Was position in row\n",origin.z," Was row in layer\n",origin.y," Blocks down from start")
+  error("",0)
 end
 
 function endOfRowTurn(startZ, wasFacing, mineFunctionTable)
