@@ -54,8 +54,9 @@ Way in future: Add session persistence for setups
 Quarry Version 3.4.4:
 Changelog so far:
   Fixed turtle not mining first block in layer if size is not multiple of 3
+  If bedrock is detected, turtle will go up 3 to account for cases where bedrock is on the first layer.
   When bedrock is called, event queue is cleared before executing ending procedure.
-  Fixed small bug when counting fuel with fuel off.
+
 
 Things for 3.4.4:
   Improve drop function

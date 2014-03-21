@@ -302,7 +302,7 @@ if restoreFoundSwitch then
   file.close()
   if test then
     os.run(getfenv(1),saveFile) --This is where the actual magic happens
-    if turtle.getFuelLevel() ~= math.huge then --If turtle uses fuel
+    if turtle.getFuelLevel ~= math.huge then --If turtle uses fuel
       if fuelLevel - turtle.getFuelLevel() == 1 then
         if facing == 0 then xPos = xPos + 1
         elseif facing == 2 then xPos = xPos - 1
@@ -1180,6 +1180,7 @@ function bedrock()
     goto(xPos,zPos,yPos,var)
     for i=1, relxPos do mine(false, false); end
   end
+  goto(xPos,zPos,yPos-3,0) --This will make the turtle go up three before it tries going to start of layer.
   eventClear() --Get rid of any excess events that may be run. Don't want that.
   endingProcedure()
   print("\nFound bedrock at these coordinates: ")
