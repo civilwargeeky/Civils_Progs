@@ -606,7 +606,7 @@ function biometrics(isAtBedrock)
   local event, message
   repeat
     local locEvent, idCheck, confirm, _, locMessage, distance = os.pullEvent()
-    event, message = locEvent, locMessage
+    event, message = locEvent, locMessage or ""
   until (event == "timer" and idCheck == id) or (event == "modem_message" and confirm == channels.receive)
   if event == "modem_message" then connected = true else connected = false end
   message = message:lower()
