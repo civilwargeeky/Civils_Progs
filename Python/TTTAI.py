@@ -1,5 +1,6 @@
 #Note: I am trying to adapt cedricks AI into this program.
 #Note: If you pick an edge (non-corner), then a diagonally connected egde, you can beat the AI
+#Extra Note: If you do the above, the ai can counter by picking the two corners opposite your first piece. This then allows them the get the middle piece and a choice of corners.
 print("LOADING")
 
 import pygame
