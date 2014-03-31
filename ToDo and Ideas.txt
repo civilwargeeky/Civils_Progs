@@ -1,7 +1,4 @@
--_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
-
-Quarry Receiver x.x.x (matches current quarry):
-  Add in more commands to send to turtle. Also make commands sent in lowercase so that capitalization doesn't matter.
+ToDo: Seperate into ideas(python) and ideas(quarry) so no more merge conflicts
 
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 
@@ -49,13 +46,16 @@ How things might work:
   
 Way in future: Add session persistence for setups
 
+Random future thoughts: Maybe make more seamless. Have an arg/option to make calling the program just start quarry with additional args supplied so like "shell -dim 5 5 5" would do the same as quarry
+
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 
-Quarry Version 3.4.4:
+Quarry Version 3.4.5:
 Changelog so far:
+  new constants: VARIABLE, originalDay, numResumed, both used in logging.
 
 
-Things for 3.4.4:
+Things for 3.4.5:
   Improve drop function
   Improve drop function. Just... make it better in general. Also have an argument table of slots not to drop from.
   Add back in "oreQuarry" functionality.
@@ -117,8 +117,3 @@ Ideas for minecraft word:
   Completely seperate the data from the visual. The data will conatain all of the lines (seperated by line breaks), and the visual will handle printing it in a formatted way for reading.
   Some day...
   
--_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
-  
-Ideas for TTTClick:
-  Using SysPrint(once it is done), make a menu that the program will come back to once it is done with a game/ at start of game.
-  :D May get to work soon :D :D :D

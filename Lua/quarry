@@ -1,17 +1,16 @@
 --[[ 
-Version 3.4.4
+Version 3.4.5
 Recent Changes:
   Improved session restoring for those using fuel
-  Improved refueling algorithm
   Added New Rednet Support
   New Arguments!
     -atChest [force] Using this with -resume will tell the turtle that it is at its chest, and needs to go back to where it was
-    -maxTries [number 1-9000] This is the number of times the turtle will try to mine something before it checks for bedrock
-  Arguments are no longer ignored if you use "-default", you just won't be prompted for anything. 
-  Boolean (t/f) arguments now accept "yes" as well as "true"
 ]]
 --Defining things
 civilTable = nil; _G.civilTable = {}; setmetatable(civilTable, {__index = _G}); setfenv(1,civilTable)
+VERSION = "3.4.5" --Adding this so I can differentiate versions on error messages
+originalDay = os.day() --Used in logging
+numResumed = 0 --Number of times turtle has been resumed
 -------Defaults for Arguments----------
 --Arguments assignable by text
 x,y,z = 3,3,3 --These are just in case tonumber fails
@@ -302,6 +301,7 @@ if restoreFoundSwitch then
   file.close()
   if test then
     os.run(getfenv(1),saveFile) --This is where the actual magic happens
+    numResumed = numResumed + 1
     if turtle.getFuelLevel() ~= math.huge then --If turtle uses fuel
       if fuelLevel - turtle.getFuelLevel() == 1 then
         if facing == 0 then xPos = xPos + 1
@@ -745,6 +745,7 @@ local function write(...)
 end
 write("Welcome to the Quarry Logs!")
 write("Entry Number: ",number)
+write("Quarry Version: ",VERSION)
 write("Dimensions (X Z Y): ",x," ",z," ", y)
 write("Blocks Mined: ", mined)
 write("  Cobble: ", totals.cobble)
@@ -752,6 +753,8 @@ write("  Usable Fuel: ", totals.fuel)
 write("  Other: ",totals.other)
 write("Total Fuel Used: ",  (originalFuel or (neededFuel + checkFuel()))- checkFuel()) --Protect against errors with some precision
 write("Expected Fuel Use: ", neededFuel)
+write("Days to complete mining run: ",os.day()-originalDay)
+write("Number of times resumed: ", numResumed)
 handle.close()
 end
 end
