@@ -1,4 +1,5 @@
 #Note: I am trying to adapt cedricks AI into this program.
+#Note: If you pick an edge (non-corner), then a diagonally connected egde, you can beat the AI
 print("LOADING")
 
 import pygame
@@ -58,8 +59,8 @@ class gameBoard(object):
       #Priority Order:
       #1. See if computer can win
       #2. See if player can win next turn 
-      #3. Player first turn condition (???)
-      #4. Check sneaky wins/counters
+      #3. Check sneaky wins/counters
+      #4. Player first turn condition (???)
       #5. corners > center > edges
       difficultyCheck = random.randint(0,10) #Lower difficulties have a chance of AI not realizing what its doing
       if board.difficulty >= 2 or (board.difficulty == 2 and not difficultyCheck == 0) or (board.difficulty == 0 and difficultyCheck in [i for i in range(6)]):
@@ -68,6 +69,7 @@ class gameBoard(object):
             if copy.isFree(x):
                 copy.update(x, board.player)
                 if copy.checkWin(False)-1 == board.player: #If current player (AI) is winner
+                  if board.isFree(x):
                     return x
        
         for y in range(0, 9):
@@ -75,6 +77,7 @@ class gameBoard(object):
             if copy.isFree(y):
                 copy.update(y,not board.player)
                 if copy.checkWin(False)-1 == (not board.player): #CheckWin returns player 1 or 2
+                  if board.isFree(y):
                     return y
                   
       if board.difficulty >= 2: #I consider this a "hard" level behavior    
@@ -82,11 +85,11 @@ class gameBoard(object):
         if tableOfCorners.count(board.player+1) == 2: #If has two corners, pick the third
           copy = copyClass.deepcopy(board)
           for i in [0,2,6,8]:
-            if copy.isFree(i):
+            if copy.isFree(i) and board.isFree(i):
               return i
         if tableOfCorners.count((not board.player) + 1) == 2: #Prevents opposite corner start trick
           return board.randomMove([1,3,7,5])
-      
+          
       cornerMove = not(board.isFree(0) and board.isFree(2) and board.isFree(6) and board.isFree(8))
       edgeMove = not(board.isFree(1) and board.isFree(3) and board.isFree(7) and board.isFree(5))
       cornerMove2 = (not(board.isFree(0) or board.isFree(8))) or (not(board.isFree(2) or board.isFree(6)))
@@ -102,7 +105,7 @@ class gameBoard(object):
       if secondTurn==1 and cornerMove2:
           secondTurn=2
           return randomMove(board, [1,3,7,5])
-      if firstTurn==0 and edgeMove:
+      if firstTurn==0 and edgeMove and board.isFree(5):
               firstTurn=3
               return 5
       move = board.randomMove([0, 2, 6, 8])
@@ -312,7 +315,9 @@ while True:
     else:
       print("Computer Starting Move")
       while True:
-        if board.update(board.getComputerMove(),board.player):
+        move = board.getComputerMove()
+        print("Computer moving: ",move)
+        if board.update(move,board.player):
           break
       board.switchPlayer()
 
