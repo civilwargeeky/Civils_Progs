@@ -246,6 +246,7 @@ def menu(): #This should work since I don't redeclare anything?
     if event.button == 1:
       print(event.pos)
       if startRect.collidepoint(event.pos):
+        pygame.event.get()
         return True
       if quitRect.collidepoint(event.pos):
         raise(SystemExit)
