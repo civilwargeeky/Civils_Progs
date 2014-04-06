@@ -161,6 +161,12 @@ clockObj = pygame.time.Clock() #Creates a clock object to control fps
 windowObj = pygame.display.set_mode((resX,resY)) #Opens window at given resolution
 pygame.display.set_caption("TicTacToe") #Sets window title
 
+
+musicFile = "TTTSong.mp3"
+music = pygame.mixer.music.load(musicFile)
+pygame.mixer.music.play(-1, 5) #This will just loop the track forever.
+
+
 titleFont = pygame.font.SysFont(fontType, int(fontPixels*5)) #These are the two fonts I will use
 printFont = pygame.font.SysFont(fontType, fontPixels)
 
@@ -264,13 +270,16 @@ def wait():
   pygame.display.update()
   input()
       
-action = "menu"
+menu() #Initial Menu
+init()
+
 while True:
   if action == "menu":
     sleep(2)
     menu()
     init()
   if action == "quit":
+    pygame.mixer.music.fadeout(200)
     sleep(2)
     break
   action = ""
