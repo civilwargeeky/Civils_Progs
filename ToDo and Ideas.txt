@@ -1,31 +1,75 @@
 ToDo: Seperate into ideas(python) and ideas(quarry) so no more merge conflicts
+-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
+
+Quarry Receiver x.x.x (matches current quarry):
+  Add in "usage" parameter, because not even I can remember it. So like "usage", "help", "-help", "?" and "-?" bring up parameters.
+  Add in a "themes" system accessible by the command line
+  Ideas:
+  1. All themes are in files in a "themes" folder.
+  2. Some themes are included in the program code, and can be selected.
+  3. Command line argument could just be a file name, then will search included themes.
+  4. Layout for a "theme" file would just be "addColor(parameters)" for all the different styles. Maybe to be fancy you could have overrides on all different things, like give them an id and stuff
+  5. Integration with shell: Interactive menu to design/choose theme. Maybe have a default themes-set to download.
 
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 
 Quarry Shell 1.0.0:
 Program that can read logs and make a configuration file to run quarry from.
 Will feature an interactive menu where you can select start quarry, make configuration file, or read logs.
+All menu items will be clickable/scrollable with mouse. Different types of menus:
+  t/f can be changed with return key / arrow keys
+  number can be changed with arrow keys, maybe just do a popup menu and only accept integers. Because channel 35346 will take a while to get to.
+  text will open up a text box popup.
+  
+Will feature an interactive editor for setups. It will be just like any other menu, but will have all possible parameters. 2 options for getting these:
+  1. Have a list that you make (lazy)
+  2. Have it search for "addParam" functions in the program and take parameters off of them.
+Option: Either interactive editor or raw editor. Raw editor will just be a file that will be parsed and loaded as parameters.
 
 "Then I have a plan for making an installer that will perform various tasks like installing latest versions, 
 running pre-designated quarries (so like, load a set of parameters that you make in a file), reading quarry logs, 
 and possibly doing multiple quarries/rooms/however you use its in a row (quarry, go left 60, quarry). 
 So that will be cool."
 
+
 Menu Plans (w/ sub menu):
   Run Default Quarry
-  Run loaded configuration
-    All different configurations
-  Edit configuration
-    All different configurations --Since both same, maybe function "loaded quarries menu" or something
-  New configuration
+  Configurations
+    Run loaded configuration
+      All different configurations
+    Edit configuration
+      All different configurations --Since both same, maybe function "loaded quarries menu" or something
+    New configuration
   Setups --This is just a simple scripting file. Like a regular lua file except that when saved, things like "&config renault&" are replaced by "shell.run("quarry", args)"
     Run
     New
+    Edit
+      List of Configurations
+  Receiver Configs (If has wireless modem)
+    Default
+    Run
+      Menu
+    Edit
+      Menu
+    New
+  Themes (If advanced turtle/computer) --These will load a theme for the shell or reciever.
+    Shell Themes
+      Menu of installed
+    Receiver Themes
+      Menu of installed
+    Install Theme
+      Popup for pastebin code
   Read Logs
     List of logs
-  Update components --If update found, will ask user if they want to overwrite files. Updates will include those to the shell itself, quarry, and quarryReceiver
-  Download items --When given a pastebin, will check top for valid setup/config markings, and name it appropriately
-    pastebin id
+  Updates --If update found, will ask user if they want to overwrite files. Updates will include those to the shell itself, quarry, and quarryReceiver
+    Update All
+    Check Updates
+    Select Updates
+      Different updates possible
+    Configure update source --Possibly just have this go through github. So then every new version I would push to master, then they could take dev versions from luaDev.
+  Install/Register Components
+    Different components not installed --Installing here would register the program name
+    Register Component. If you already have "quarry" installed, register it as "quarry" here so the program knows what to run.
   Misc/Deletions
     Delete config
     Delete setup
@@ -33,7 +77,7 @@ Menu Plans (w/ sub menu):
     tips/help
     
 Arguments:
-  -run [config/setup] [name]: This will run the selected script instead of launching gui
+  -run [name]: This will run the selected script instead of launching gui
   -default: Will run the default quarry
 
 How things might work:
@@ -65,7 +109,7 @@ Things to add for quarry version 3.5.0 (After rednet update and shell is done):
   Improve end of layer logic. You should be able to just have it stop at the end of the layer and go down three with minimal hassle.
   With inclusion of certain slots not to drop or slots to drop all but one of, you could make a more ore-driven quarry that will only mine ores and things not on its list of stuff to not mine
   Fix up and down functions. They may work, and they may be clever, but they are really dumb.
-  Maybe have a "-replaceStartup" parameter with string argument of what to rename other original startup to
+  Maybe have a "-autoResume" or "-autoReotherTerm" parameter with string argument of what to rename other original startup to
   Maybe have seperate "goDown" and "goUp" parameters
     Or: Maybe just have an "offset" variable that could be positive or negative. -40 would go down 40 before it starts the quarry. Inverted or no.
   Maybe have an option to change the home position. Like at 1,1,1 instead of 0,1,1. You could just replace all the "goto 1,1,1 goto 0,1,1" with a "go home" command
