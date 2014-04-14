@@ -158,6 +158,7 @@ print("Image Positions: ",slotsPos)
 
 pygame.init()
 clockObj = pygame.time.Clock() #Creates a clock object to control fps
+requestedFPS = 20
 windowObj = pygame.display.set_mode((resX,resY)) #Opens window at given resolution
 pygame.display.set_caption("TicTacToe") #Sets window title
 
@@ -203,6 +204,7 @@ def waitForGeneric(event, timeout = 1E100):
         return a
     if time() >= startTime + timeout:
       return False
+    clockObj.tick(requestedFPS)
 def waitForClick(timeout = 1E100): return waitForGeneric(MOUSEBUTTONUP, timeout)
 def waitForKey(timeout = 1E100): return waitForGeneric([KEYUP],timeout)
   
@@ -243,6 +245,7 @@ def menu(): #This should work since I don't redeclare anything?
   quitPos = (a[0],a[1]+start.get_size()[1]+pixelBorder)
   quitRect = quit.get_rect(topleft = quitPos)
   windowObj.blit(quit, quitPos)
+  pygame.event.get()
   pygame.display.update()
 
   while True:
@@ -343,7 +346,7 @@ while True:
   windowObj.blit(printFont.render("Turn %d" % math.ceil(board.turn/2), True, (0,0,0)), (images["board"].get_size()[0],50))
   
   pygame.display.update()
-  clockObj.tick(20)
+  clockObj.tick(requestedFPS)
   
 
 pygame.quit()
