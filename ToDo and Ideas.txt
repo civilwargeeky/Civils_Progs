@@ -103,6 +103,7 @@ Things for 3.4.5:
   Improve drop function
   Improve drop function. Just... make it better in general. Also have an argument table of slots not to drop from.
   Add back in "oreQuarry" functionality.
+  Make it so that the turtle will dump off all cobblestone it has before putting into chest. Maybe just do it on the fly.
   
 Things to add for quarry version 3.5.0 (After rednet update and shell is done):
   Add support for mods. Like openperipheral chest finding.
