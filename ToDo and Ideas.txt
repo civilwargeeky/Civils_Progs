@@ -1,4 +1,8 @@
 ToDo: Seperate into ideas(python) and ideas(quarry) so no more merge conflicts
+
+Random idea:
+Maybe have a "master" and "slave" function on the quarry shell so that you could just slave multiple turtles to be controlled by a computer. So you could push quarry configurations
+ to individual turtles and view their progress through the quarry receiver.
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 
 Quarry Receiver x.x.x (matches current quarry):
@@ -21,10 +25,14 @@ All menu items will be clickable/scrollable with mouse. Different types of menus
   number can be changed with arrow keys, maybe just do a popup menu and only accept integers. Because channel 35346 will take a while to get to.
   text will open up a text box popup.
   
-Will feature an interactive editor for setups. It will be just like any other menu, but will have all possible parameters. 2 options for getting these:
+Will feature an interactive editor for configurations. It will be just like any other menu, but will have all possible parameters. 2 options for getting these:
   1. Have a list that you make (lazy)
   2. Have it search for "addParam" functions in the program and take parameters off of them.
 Option: Either interactive editor or raw editor. Raw editor will just be a file that will be parsed and loaded as parameters.
+
+Technical idea:
+  Definately a standard menu design. Have different types and have menu functions for up, down, enter, back, selct index. This will make the menus really cool and seamless.
+  So have a menu that interacts with different menu objects that can do different things if they are selected, clicked, etc.
 
 "Then I have a plan for making an installer that will perform various tasks like installing latest versions, 
 running pre-designated quarries (so like, load a set of parameters that you make in a file), reading quarry logs, 
