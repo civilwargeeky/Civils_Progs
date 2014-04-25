@@ -593,6 +593,7 @@ print("Connection Confirmed!")
 sleep(1.5)
 end
 function biometrics(isAtBedrock)
+  if not rednetEnabled then return end --This function won't work if rednet not enabled :P
   local toSend = { label = os.getComputerLabel() or "No Label", id = os.getComputerID(),
     percent = percent, relxPos = relxPos, zPos = zPos, xPos = xPos, yPos = yPos,
     layersDone = layersDone, x = x, z = z, layers = layers,
@@ -838,7 +839,7 @@ function up(sneak)
     yPos = yPos - sneak --Oh! I feel so clever
   end                   --This works because inverted :)
   saveProgress()
-  if rednetEnabled then biometrics() end
+  biometrics()
 end
 function down(sneak)
   sneak = sneak or 1
@@ -857,7 +858,7 @@ function down(sneak)
     yPos = yPos + sneak
   end
   saveProgress()
-  if rednetEnabled then biometrics() end
+  biometrics()
 end
 function right(num)
   num = num or 1
@@ -960,7 +961,7 @@ function mine(doDigDown, doDigUp, outOfPath,doCheckInv) -- Basic Move Forward
      if isFull(16-keepOpen) then dropOff() end
     end
   end
-  if rednetEnabled then biometrics() end
+  biometrics()
 end
 --Insanity Checking
 function checkSanity()
@@ -1118,6 +1119,28 @@ until detected or allowSkip
 if not allowSkip then totals.cobble = totals.cobble - 1 end
 turtle.select(1)
 end
+
+--Ideas: Bring in inventory change-checking functions, count blocks that have been put in, so it will wait until all blocks have been put in.
+function drop(side, final, blacklist)
+  side = sides[side] or "front"
+  blacklist = blacklist or {}
+  local function waitDrop(num, slot) --This will just drop, but wait if it can't
+    num = num or 64
+    local tries = 1
+    while not whereDrop(num) do
+      term.clear()
+      term.setCursorPos(1,1)
+      print("Chest Full, Try "..tries)
+      chestFull = true
+      biometrics()--To send that the chest is full
+      tries = tries + 1
+      sleep(2)
+    end
+    chestFull = false
+  end
+
+end
+
 function dropOff() --Not local because called in mine()
   local currX,currZ,currY,currFacing = xPos, zPos, yPos, facing
   if careAboutResources then
