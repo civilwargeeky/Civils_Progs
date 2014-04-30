@@ -150,26 +150,26 @@ local foundBedrock = false
 
 local totals = {cobble = 0, fuel = 0, other = 0} -- Total for display (cannot go inside function)
 local function count() --Done any time inventory dropped and at end
-slot = {}        --1: Cobble 2: Fuel 3:Other
-for i=1, 16 do   --[1] is type, [2] is number
-slot[i] = {}
-slot[i][2] = turtle.getItemCount(i)
-end
-slot[1][1] = 1   -- = Assumes Cobble/Main
-for i=1, 16 do   --Cobble Check
-turtle.select(i)
-if turtle.compareTo(1)  then
-slot[i][1] = 1
-totals.cobble = totals.cobble + slot[i][2]
-elseif turtle.refuel(0) then
-slot[i][1] = 2
-totals.fuel = totals.fuel + slot[i][2]
-else
-slot[i][1] = 3
-totals.other = totals.other + slot[i][2]
-end
-end
-turtle.select(1)
+  slot = {}        --1: Cobble 2: Fuel 3:Other
+  for i=1, 16 do   --[1] is type, [2] is number
+    slot[i] = {}
+    slot[i][2] = turtle.getItemCount(i)
+  end
+  slot[1][1] = 1   -- = Assumes Cobble/Main
+  for i=1, 16 do   --Cobble Check
+    turtle.select(i)
+    if turtle.compareTo(1)  then
+      slot[i][1] = 1
+      totals.cobble = totals.cobble + slot[i][2]
+    elseif turtle.refuel(0) then
+      slot[i][1] = 2
+      totals.fuel = totals.fuel + slot[i][2]
+    else
+      slot[i][1] = 3
+      totals.other = totals.other + slot[i][2]
+    end
+  end
+  turtle.select(1)
 end
 
 local getFuel, checkFuel
@@ -272,21 +272,21 @@ if not(turtle or tArgs["help"] or tArgs["-help"] or tArgs["-?"] or tArgs["?"]) t
 end
 
 if tArgs["help"] or tArgs["-help"] or tArgs["-?"] or tArgs["?"] then
-print("You have selected help, press any key to continue"); print("Use arrow keys to naviate, q to quit"); os.pullEvent("key")
-local pos = 1
-local key = 0
-while pos <= #help and key ~= keys.q do
-if pos < 1 then pos = 1 end
-screen(1,1) 
-print(help[pos].title)
-for a=1, #help[pos] do print(help[pos][a]) end
-repeat
-_, key = os.pullEvent("key")
-until key == 200 or key == 208 or key == keys.q
-if key == 200 then pos = pos - 1 end
-if key == 208 then pos = pos + 1 end
-end
-error("",0)
+  print("You have selected help, press any key to continue"); print("Use arrow keys to naviate, q to quit"); os.pullEvent("key")
+  local pos = 1
+  local key = 0
+  while pos <= #help and key ~= keys.q do
+    if pos < 1 then pos = 1 end
+    screen(1,1) 
+    print(help[pos].title)
+    for a=1, #help[pos] do print(help[pos][a]) end
+    repeat
+      _, key = os.pullEvent("key")
+    until key == 200 or key == 208 or key == keys.q
+    if key == 200 then pos = pos - 1 end
+    if key == 208 then pos = pos + 1 end
+  end
+  error("",0)
 end
 
 --Saving
@@ -636,6 +636,7 @@ print("\nStarting in 3"); sleep(1); print("2"); sleep(1); print("1"); sleep(1.5)
 
 ----------------------------------------------------------------
 --Define ALL THE FUNCTIONS
+--Event System Functions
 function eventAdd(...)
   return table.insert(events,1, {...}) or true
 end
@@ -668,11 +669,9 @@ function eventRun(value, ...)
     return func()
   end
 end
-
 function eventClear(pos)
   if pos then events[pos] = nil else events = {} end
-end
-      
+end   
 function runAllEvents()
   while #events > 0 do
     local toRun = eventGet()
@@ -681,7 +680,21 @@ function runAllEvents()
     eventPop()
   end
 end
+--Inventory Related Functions
+function isFull(slots)
+  slots = slots or 16
+  local numUsed = 0
+  sleep(0)
+  for i=1, 16 do
+    if turtle.getItemCount(i) > 0 then numUsed = numUsed + 1 end
+  end
+  if numUsed > slots then
+    return true 
+  end
+  return false
+end
 
+--Display Related Functions
 function display() --This is just the last screen that displays at the end
   screen(1,1)
   print("Total Blocks Mined: "..mined)
@@ -723,6 +736,7 @@ screenLine(1,7)
 print("Connected: "..tostring(connected))
 end
 end
+--Utility functions
 function logMiningRun(textExtension, extras) --Logging mining runs
 if logging then
 local number
@@ -758,18 +772,6 @@ write("Days to complete mining run: ",os.day()-originalDay)
 write("Number of times resumed: ", numResumed)
 handle.close()
 end
-end
-function isFull(slots)
-  slots = slots or 16
-  local numUsed = 0
-  sleep(0)
-  for i=1, 16 do
-    if turtle.getItemCount(i) > 0 then numUsed = numUsed + 1 end
-  end
-  if numUsed > slots then
-    return true 
-  end
-  return false
 end
 function dig(doAdd, func)
   doAdd = doAdd or true
@@ -1009,7 +1011,6 @@ if tArgs["-manualpos"] then
 end
 
 --Direction: Front = 0, Right = 1, Back = 2, Left = 3
-
 function turnTo(num)
   num = num or facing
   num = coterminal(num) --Prevent errors
@@ -1224,6 +1225,7 @@ if facing ~= toFace then
   turnTo(toFace)
 end
 end
+
 
 -------------------------------------------------------------------------------------
 --Pre-Mining Stuff dealing with session persistence

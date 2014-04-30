@@ -197,3 +197,9 @@ Ideas for minecraft word:
   Completely seperate the data from the visual. The data will conatain all of the lines (seperated by line breaks), and the visual will handle printing it in a formatted way for reading.
   Some day...
   
+-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
+
+Idea for a modpack
+  Make a python script that will download mods from a list of urls on pastebin
+  The pastebin will be updated regularly by another python script
+  So when they start it up, it will check the pastebin, compare it to the mods already had (maybe), then download new mods and put them in the right folder.
