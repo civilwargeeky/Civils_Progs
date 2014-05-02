@@ -36,6 +36,7 @@ logExtension = "" --The extension of the file (e.g. ".txt") [Default ""]
 startDown = 0 --How many blocks to start down from the top of the mine [Default 0]
 enderChestEnabled = false --Whether or not to use an ender chest [Default false]
 enderChestSlot = 16 --What slot to put the ender chest in [Default 16]
+oreQuarry = false --Enables ore quarry functionailty [Default false]
 --Standard number slots for fuel (you shouldn't care)
 fuelTable = { --Will add in this amount of fuel to requirement.
 safe = 1000,
@@ -141,8 +142,8 @@ local supportsRednet = (peripheral.wrap("right") ~= nil)
 
 local tArgs = {...}
 --You don't care about these
-      xPos,yPos,zPos,facing,percent,mined,moved,relxPos, rowCheck, connected, isInPath, layersDone, attacked, startY, chestFull, gotoDest, atChest, fuelLevel, numDropOffs
-    = 0,   1,   1,   0,     0,      0,    0,    1,       true   ,  false,     true,     1,          0,        0,      false,     "",       false,   0,         0
+      xPos,yPos,zPos,facing,percent,mined,moved,relxPos, rowCheck, connected, isInPath, layersDone, attacked, startY, chestFull, gotoDest, atChest, fuelLevel, numDropOffs, dropBlacklist
+    = 0,   1,   1,   0,     0,      0,    0,    1,       true   ,  false,     true,     1,          0,        0,      false,     "",       false,   0,         0,           {}
     
 --NOTE: rowCheck is a bit. true = "right", false = "left"
     
@@ -423,6 +424,8 @@ addParam("invCheckFreq","Inventory Check Frequency","number 1-342")
 addParam("keepOpen", "Slots to Keep Open", "number 1-15")
 addParam("careAboutResources", "Care About Resources","boolean")
 addParam("maxTries","Tries Before Bedrock", "number 1-9001")
+--Ore Quarry
+addParam("oreQuarry", "Ore Quarry", "boolean" )
 --Manual Position
 if tArgs["-manualpos"] then --Gives current coordinates in xPos,zPos,yPos, facing
   local a = tArgs["-manualpos"]
@@ -567,6 +570,7 @@ if enderChestEnabled then
       turtle.select(1)
     end
   promptEnderChest()
+  table.insert(slotsBlacklist, enderChestSlot)
   sleep(2)
 end
 --Initial Rednet Handshake
@@ -773,6 +777,36 @@ write("Number of times resumed: ", numResumed)
 handle.close()
 end
 end
+--Inventory related functions
+function countUsedSlots() --Returns number of slots with items in them, as well as a table of item counts
+  local toRet, toRetTab = 0, {}
+  for i=1, 16 do
+    local a = turtle.getItemCount(i)
+    if a > 0 then toRet = toRet + 1 end
+    table.insert(toRetTab, a)
+  end
+  return toRet, toRetTab
+end
+function getSlotsTable() --Just get the table from above
+  local _, toRet = countUsedSlots()
+  return toRet
+end
+function getChangedSlots(tab1, tab2) --Returns a table of changed slots. Format is {slotNumber, numberChanged}
+  local toRet = {}
+  for i=1, min(#tab1, #tab2) do
+    diff = math.abs(tab2[i]-tab1[i])
+    if diff > 0 then
+      table.insert(toRet, {i, diff})
+    end
+  end
+  return toRet
+end
+function getFirstChanged(tab1, tab2) --Just a wrapper. Probably not needed
+  local a = getChangedSlots(tab1,tab2)
+  return a[1][1]
+end
+
+--Mining functions
 function dig(doAdd, func)
   doAdd = doAdd or true
   func = func or turtle.dig
