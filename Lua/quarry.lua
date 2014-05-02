@@ -57,6 +57,7 @@ Welcome!: Welcome to quarry help. Below are help entries for all parameters. Exa
 -invert: [t/f] If true, quarry will be inverted (go up instead of down)
 -rednet: [t/f] If true and you have a wireless modem on the turtle, will attempt to make a rednet connection for sending important information to a screen
 -restore / -resume: If your quarry stopped in the middle of its run, use this to resume at the point where the turtle was. Not guarenteed to work properly. For more accurate location finding, check out the -GPS parameter
+-oreQuarry: [t/f] If true, the turtle will use ore quarry mode. It will not mine the blocks that are placed in the turtle initially. So if you put in stone, it will ignore stone blocks and only mine ores.
 -atChest: [force] This is for use with "-restore," this will tell the restarting turtle that it is at its home chest, so that if it had gotten lost, it now knows where it is.
 -doRefuel: [t/f] If true, the turtle will refuel itself with coal and planks it finds on its mining run
 -doCheckFuel: [t/f] If you for some reason don't want the program to check fuel usage, set to false. This is honestly a hold-over from when the refueling algorithm was awful...
@@ -573,6 +574,16 @@ if enderChestEnabled then
   table.insert(slotsBlacklist, enderChestSlot)
   sleep(2)
 end
+--Setting which slots are marked as compare slots
+if oreQuarry then
+  for i=1, 16 do
+    if turtle.getItemCount(i) > 0 then
+      if (i ~= enderChestSlot and enderChestEnabled) or not enderChestEnabled then
+        table.insert(compareSlots, i)
+      end
+    end
+  end
+end
 --Initial Rednet Handshake
 if rednetEnabled then
 screen(1,1)
@@ -684,19 +695,6 @@ function runAllEvents()
     eventPop()
   end
 end
---Inventory Related Functions
-function isFull(slots)
-  slots = slots or 16
-  local numUsed = 0
-  sleep(0)
-  for i=1, 16 do
-    if turtle.getItemCount(i) > 0 then numUsed = numUsed + 1 end
-  end
-  if numUsed > slots then
-    return true 
-  end
-  return false
-end
 
 --Display Related Functions
 function display() --This is just the last screen that displays at the end
@@ -778,6 +776,18 @@ handle.close()
 end
 end
 --Inventory related functions
+function isFull(slots) --Checks if there are more than "slots" used inventory slots.
+  slots = slots or 16
+  local numUsed = 0
+  sleep(0)
+  for i=1, 16 do
+    if turtle.getItemCount(i) > 0 then numUsed = numUsed + 1 end
+  end
+  if numUsed > slots then
+    return true 
+  end
+  return false
+end
 function countUsedSlots() --Returns number of slots with items in them, as well as a table of item counts
   local toRet, toRetTab = 0, {}
   for i=1, 16 do
