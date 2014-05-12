@@ -143,8 +143,8 @@ local supportsRednet = (peripheral.wrap("right") ~= nil)
 
 local tArgs = {...}
 --You don't care about these
-      xPos,yPos,zPos,facing,percent,mined,moved,relxPos, rowCheck, connected, isInPath, layersDone, attacked, startY, chestFull, gotoDest, atChest, fuelLevel, numDropOffs, dropBlacklist
-    = 0,   1,   1,   0,     0,      0,    0,    1,       true   ,  false,     true,     1,          0,        0,      false,     "",       false,   0,         0,           {}
+      xPos,yPos,zPos,facing,percent,mined,moved,relxPos, rowCheck, connected, isInPath, layersDone, attacked, startY, chestFull, gotoDest, atChest, fuelLevel, numDropOffs, slotsBlacklist, compareSlots
+    = 0,   1,   1,   0,     0,      0,    0,    1,       true   ,  false,     true,     1,          0,        0,      false,     "",       false,   0,         0,           {},             {}
     
 --NOTE: rowCheck is a bit. true = "right", false = "left"
     
@@ -496,15 +496,6 @@ do --Because many local variables unneeded elsewhere
   neededFuel = moveVolume + changeYFuel + frequency * dropOffSupplies
 end
 
-
---[[
-local exStack = numberOfStacksPerRun --Expected stacks of items before full
-neededFuel = yMult * x * z + --This is volume it will run through
-      (startDown + y)*(2+1/(64*exStack)) + --This is simplified and includes the y to get up times up and down + how many times it will drop stuff off
-      (x+z)*(yMult + 1/(64*exStack))  --Simplified as well: It is getting to start of row plus getting to start of row how many times will drop off stuff
-      --Original equation: x*z*y/3 + y * 2 + (x+z) * y/3 + (x + z + y) * (1/64*8)
-neededFuel = math.ceil(neededFuel)
-]]
 --Getting Fuel
 if doCheckFuel and checkFuel() < neededFuel then
 neededFuel = neededFuel + fuelTable[fuelSafety] --For safety
@@ -571,15 +562,21 @@ if enderChestEnabled then
       turtle.select(1)
     end
   promptEnderChest()
-  table.insert(slotsBlacklist, enderChestSlot)
+  table.insert(slotsBlacklist, enderChestSlot, true)
   sleep(2)
 end
 --Setting which slots are marked as compare slots
 if oreQuarry then
+  screen(1,1)
+  print("You have selected an Ore Quarry!")
+  print("Please place your compare blocks in the first slots")
+  
+  print("Press Enter when done")
+  repeat until os.pullEvent("key")[2] == 13 --Should wait for enter key to be pressed
   for i=1, 16 do
     if turtle.getItemCount(i) > 0 then
       if (i ~= enderChestSlot and enderChestEnabled) or not enderChestEnabled then
-        table.insert(compareSlots, i)
+        table.insert(compareSlots, i, true)
       end
     end
   end

@@ -105,6 +105,9 @@ Random future thoughts: Maybe make more seamless. Have an arg/option to make cal
 Quarry Version 3.4.5:
 Changelog so far:
   new constants: VARIABLE, originalDay, numResumed, both used in logging.
+  Added compareSlots and slotsBlacklist for use in ore Quarry
+  Added in section for putting in compare blocks
+  Added various inventory counting functions
 
 
 Things for 3.4.5:
