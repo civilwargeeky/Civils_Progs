@@ -153,7 +153,7 @@ for i=1, 16 do --Initializing various inventory management tables
   compareSlots[i] = false --Is this slot a compare item?
   dumpSlots[i] = false --Is this slot an item to be dumped?
 end
-local totals = {cobble = 0, fuel = 0, other = 0} -- Total for display (cannot go inside function), this goes up here because many functions use it
+totals = {cobble = 0, fuel = 0, other = 0} -- Total for display (cannot go inside function), this goes up here because many functions use it
 
 --NOTE: rowCheck is a bit. true = "right", false = "left"
     
@@ -803,13 +803,13 @@ function getFirstChanged(tab1, tab2) --Just a wrapper. Probably not needed
   return a[1][1]
 end
 
-local function getRep(which, list) --Gets a representative slot of a type. Expectation is a sequential table of types
+function getRep(which, list) --Gets a representative slot of a type. Expectation is a sequential table of types
   for i=1, #list do
     if list[i] == which then return i end
   end
   return false
 end
-local function assignTypes()
+function assignTypes()
   local types, count = {1}, 1 --Table of types and current highest type
   for i=2, 16 do
     if turtle.getItemCount(i) > 0 then 
@@ -825,7 +825,7 @@ local function assignTypes()
   end
   return types, count
 end
-local function getTableOfType(which, list) --Returns a table of all the slots of which type
+function getTableOfType(which, list) --Returns a table of all the slots of which type
   local toRet = {}
   for i=1, #list do 
     if list[i] == which then
@@ -835,7 +835,7 @@ local function getTableOfType(which, list) --Returns a table of all the slots of
   return toRet
 end
 
-local function count(add) --Done any time inventory dropped and at end, param is add or subtract
+function count(add) --Done any time inventory dropped and at end, param is add or subtract
   local mod = -1
   if add then mod = 1 end
   slot = {}        --1: Filler 2: Fuel 3:Other --[1] is type, [2] is number
@@ -844,21 +844,22 @@ local function count(add) --Done any time inventory dropped and at end, param is
     slot[i][2] = turtle.getItemCount(i)
   end
   
+  local function iterate(i, rawTypes, set)
+    for _, a in pairs(getTableOfType(i, rawTypes)) do --Get all matching slots
+      slot[i][1] = set
+    end
+  end
+  
   local rawTypes, numTypes, newTypes = assignTypes(), {} --This gets increasingly numbered types
   for i=1, numTypes do
     if dumpSlots[getRep(i,rawTypes)] then --If the rep of this slot is a dump item
-      for _, a in pairs(getTableOfType(i, rawTypes)) do --Get all matching slots
-        slot[i][1] = 1 --This type is cobble
-      end
+      iterate(i, rawTypes, 1) --This type is cobble/filler
     elseif (turtle.select(getRep(i, rawTypes)) or true) and turtle.refuel(0) then --Selects the rep slot, checks if it is fuel
-      for _, a in pairs(getTableOfType(i, rawTypes)) do --Get all matching slots
-        slot[i][1] = 2 --This type is fuel
-      end
+      iterate(i, rawTypes, 2) --This type is fuel
     else
-      for _, a in pairs(getTableOfType(i, rawTypes)) do --Get all matching slots
-        slot[i][1] = 1 --This type is "other"
-      end
+      iterate(i, rawTypes, 3) --This type is other
     end
+  end
     
     for i=1,16 do
       if slot[i][1] == 1 then totals.cobble = totals.cobble + (slot[i][2] * mod)
