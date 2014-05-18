@@ -37,6 +37,7 @@ startDown = 0 --How many blocks to start down from the top of the mine [Default 
 enderChestEnabled = false --Whether or not to use an ender chest [Default false]
 enderChestSlot = 16 --What slot to put the ender chest in [Default 16]
 oreQuarry = false --Enables ore quarry functionailty [Default false]
+dumpCompareItems = true --If ore quarry, the turtle will dump items compared to (like cobblestone) [Default true]
 --Standard number slots for fuel (you shouldn't care)
 fuelTable = { --Will add in this amount of fuel to requirement.
 safe = 1000,
@@ -68,6 +69,7 @@ Welcome!: Welcome to quarry help. Below are help entries for all parameters. Exa
 -sendChannel: [number] This is what channel your turtle will send rednet messages on
 -receiveChannel: [number] This is what channel your turtle will receive rednet messages on
 -startY: [current Y coord] Randomly encountering bedrock? This is the parameter for you! Just give it what y coordinate you are at right now. If it is not within bedrock range, it will never say it found bedrock
+-dumpCompareItems: [t/f] If true, the turtle will dump off compare blocks instead of storing them in a chest
 -maxTries: [number] This is the number of times the turtle will try to dig before deciding its run into bedrock.
 -logging: [t/f] If true, will record information about its mining run in a folder at the end of the mining run
 -doBackup: [t/f] If false, will not back up important information and cannot restore, but will not make an annoying file (Actually I don't really know why anyone would use this...)
@@ -143,36 +145,19 @@ local supportsRednet = (peripheral.wrap("right") ~= nil)
 
 local tArgs = {...}
 --You don't care about these
-      xPos,yPos,zPos,facing,percent,mined,moved,relxPos, rowCheck, connected, isInPath, layersDone, attacked, startY, chestFull, gotoDest, atChest, fuelLevel, numDropOffs, slotsBlacklist, compareSlots
-    = 0,   1,   1,   0,     0,      0,    0,    1,       true   ,  false,     true,     1,          0,        0,      false,     "",       false,   0,         0,           {},             {}
+      xPos,yPos,zPos,facing,percent,mined,moved,relxPos, rowCheck, connected, isInPath, layersDone, attacked, startY, chestFull, gotoDest, atChest, fuelLevel, numDropOffs, allowedItems, compareSlots, dumpSlots
+    = 0,   1,   1,   0,     0,      0,    0,    1,       true   ,  false,     true,     1,          0,        0,      false,     "",       false,   0,         0,           {},             {},           {}
     
+for i=1, 16 do --Initializing various inventory management tables
+  allowedItems[i] = 0 --Number of items allowed in slot
+  compareSlots[i] = false --Is this slot a compare item?
+  dumpSlots[i] = false --Is this slot an item to be dumped?
+end
+local totals = {cobble = 0, fuel = 0, other = 0} -- Total for display (cannot go inside function), this goes up here because many functions use it
+
 --NOTE: rowCheck is a bit. true = "right", false = "left"
     
 local foundBedrock = false
-
-local totals = {cobble = 0, fuel = 0, other = 0} -- Total for display (cannot go inside function)
-local function count() --Done any time inventory dropped and at end
-  slot = {}        --1: Cobble 2: Fuel 3:Other
-  for i=1, 16 do   --[1] is type, [2] is number
-    slot[i] = {}
-    slot[i][2] = turtle.getItemCount(i)
-  end
-  slot[1][1] = 1   -- = Assumes Cobble/Main
-  for i=1, 16 do   --Cobble Check
-    turtle.select(i)
-    if turtle.compareTo(1)  then
-      slot[i][1] = 1
-      totals.cobble = totals.cobble + slot[i][2]
-    elseif turtle.refuel(0) then
-      slot[i][1] = 2
-      totals.fuel = totals.fuel + slot[i][2]
-    else
-      slot[i][1] = 3
-      totals.other = totals.other + slot[i][2]
-    end
-  end
-  turtle.select(1)
-end
 
 local getFuel, checkFuel
 if turtle then
@@ -395,6 +380,7 @@ elseif not (tArgs["-default"] or restoreFoundSwitch) then
   y = math.floor(math.abs(tonumber(io.read()) or y))
   changedT.new("Length",x); changedT.new("Width",z); changedT.new("Height",y)
 end
+--Params: parameter/variable name, display name, type, force prompt, boolean condition, variable name override
 --Invert
 addParam("invert", "Inverted","boolean", true, nil, "inverted")
 addParam("startDown","Start Down","number 1-256")
@@ -427,6 +413,7 @@ addParam("careAboutResources", "Care About Resources","boolean")
 addParam("maxTries","Tries Before Bedrock", "number 1-9001")
 --Ore Quarry
 addParam("oreQuarry", "Ore Quarry", "boolean" )
+addParam("dumpCompareItems", "Dump Compare Items", "boolean", nil, oreQuarry)
 --Manual Position
 if tArgs["-manualpos"] then --Gives current coordinates in xPos,zPos,yPos, facing
   local a = tArgs["-manualpos"]
@@ -562,21 +549,25 @@ if enderChestEnabled then
       turtle.select(1)
     end
   promptEnderChest()
-  table.insert(slotsBlacklist, enderChestSlot, true)
+  allowedItems[enderChestSlot] = 64
   sleep(2)
 end
 --Setting which slots are marked as compare slots
 if oreQuarry then
-  screen(1,1)
-  print("You have selected an Ore Quarry!")
-  print("Please place your compare blocks in the first slots")
-  
-  print("Press Enter when done")
-  repeat until os.pullEvent("key")[2] == 13 --Should wait for enter key to be pressed
-  for i=1, 16 do
-    if turtle.getItemCount(i) > 0 then
-      if (i ~= enderChestSlot and enderChestEnabled) or not enderChestEnabled then
-        table.insert(compareSlots, i, true)
+  if not restoreFoundSwitch then --We don't want to reset compare blocks every restart
+    screen(1,1)
+    print("You have selected an Ore Quarry!")
+    print("Please place your compare blocks in the first slots")
+    
+    print("Press Enter when done")
+    repeat until os.pullEvent("key")[2] == 13 --Should wait for enter key to be pressed
+    for i=1, 16 do
+      if turtle.getItemCount(i) > 0 then
+        if (i ~= enderChestSlot and enderChestEnabled) or not enderChestEnabled then
+          compareSlots[i] = true --Compare slots are ones compared to while mining. Don't want to compare to enderChest
+          allowedItems[i] = 1 --Blacklist is for dropping off items. The number is maximum items allowed in slot when dropping off
+          dumpSlots[i] = true --We also want to ignore all excess of these items, like dirt
+        end
       end
     end
   end
@@ -737,40 +728,39 @@ end
 end
 --Utility functions
 function logMiningRun(textExtension, extras) --Logging mining runs
-if logging then
-local number
-if not fs.isDir(logFolder) then
-  fs.delete(logFolder)
-  fs.makeDir(logFolder)
-  number = 1
-else
-  local i = 0
-  repeat
-    i = i + 1
-  until not fs.exists(logFolder.."/Quarry_Log_"..tostring(i)..(textExtension or ""))
-  number = i
-end
-handle = fs.open(logFolder.."/Quarry_Log_"..tostring(number)..(textExtension or ""),"w")
-local function write(...)
-  for a, b in ipairs({...}) do
-    handle.write(tostring(b))
+  if not logging then return end
+  local number
+  if not fs.isDir(logFolder) then
+    fs.delete(logFolder)
+    fs.makeDir(logFolder)
+    number = 1
+  else
+    local i = 0
+    repeat
+      i = i + 1
+    until not fs.exists(logFolder.."/Quarry_Log_"..tostring(i)..(textExtension or ""))
+    number = i
   end
-  handle.write("\n")
-end
-write("Welcome to the Quarry Logs!")
-write("Entry Number: ",number)
-write("Quarry Version: ",VERSION)
-write("Dimensions (X Z Y): ",x," ",z," ", y)
-write("Blocks Mined: ", mined)
-write("  Cobble: ", totals.cobble)
-write("  Usable Fuel: ", totals.fuel)
-write("  Other: ",totals.other)
-write("Total Fuel Used: ",  (originalFuel or (neededFuel + checkFuel()))- checkFuel()) --Protect against errors with some precision
-write("Expected Fuel Use: ", neededFuel)
-write("Days to complete mining run: ",os.day()-originalDay)
-write("Number of times resumed: ", numResumed)
-handle.close()
-end
+  handle = fs.open(logFolder.."/Quarry_Log_"..tostring(number)..(textExtension or ""),"w")
+  local function write(...)
+    for a, b in ipairs({...}) do
+      handle.write(tostring(b))
+    end
+    handle.write("\n")
+  end
+  write("Welcome to the Quarry Logs!")
+  write("Entry Number: ",number)
+  write("Quarry Version: ",VERSION)
+  write("Dimensions (X Z Y): ",x," ",z," ", y)
+  write("Blocks Mined: ", mined)
+  write("  Cobble: ", totals.cobble)
+  write("  Usable Fuel: ", totals.fuel)
+  write("  Other: ",totals.other)
+  write("Total Fuel Used: ",  (originalFuel or (neededFuel + checkFuel()))- checkFuel()) --Protect against errors with some precision
+  write("Expected Fuel Use: ", neededFuel)
+  write("Days to complete mining run: ",os.day()-originalDay)
+  write("Number of times resumed: ", numResumed)
+  handle.close()
 end
 --Inventory related functions
 function isFull(slots) --Checks if there are more than "slots" used inventory slots.
@@ -811,6 +801,72 @@ end
 function getFirstChanged(tab1, tab2) --Just a wrapper. Probably not needed
   local a = getChangedSlots(tab1,tab2)
   return a[1][1]
+end
+
+local function getRep(which, list) --Gets a representative slot of a type. Expectation is a sequential table of types
+  for i=1, #list do
+    if list[i] == which then return i end
+  end
+  return false
+end
+local function assignTypes()
+  local types, count = {1}, 1 --Table of types and current highest type
+  for i=2, 16 do
+    if turtle.getItemCount(i) > 0 then 
+      turtle.select(i)
+      for k=1, count do
+        if turtle.compareTo(getRep(k)) then types[i] == k end
+      end
+      if not types[i] then
+        count = count + 1
+        types[i] = count
+      end
+    end
+  end
+  return types, count
+end
+local function getTableOfType(which, list) --Returns a table of all the slots of which type
+  local toRet = {}
+  for i=1, #list do 
+    if list[i] == which then
+      table.insert(toRet, i)
+    end
+  end
+  return toRet
+end
+
+local function count(add) --Done any time inventory dropped and at end, param is add or subtract
+  local mod = -1
+  if add then mod = 1 end
+  slot = {}        --1: Filler 2: Fuel 3:Other --[1] is type, [2] is number
+  for i=1, 16 do   
+    slot[i] = {}
+    slot[i][2] = turtle.getItemCount(i)
+  end
+  
+  local rawTypes, numTypes, newTypes = assignTypes(), {} --This gets increasingly numbered types
+  for i=1, numTypes do
+    if dumpSlots[getRep(i,rawTypes)] then --If the rep of this slot is a dump item
+      for _, a in pairs(getTableOfType(i, rawTypes)) do --Get all matching slots
+        slot[i][1] = 1 --This type is cobble
+      end
+    elseif (turtle.select(getRep(i, rawTypes)) or true) and turtle.refuel(0) then --Selects the rep slot, checks if it is fuel
+      for _, a in pairs(getTableOfType(i, rawTypes)) do --Get all matching slots
+        slot[i][1] = 2 --This type is fuel
+      end
+    else
+      for _, a in pairs(getTableOfType(i, rawTypes)) do --Get all matching slots
+        slot[i][1] = 1 --This type is "other"
+      end
+    end
+    
+    for i=1,16 do
+      if slot[i][1] == 1 then totals.cobble = totals.cobble + (slot[i][2] * mod)
+      elseif slot[i][1] == 2 then totals.fuel = totals.fuel + (slots[i][2] * mod)
+      elseif slot[i][1] == 3 then totals.other = totals.other + (slots[i][2] * mod) end
+    end
+
+  turtle.select(1)
 end
 
 --Mining functions
@@ -1101,6 +1157,8 @@ function getNumOpenSlots()
   end
   return toRet
 end
+
+--
 function drop(side, final, allowSkip)
 side = sides[side] or "front"    --The final number means that it will
 if final then final = 0 else final = 1 end --drop a whole stack at the end
@@ -1162,16 +1220,14 @@ if not allowSkip then totals.cobble = totals.cobble - 1 end
 turtle.select(1)
 end
 
+
 --Ideas: Bring in inventory change-checking functions, count blocks that have been put in, so it will wait until all blocks have been put in.
-function drop(side, final, blacklist)
-  side = sides[side] or "front"
-  blacklist = blacklist or {}
-  local function waitDrop(num, slot) --This will just drop, but wait if it can't
-    num = num or 64
+local function waitDrop(slot, allowed, whereDrop) --This will just drop, but wait if it can't
+  allowed = allowed or 0
+  while turtle.getItemCount(slot) > allowed do --No more half items stuck in slot!
     local tries = 1
-    while not whereDrop(num) do
-      term.clear()
-      term.setCursorPos(1,1)
+    while not whereDrop(turtle.getItemCount(slot)-allowed) do --Drop off only the amount needed
+      screen(1,1)
       print("Chest Full, Try "..tries)
       chestFull = true
       biometrics()--To send that the chest is full
@@ -1180,6 +1236,40 @@ function drop(side, final, blacklist)
     end
     chestFull = false
   end
+end
+  
+function drop(side, final)
+  side = sides[side] or "front"
+  local dropFunc, detectFunc = turtle.drop, turtle.detect
+  if side == "top" then dropFunc, detectFunc = turtle.dropUp, turtle.detectUp end
+  if side == "bottom" then dropFunc, detectFunc = turtle.dropDown, turtle.detectDown end
+  if side == "right" then turnTo(1) end
+  if side == "left" then turnTo(3) end
+  properFacing = facing --Capture the proper direction to be facing
+  
+  while not detectFunc() do
+    if final then return end --If final, we don't need a chest to be placed
+    chestFull = true
+    biometrics() --Let the user know there is a problem with chest
+    screen(1,1) --Clear screen
+    print("Waiting for chest placement on ",side," side (when facing quarry)")
+    sleep(2)
+  end
+  chestFull = false
+  
+  count(true) --Count number of items before drop. True means add
+  
+  for i=1,16 do
+    if turtle.getItemCount(i) > 0 then --Saves time, stops bugs
+      if dumpSlots[i] and dumpCompareItems then turnTo(properFacing+2) --Turn around to drop stuff, not store it
+      else turnTo(properFacing) --Turn back to proper position... or do nothing if already there
+      end 
+      turtle.select(i)
+      waitDrop(i, allowedItems[i], dropFunc)
+    end
+  end
+  
+  if oreQuarry then count(false) end--Subtract the items still there if oreQuarry
 
 end
 

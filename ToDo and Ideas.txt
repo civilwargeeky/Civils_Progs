@@ -105,16 +105,20 @@ Random future thoughts: Maybe make more seamless. Have an arg/option to make cal
 Quarry Version 3.4.5:
 Changelog so far:
   new constants: VARIABLE, originalDay, numResumed, both used in logging.
-  Added compareSlots and slotsBlacklist for use in ore Quarry
+  Added compareSlots, slots table that will be compared to when mining
+  Added slotsBlacklist, slots that will not be dropped off (or conditionally dropped off)
   Added in section for putting in compare blocks
   Added various inventory counting functions
+  New Parameter: dumpCompareItems for ore quarries to dump off excess cobblestone and things
 
 
 Things for 3.4.5:
   Improve drop function
   Improve drop function. Just... make it better in general. Also have an argument table of slots not to drop from.
   Add back in "oreQuarry" functionality.
-  Make it so that the turtle will dump off all cobblestone it has before putting into chest. Maybe just do it on the fly.
+  Make it so that the turtle will dump off all excess compareItems it has before putting into chest. Maybe just do it on the fly.
+  If orequarry, have an "inventory snapshot" every time digging so you can see if a slot should be dumped.
+  Make dumpItems reset on item drop, and make checks at appropriate times
   
 Things for 3.4.6:
   In the logic for wrapping a modem, check for that new peripheral finding function, then use it, otherwise just use right.
