@@ -1,5 +1,5 @@
 --[[ 
-Version 3.4.5
+Version 3.5.0
 Recent Changes:
   Improved session restoring for those using fuel
   Added New Rednet Support
@@ -8,7 +8,7 @@ Recent Changes:
 ]]
 --Defining things
 civilTable = nil; _G.civilTable = {}; setmetatable(civilTable, {__index = _G}); setfenv(1,civilTable)
-VERSION = "3.4.5" --Adding this so I can differentiate versions on error messages
+VERSION = "3.5.0" --Adding this so I can differentiate versions on error messages
 originalDay = os.day() --Used in logging
 numResumed = 0 --Number of times turtle has been resumed
 -------Defaults for Arguments----------

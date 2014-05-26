@@ -102,7 +102,7 @@ Random future thoughts: Maybe make more seamless. Have an arg/option to make cal
 
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 
-Quarry Version 3.4.5:
+Quarry Version 3.5.0:
 Changelog so far:
   new constants: VARIABLE, originalDay, numResumed, both used in logging.
   Added compareSlots, slots table that will be compared to when mining
@@ -112,7 +112,7 @@ Changelog so far:
   New Parameter: dumpCompareItems for ore quarries to dump off excess cobblestone and things
 
 
-Things for 3.4.5:
+Things for 3.5.0:
   Improve drop function
   Improve drop function. Just... make it better in general. Also have an argument table of slots not to drop from.
   Add back in "oreQuarry" functionality.
@@ -120,7 +120,7 @@ Things for 3.4.5:
   If orequarry, have an "inventory snapshot" every time digging so you can see if a slot should be dumped.
   Make dumpItems reset on item drop, and make checks at appropriate times
   
-Things for 3.4.6:
+Things for 3.5.1:
   In the logic for wrapping a modem, check for that new peripheral finding function, then use it, otherwise just use right.
   Add in a "Pause" and "Resume" function for receiver interaction
   In receiver, add a size for pocket computer.
@@ -128,7 +128,7 @@ Things for 3.4.6:
   Maybe, on bottom line of receiver, have a couple buttons for drop, return, etc.
     Ooh! Maybe have "buttonHandler" table of functions that would make, place, activate, and deactivate buttons.
   
-Things to add for quarry version 3.5.0 (After rednet update and shell is done):
+Things to add for quarry version 3.6.0 (After rednet update and shell is done):
   Add support for mods. Like openperipheral chest finding.
   Improve end of layer logic. You should be able to just have it stop at the end of the layer and go down three with minimal hassle.
   With inclusion of certain slots not to drop or slots to drop all but one of, you could make a more ore-driven quarry that will only mine ores and things not on its list of stuff to not mine
