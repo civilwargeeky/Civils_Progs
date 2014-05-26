@@ -51,6 +51,8 @@ confirm = "Turtle Quarry Receiver",
 message = "Civil's Quarry",
 }
 
+--AVERAGE USER: YOU DON'T CARE BELOW THIS POINT
+
 local help_paragraph = [[
 Welcome!: Welcome to quarry help. Below are help entries for all parameters. Examples and tips are at the bottom.
 -Default: This will force no prompts. If you use this and nothing else, only defaults will be used.
@@ -144,7 +146,7 @@ end
 local supportsRednet = (peripheral.wrap("right") ~= nil)
 
 local tArgs = {...}
---You don't care about these
+--Pre-defining variables
       xPos,yPos,zPos,facing,percent,mined,moved,relxPos, rowCheck, connected, isInPath, layersDone, attacked, startY, chestFull, gotoDest, atChest, fuelLevel, numDropOffs, allowedItems, compareSlots, dumpSlots
     = 0,   1,   1,   0,     0,      0,    0,    1,       true   ,  false,     true,     1,          0,        0,      false,     "",       false,   0,         0,           {},             {},           {}
     
@@ -748,25 +750,24 @@ end
 --Utility functions
 function logMiningRun(textExtension, extras) --Logging mining runs
   if not logging then return end
-  local number
+  local number = 1
   if not fs.isDir(logFolder) then
     fs.delete(logFolder)
-    fs.makeDir(logFolder)
-    number = 1
+    fs.makeDir(logFolder) --Number is already 1
   else
-    local i = 0
     repeat
-      i = i + 1
+      number = number + 1 --Number will be at least 2
     until not fs.exists(logFolder.."/Quarry_Log_"..tostring(i)..(textExtension or ""))
     number = i
   end
-  handle = fs.open(logFolder.."/Quarry_Log_"..tostring(number)..(textExtension or ""),"w")
+  local handle = fs.open(logFolder.."/Quarry_Log_"..tostring(number)..(textExtension or ""),"w")
   local function write(...)
     for a, b in ipairs({...}) do
       handle.write(tostring(b))
     end
     handle.write("\n")
   end
+  local function boolToText(bool) if bool then return "Yes" else return "No" end end
   write("Welcome to the Quarry Logs!")
   write("Entry Number: ",number)
   write("Quarry Version: ",VERSION)
@@ -778,7 +779,13 @@ function logMiningRun(textExtension, extras) --Logging mining runs
   write("Total Fuel Used: ",  (originalFuel or (neededFuel + checkFuel()))- checkFuel()) --Protect against errors with some precision
   write("Expected Fuel Use: ", neededFuel)
   write("Days to complete mining run: ",os.day()-originalDay)
+  write("Day Started: ", originalDay)
   write("Number of times resumed: ", numResumed)
+  write("Was an ore quarry? ",boolToText(oreQuarry))
+  write("Was inverted? ",boolToText(invert))
+  write("Was using rednet? ",boolToText(rednetEnabled))
+  write("Chest was on the ",dropSide," side")
+  if startDown > 0 then write("Started ",startDown," blocks down") end
   handle.close()
 end
 --Inventory related functions

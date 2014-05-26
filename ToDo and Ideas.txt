@@ -69,6 +69,11 @@ Menu Plans (w/ sub menu):
       Popup for pastebin code
   Read Logs
     List of logs
+      Read Log
+        Pastebin put log
+        Delete log
+    Delete all logs
+      Are you sure?
   Updates --If update found, will ask user if they want to overwrite files. Updates will include those to the shell itself, quarry, and quarryReceiver
     Update All
     Check Updates
