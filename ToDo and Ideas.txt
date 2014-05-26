@@ -110,6 +110,14 @@ Changelog so far:
   Added in section for putting in compare blocks
   Added various inventory counting functions
   New Parameter: dumpCompareItems for ore quarries to dump off excess cobblestone and things
+  Completely redid inventory tracking system. Now much, much smarter
+  Completely redid dropping system. Now much better
+  Added starting prompt for compareSlots
+  Program errors if more compareSlots than "keepOpen" slots
+  Turtle trashes compareSlots mid run
+  If the turtle has an enderchest and is set to drop on the left or right, it will turn the proper direction at the end to place it
+  
+  
 
 
 Things for 3.5.0:
@@ -119,6 +127,11 @@ Things for 3.5.0:
   Make it so that the turtle will dump off all excess compareItems it has before putting into chest. Maybe just do it on the fly.
   If orequarry, have an "inventory snapshot" every time digging so you can see if a slot should be dumped.
   Make dumpItems reset on item drop, and make checks at appropriate times
+  --To Consider: Maybe checks for fuel before dump types, so it can refuel itself with that.
+  Add in a warning if you start an ore quarry with no compare slots
+  Tests to Run:
+    Dropping off inventory mid-run, with and without ender chest
+    Dropping off compare items on the fly
   
 Things for 3.5.1:
   In the logic for wrapping a modem, check for that new peripheral finding function, then use it, otherwise just use right.
