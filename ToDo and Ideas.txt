@@ -116,17 +116,14 @@ Changelog so far:
   Program errors if more compareSlots than "keepOpen" slots
   Turtle trashes compareSlots mid run
   If the turtle has an enderchest and is set to drop on the left or right, it will turn the proper direction at the end to place it
+  Added a warning if you start an ore quarry with no compare slots
   
   
-
-
 Things for 3.5.0:
-  Improve drop function
-  Improve drop function. Just... make it better in general. Also have an argument table of slots not to drop from.
   Add back in "oreQuarry" functionality.
-  Make it so that the turtle will dump off all excess compareItems it has before putting into chest. Maybe just do it on the fly.
   If orequarry, have an "inventory snapshot" every time digging so you can see if a slot should be dumped.
-  Make dumpItems reset on item drop, and make checks at appropriate times
+  Make dumpItems reset on item drop, and make checks at appropriate times. This is for the whole stone --> cobblestone conundrum
+  Change compare items to a table of slots, so the first index will be the first compare slot, etc. Easier for what I want this table for
   --To Consider: Maybe checks for fuel before dump types, so it can refuel itself with that.
   Add in a warning if you start an ore quarry with no compare slots
   Tests to Run:

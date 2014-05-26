@@ -573,7 +573,7 @@ if oreQuarry then
     end
     local counter = 0 --This is because this is bad, and a bug.
     for a,b in pairs(compareSlots) do if b == true then counter = counter+1 end end
-    if counter >= keepOpen then error("You have more quarry compare items than keep open slots, the turtle will continuously come back to start. Please fix.",0) end
+    if counter >= 16-keepOpen then screen(1,1); error("You have more quarry compare items than keep open slots, the turtle will continuously come back to start. Please fix.",0) end
   end
   local counter = 0
   for a, b in pairs(compareSlots) do if b == true and turtle.getItemCount(a) > 0 then counter = counter + 1 end end
