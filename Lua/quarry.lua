@@ -152,9 +152,8 @@ local tArgs = {...}
     
 for i=1, 16 do --Initializing various inventory management tables
   allowedItems[i] = 0 --Number of items allowed in slot when dropping items
-  compareSlots[i] = false --Does this slot contain compare item?
   dumpSlots[i] = false --Does this slot contain junk items?
-end
+end --compareSlots is a table of the compare slots, not all slots with a condition
 totals = {cobble = 0, fuel = 0, other = 0} -- Total for display (cannot go inside function), this goes up here because many functions use it
 
 local function copyTable(tab) local toRet = {}; for a, b in pairs(tab) do toRet[a] = b end; return toRet end --This goes up here because it is a basic utility
@@ -567,18 +566,17 @@ if oreQuarry then
     for i=1, 16 do
       if turtle.getItemCount(i) > 0 then
         if (i ~= enderChestSlot and enderChestEnabled) or not enderChestEnabled then
-          compareSlots[i] = true --Compare slots are ones compared to while mining. Conditions are because we Don't want to compare to enderChest
+          table.insert(compareSlots, i) = --Compare slots are ones compared to while mining. Conditions are because we Don't want to compare to enderChest
           allowedItems[i] = 1 --Blacklist is for dropping off items. The number is maximum items allowed in slot when dropping off
           dumpSlots[i] = true --We also want to ignore all excess of these items, like dirt
         end
       end
     end
-    local counter = 0 --This is because this is bad, and a bug.
-    for a,b in pairs(compareSlots) do if b == true then counter = counter+1 end end
-    if counter >= 16-keepOpen then screen(1,1); error("You have more quarry compare items than keep open slots, the turtle will continuously come back to start. Please fix.",0) end
+    --This is could go very wrong if this isn't here
+    if #compareSlots >= 16-keepOpen then screen(1,1); error("You have more quarry compare items than keep open slots, the turtle will continuously come back to start. Please fix.",0) end
   end
   local counter = 0
-  for a, b in pairs(compareSlots) do if b == true and turtle.getItemCount(a) > 0 then counter = counter + 1 end end
+  for a, b in pairs(compareSlots) do if  turtle.getItemCount(b) > 0 then counter = counter + 1 end end
   if counter == 0 then
     screen(1,1)
     print("You have an ore quarry without any compare slots. Continue? y/n")
@@ -921,21 +919,29 @@ function dig(doAdd, func)
   end
   return false
 end
-if not inverted then --Regular functions :) I switch definitions for optimizatoin (I thinK)
-  function digUp(doAdd)
-    return dig(doAdd,turtle.digUp)
+
+local function genericSmartDig(doAdd, digFunc, compare, detect)
+  if not detect() then return false end
+  if oreQuarry then --This is the smart dig functionality
+    for a, b in pairs(compareItems) do
+      turtle.select(b) 
+      if compare() then return false, true end
+    end
+    turtle.select(1)
   end
-  function digDown(doAdd)
-    return dig(doAdd,turtle.digDown)
-  end
-else
-  function digDown(doAdd)
-    return dig(doAdd,turtle.digUp)
-  end
-  function digUp(doAdd)
-    return dig(doAdd,turtle.digDown)
-  end
+  return dig(doAdd, digFunc)
 end
+
+function digUp(doAdd)--Regular functions :) I switch definitions for optimization (I think)
+  return genericSmartDig(doAdd, turtle.digUp, turtle.compareUp, turtle.detectUp)
+end
+function digDown(doAdd)
+  return genericSmartDig(doAdd,turtle.digDown, turtle.compareDown, turtle.detectDown)
+end
+if inverted then --If inverted, switch the options
+  digUp, digDown = digDown, digUp
+end
+
 function setRowCheckFromPos()
   rowCheck = (zPos % 2 == 1) --It will turn right at odd rows
 end
