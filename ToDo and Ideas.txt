@@ -125,6 +125,7 @@ Changelog so far:
   Implemented Ore Quarry functionality
   Modified the turtle's behavior when digging up
   Added super secret speedy start (skips ore quarry setup)
+  Made a smart select function that only selects a slot if its not selected.
   
   
 Things for 3.5.0:
@@ -138,7 +139,7 @@ Things for 3.5.0:
     Resuming with and without oreQuarry
   Make the turtle faster. This implementation is slower than the 3.4.1 version. Very noticeably so
   Properly implement speedy start (it should be standard). It should check if the turtle has been refueled (if yes, then prompt), then check if there are items in inventory (if not, then prompt)
-  Properly implement cobblestone checking and prompting. It should be an argument instead of a prompt in oreQuarry
+  
   
 Things for 3.5.1:
   In the logic for wrapping a modem, check for that new peripheral finding function, then use it, otherwise just use right.

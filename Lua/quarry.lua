@@ -147,8 +147,8 @@ local supportsRednet = (peripheral.wrap("right") ~= nil)
 
 local tArgs = {...}
 --Pre-defining variables
-      xPos,yPos,zPos,facing,percent,mined,moved,relxPos, rowCheck, connected, isInPath, layersDone, attacked, startY, chestFull, gotoDest, atChest, fuelLevel, numDropOffs, allowedItems, compareSlots, dumpSlots, stoneFirstSlot, cobbleSlot, speedyStart
-    = 0,   1,   1,   0,     0,      0,    0,    1,       true   ,  false,     true,     1,          0,        0,      false,     "",       false,   0,         0,           {},             {},           {},      false,          false,      false
+      xPos,yPos,zPos,facing,percent,mined,moved,relxPos, rowCheck, connected, isInPath, layersDone, attacked, startY, chestFull, gotoDest, atChest, fuelLevel, numDropOffs, allowedItems, compareSlots, dumpSlots, selectedSlot
+    = 0,   1,   1,   0,     0,      0,    0,    1,       true   ,  false,     true,     1,          0,        0,      false,     "",       false,   0,         0,           {},             {},           {},      1
     
 for i=1, 16 do --Initializing various inventory management tables
   allowedItems[i] = 0 --Number of items allowed in slot when dropping items
@@ -173,6 +173,15 @@ if turtle then
   end
   checkFuel = turtle.getFuelLevel --Just an alias for backwards compat
 end
+
+turtle.select(1) --To ensure this is correct
+function select(slot)
+  if slot ~= currentSlot then
+    currentSlot = slot
+    return turtle.select(slot), currentSlot
+  end
+end
+  
 
  -----------------------------------------------------------------
 --Input Phase
@@ -416,7 +425,6 @@ addParam("maxTries","Tries Before Bedrock", "number 1-9001")
 --Ore Quarry
 addParam("oreQuarry", "Ore Quarry", "boolean" )
 addParam("dumpCompareItems", "Dump Compare Items", "boolean", nil, oreQuarry) --Do not dump compare items if not oreQuarry
-addParam("speedyStart","Speedy Start", "boolean", nil, oreQuarry) --Shhh. Its a secret
 --Manual Position
 if tArgs["-manualpos"] then --Gives current coordinates in xPos,zPos,yPos, facing
   local a = tArgs["-manualpos"]
@@ -518,7 +526,7 @@ neededFuel = neededFuel + fuelTable[fuelSafety] --For safety
   end
   while checkFuel() <= neededFuel do
     currSlot = currSlot + 1
-    turtle.select(currSlot)
+    select(currSlot)
     updateScreen()
     while turtle.getItemCount(currSlot) == 0 do sleep(1.5) end
     repeat
@@ -547,9 +555,9 @@ function promptEnderChest()
 end
 if enderChestEnabled then
     if restoreFoundSwitch and turtle.getItemCount(enderChestSlot) == 0 then --If the turtle was stopped while dropping off items.
-      turtle.select(enderChestSlot)
+      select(enderChestSlot)
       turtle.dig()
-      turtle.select(1)
+      select(1)
     end
   promptEnderChest()
   allowedItems[enderChestSlot] = 64
@@ -562,10 +570,8 @@ if oreQuarry then
     print("You have selected an Ore Quarry!")
     print("Please place your compare blocks in the first slots")
     
-    if not speedyStart then
-      print("Press Enter when done")
-      repeat until ({os.pullEvent("key")})[2] == 28 --Should wait for enter key to be pressed
-    end
+    print("Press Enter when done")
+    repeat until ({os.pullEvent("key")})[2] == 28 --Should wait for enter key to be pressed
     for i=1, 16 do
       if turtle.getItemCount(i) > 0 then
         if (i ~= enderChestSlot and enderChestEnabled) or not enderChestEnabled then
@@ -577,11 +583,6 @@ if oreQuarry then
     end
     --This is could go very wrong if this isn't here
     if #compareSlots >= 16-keepOpen then screen(1,1); error("You have more quarry compare items than keep open slots, the turtle will continuously come back to start. Please fix.",0) end
-    if not speedyStart and dumpCompareItems then 
-      screen(1,1); print("Is there a stone block in the first slot? If you do this, the turtle will dump out all cobblestone")
-      print("y/n")
-      if ({os.pullEvent("char")})[2] == "y" then stoneFirstSlot = true end
-    end
   end
   local counter = 0
   for a, b in pairs(compareSlots) do if  turtle.getItemCount(b) > 0 then counter = counter + 1 end end
@@ -844,7 +845,7 @@ function assignTypes(types, count) --The parameters allow a preexisting table to
   types, count = types or {1}, count or 1 --Table of types and current highest type
   for i=1, 16 do
     if turtle.getItemCount(i) > 0 then 
-      turtle.select(i)
+      select(i)
       for k=1, count do
         if turtle.compareTo(getRep(k, types)) then types[i] = k end
       end
@@ -897,7 +898,7 @@ function count(add) --Done any time inventory dropped and at end, param is add o
   for i=1, numTypes do
     if dumpSlots[getRep(i,initialTypes)] then --If the rep of this slot is a dump item. This is intitial types so that the rep is in dump slots
       iterate(i, rawTypes, 1) --This type is cobble/filler
-    elseif (turtle.select(getRep(i, rawTypes)) or true) and turtle.refuel(0) then --Selects the rep slot, checks if it is fuel
+    elseif (select(getRep(i, rawTypes)) or true) and turtle.refuel(0) then --Selects the rep slot, checks if it is fuel
       iterate(i, rawTypes, 2) --This type is fuel
     else
       iterate(i, rawTypes, 3) --This type is other
@@ -911,7 +912,7 @@ function count(add) --Done any time inventory dropped and at end, param is add o
       elseif slot[i][1] == 3 then totals.other = totals.other + (slot[i][2] * mod) end
     end
 
-  turtle.select(1)
+  select(1)
 end
 
 --Mining functions
@@ -939,20 +940,19 @@ if inverted then --If inverted, switch the options
   digUp, digDown = digDown, digUp
 end
 
-smartDigMod = true --Go up
 function smartDig(digUp, digDown) --This function is used only in mine when oreQuarry
   local blockAbove, blockBelow= digUp and turtle.detectUp(), digDown and turtle.detectDown() --These control whether or not the turtle digs
-  local k, j, step --For smarter iterating
-  if smartDigMod then k,j, step = 1, #compareSlots, 1 else k,j, step = #compareSlots, 1, -1 end --I think this should give a slight efficiency increase
-  smartDigMod = not smartDigMod
-  for i=k, j, step do
-    if not (blockAbove or blockBelow) then return false end --We don't want to go selecting if there is nothing to dig
-    turtle.select(compareSlots[i])
+  local index
+  for i=1, #compareSlots do
+    if not (blockAbove or blockBelow) then break end --We don't want to go selecting if there is nothing to dig
+    index = i --So I can see what the last index was
+    select(compareSlots[i])
     if blockAbove and turtle.compareUp() then blockAbove = false end
     if blockBelow and turtle.compareDown() then blockBelow = false end
   end
-  if doDigUp then dig(true, turtle.digUp) end
-  if doDigDown then dig(true, turtle.digDown) end
+  table.insert(compareSlots, 1, table.remove(compareSlots, index)) --This is so the last selected slot is the first slot checked, saving a select call
+  if blockAbove then dig(true, turtle.digUp) end
+  if blockBelow then dig(true, turtle.digDown) end
 end
 
 function setRowCheckFromPos()
@@ -1065,13 +1065,13 @@ function mine(doDigDown, doDigUp, outOfPath,doCheckInv) -- Basic Move Forward
   if doRefuel and checkFuel() <= fuelTable[fuelSafety]/2 then
     for i=1, 16 do
     if turtle.getItemCount(i) > 0 then
-      turtle.select(i)
+      select(i)
       if checkFuel() < 200 + fuelTable[fuelSafety] then
         turtle.refuel()
       end
     end
     end
-    turtle.select(1)
+    select(1)
   end
   local count = 0
   while not forward(not outOfPath) do
@@ -1228,10 +1228,10 @@ count()
 if doRefuel then
   for i=1, 16 do
     if slot[i][1] == 2 then
-      turtle.select(i); turtle.refuel()
+      select(i); turtle.refuel()
     end
   end
-  turtle.select(1)
+  select(1)
 end
 if side == "right" then turnTo(1) end
 if side == "left" then turnTo(3) end
@@ -1265,7 +1265,7 @@ if detected then
   for i=1, 2 do --This is so I quit flipping missing items when chests are partially filled
     for i=2, 16 do
       if turtle.getItemCount(i) > 0 then
-        turtle.select(i)
+        select(i)
         waitDrop(nil, i)
       end
     end
@@ -1278,7 +1278,7 @@ elseif not allowSkip then
 end
 until detected or allowSkip
 if not allowSkip then totals.cobble = totals.cobble - 1 end
-turtle.select(1)
+select(1)
 end
 ]]
 
@@ -1326,14 +1326,14 @@ function drop(side, final)
       if slot[i][1] == 1 and dumpCompareItems then turnTo(dropFacing) --Turn around to drop junk, not store it. dumpComapareItems is global config
       else turnTo(properFacing) --Turn back to proper position... or do nothing if already there
       end 
-      turtle.select(i)
+      select(i)
       waitDrop(i, allowedItems[i], dropFunc)
     end
   end
   
   if oreQuarry then count(false) end--Subtract the items still there if oreQuarry
   
-  turtle.select(1) --For fanciness sake
+  select(1) --For fanciness sake
 
 end
 
@@ -1353,13 +1353,13 @@ function dropOff() --Not local because called in mine()
       if turtle.getItemCount(enderChestSlot) ~= 1 then eventAdd("promptEnderChest()") end
       eventAdd("turnTo",currFacing-2)
       eventAdd("dig",false)
-      eventAdd("turtle.select",enderChestSlot)
+      eventAdd("select",enderChestSlot)
       eventAdd("turtle.place")
       eventAdd("drop","front",false)
-      eventAdd("turtle.select", enderChestSlot)
+      eventAdd("select", enderChestSlot)
       eventAdd("dig",false)
       eventAdd("turnTo",currFacing)
-      eventAdd("turtle.select(1)")
+      eventAdd("select(1)")
     end
   runAllEvents()
   numDropOffs = numDropOffs + 1 --Analytics tracking
@@ -1375,9 +1375,9 @@ function endingProcedure() --Used both at the end and in "biometrics"
     if dropSide == "right" then eventAdd("turnTo(1)") end --Turn to proper drop side
     if dropSide == "left" then eventAdd("turnTo(3)") end
     while turtle.detect() do dig(false) end --This gets rid of blocks in front of the turtle.
-    eventAdd("turtle.select",enderChestSlot)
+    eventAdd("select",enderChestSlot)
     eventAdd("turtle.place")
-    eventAdd("turtle.select(1)")
+    eventAdd("select(1)")
   end
   eventAdd("drop",dropSide, true)
   eventAdd("turnTo(0)")
@@ -1454,7 +1454,7 @@ else --restore found
   if not(layersDone == layers and not doDigUp) then digUp() end  --Get blocks missed before stopped
 end
 --Mining Loops--------------------------------------------------------------------------
-turtle.select(1)
+select(1)
 while layersDone <= layers do -------------Height---------
 local lastLayer = layersDone == layers --If this is the last layer
 local secondToLastLayer = (layersDone + 1) == layers --This is for the going down at the end of a layer.
