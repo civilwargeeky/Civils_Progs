@@ -147,8 +147,8 @@ local supportsRednet = (peripheral.wrap("right") ~= nil)
 
 local tArgs = {...}
 --Pre-defining variables
-      xPos,yPos,zPos,facing,percent,mined,moved,relxPos, rowCheck, connected, isInPath, layersDone, attacked, startY, chestFull, gotoDest, atChest, fuelLevel, numDropOffs, allowedItems, compareSlots, dumpSlots
-    = 0,   1,   1,   0,     0,      0,    0,    1,       true   ,  false,     true,     1,          0,        0,      false,     "",       false,   0,         0,           {},             {},           {}
+      xPos,yPos,zPos,facing,percent,mined,moved,relxPos, rowCheck, connected, isInPath, layersDone, attacked, startY, chestFull, gotoDest, atChest, fuelLevel, numDropOffs, allowedItems, compareSlots, dumpSlots, stoneFirstSlot, cobbleSlot, speedyStart
+    = 0,   1,   1,   0,     0,      0,    0,    1,       true   ,  false,     true,     1,          0,        0,      false,     "",       false,   0,         0,           {},             {},           {},      false,          false,      false
     
 for i=1, 16 do --Initializing various inventory management tables
   allowedItems[i] = 0 --Number of items allowed in slot when dropping items
@@ -416,6 +416,7 @@ addParam("maxTries","Tries Before Bedrock", "number 1-9001")
 --Ore Quarry
 addParam("oreQuarry", "Ore Quarry", "boolean" )
 addParam("dumpCompareItems", "Dump Compare Items", "boolean", nil, oreQuarry) --Do not dump compare items if not oreQuarry
+addParam("speedyStart","Speedy Start", "boolean", nil, oreQuarry) --Shhh. Its a secret
 --Manual Position
 if tArgs["-manualpos"] then --Gives current coordinates in xPos,zPos,yPos, facing
   local a = tArgs["-manualpos"]
@@ -561,12 +562,14 @@ if oreQuarry then
     print("You have selected an Ore Quarry!")
     print("Please place your compare blocks in the first slots")
     
-    print("Press Enter when done")
-    repeat until ({os.pullEvent("key")})[2] == 28 --Should wait for enter key to be pressed
+    if not speedyStart then
+      print("Press Enter when done")
+      repeat until ({os.pullEvent("key")})[2] == 28 --Should wait for enter key to be pressed
+    end
     for i=1, 16 do
       if turtle.getItemCount(i) > 0 then
         if (i ~= enderChestSlot and enderChestEnabled) or not enderChestEnabled then
-          table.insert(compareSlots, i) = --Compare slots are ones compared to while mining. Conditions are because we Don't want to compare to enderChest
+          table.insert(compareSlots, i) --Compare slots are ones compared to while mining. Conditions are because we Don't want to compare to enderChest
           allowedItems[i] = 1 --Blacklist is for dropping off items. The number is maximum items allowed in slot when dropping off
           dumpSlots[i] = true --We also want to ignore all excess of these items, like dirt
         end
@@ -574,6 +577,11 @@ if oreQuarry then
     end
     --This is could go very wrong if this isn't here
     if #compareSlots >= 16-keepOpen then screen(1,1); error("You have more quarry compare items than keep open slots, the turtle will continuously come back to start. Please fix.",0) end
+    if not speedyStart and dumpCompareItems then 
+      screen(1,1); print("Is there a stone block in the first slot? If you do this, the turtle will dump out all cobblestone")
+      print("y/n")
+      if ({os.pullEvent("char")})[2] == "y" then stoneFirstSlot = true end
+    end
   end
   local counter = 0
   for a, b in pairs(compareSlots) do if  turtle.getItemCount(b) > 0 then counter = counter + 1 end end
@@ -748,17 +756,16 @@ end
 --Utility functions
 function logMiningRun(textExtension, extras) --Logging mining runs
   if not logging then return end
-  local number = 1
+  local number, name = 0
   if not fs.isDir(logFolder) then
     fs.delete(logFolder)
-    fs.makeDir(logFolder) --Number is already 1
-  else
-    repeat
-      number = number + 1 --Number will be at least 2
-    until not fs.exists(logFolder.."/Quarry_Log_"..tostring(i)..(textExtension or ""))
-    number = i
+    fs.makeDir(logFolder)
   end
-  local handle = fs.open(logFolder.."/Quarry_Log_"..tostring(number)..(textExtension or ""),"w")
+  repeat
+    number = number + 1 --Number will be at least 2
+    name = logFolder.."/Quarry_Log_"..tostring(number)..(textExtension or "")
+  until not fs.exists(name)
+  local handle = fs.open(name,"w")
   local function write(...)
     for a, b in ipairs({...}) do
       handle.write(tostring(b))
@@ -833,7 +840,7 @@ function getRep(which, list) --Gets a representative slot of a type. Expectation
   end
   return false
 end
-function assignTypes(types, count) --The parameters allow a preexisting table to be used, like a table from the origianl compareitems...
+function assignTypes(types, count) --The parameters allow a preexisting table to be used, like a table from the origianl compareSlots...
   types, count = types or {1}, count or 1 --Table of types and current highest type
   for i=1, 16 do
     if turtle.getItemCount(i) > 0 then 
@@ -909,7 +916,7 @@ end
 
 --Mining functions
 function dig(doAdd, func)
-  doAdd = doAdd or true
+  if doAdd == nil then doAdd = true end
   func = func or turtle.dig
   if func() then
     if doAdd then
@@ -920,26 +927,32 @@ function dig(doAdd, func)
   return false
 end
 
-local function genericSmartDig(doAdd, digFunc, compare, detect)
-  if not detect() then return false end
-  if oreQuarry then --This is the smart dig functionality
-    for a, b in pairs(compareItems) do
-      turtle.select(b) 
-      if compare() then return false, true end
-    end
-    turtle.select(1)
-  end
-  return dig(doAdd, digFunc)
-end
+
 
 function digUp(doAdd)--Regular functions :) I switch definitions for optimization (I think)
-  return genericSmartDig(doAdd, turtle.digUp, turtle.compareUp, turtle.detectUp)
+  return dig(doAdd, turtle.digUp)
 end
 function digDown(doAdd)
-  return genericSmartDig(doAdd,turtle.digDown, turtle.compareDown, turtle.detectDown)
+  return dig(doAdd, turtle.digDown)
 end
 if inverted then --If inverted, switch the options
   digUp, digDown = digDown, digUp
+end
+
+smartDigMod = true --Go up
+function smartDig(digUp, digDown) --This function is used only in mine when oreQuarry
+  local blockAbove, blockBelow= digUp and turtle.detectUp(), digDown and turtle.detectDown() --These control whether or not the turtle digs
+  local k, j, step --For smarter iterating
+  if smartDigMod then k,j, step = 1, #compareSlots, 1 else k,j, step = #compareSlots, 1, -1 end --I think this should give a slight efficiency increase
+  smartDigMod = not smartDigMod
+  for i=k, j, step do
+    if not (blockAbove or blockBelow) then return false end --We don't want to go selecting if there is nothing to dig
+    turtle.select(compareSlots[i])
+    if blockAbove and turtle.compareUp() then blockAbove = false end
+    if blockBelow and turtle.compareDown() then blockBelow = false end
+  end
+  if doDigUp then dig(true, turtle.digUp) end
+  if doDigDown then dig(true, turtle.digDown) end
 end
 
 function setRowCheckFromPos()
@@ -1084,20 +1097,22 @@ function mine(doDigDown, doDigUp, outOfPath,doCheckInv) -- Basic Move Forward
   end
   checkSanity() --Not kidding... This is necessary
   saveProgress(tab)
-  if doDigUp then
-  while turtle.detectUp() do 
-    sleep(0) --Calls coroutine.yield
-    if not dig(true,turtle.digUp) then --This needs to be an absolute, because we are switching doDigUp/Down
-      attackUp()
-      count = count + 1
+  if not oreQuarry then --The digging up and down part
+    if doDigUp then
+      while turtle.detectUp() do 
+        sleep(0) --Calls coroutine.yield
+        if not dig(true,turtle.digUp) then --This needs to be an absolute, because we are switching doDigUp/Down
+          if not attackUp() then
+            if yPos > (startY-7) then bedrock() end --Checking for bedrock, but respecting user wishes
+          end
+        end
+      end
     end
-    if count > 50 and yPos > (startY-7) then --Same deal with bedrock as above
-      bedrock()
+    if doDigDown then
+     dig(true,turtle.digDown) --This needs to be absolute as well
     end
-    end
-  end
-  if doDigDown then
-   dig(true,turtle.digDown) --This needs to be absolute as well
+  else
+    smartDig(doDigUp, doDigDown)
   end
   percent = math.ceil(moved/moveVolume*100)
   updateDisplay()
