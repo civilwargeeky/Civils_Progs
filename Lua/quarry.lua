@@ -156,6 +156,26 @@ for i=1, 16 do --Initializing various inventory management tables
 end --compareSlots is a table of the compare slots, not all slots with a condition
 totals = {cobble = 0, fuel = 0, other = 0} -- Total for display (cannot go inside function), this goes up here because many functions use it
 
+function resetDumpSlots()
+    for i=1, 16 do
+      if oreQuarry then
+        if turtle.getItemCount(i) > 0 and i~= enderChestSlot then
+          dumpSlots[i] = true
+        else
+          dumpSlots[i] = false
+        end
+      else
+        dumpSlots[i] = false
+      end
+    end
+    if not oreQuarry and enderChestSlot == 1 then
+      dumpSlots[2] = true
+    elseif not oreQuarry then
+      dumpSlots[1] = true
+    end
+end
+        
+
 local function copyTable(tab) local toRet = {}; for a, b in pairs(tab) do toRet[a] = b end; return toRet end --This goes up here because it is a basic utility
 
 --NOTE: rowCheck is a bit. true = "right", false = "left"
@@ -399,6 +419,7 @@ addParam("startDown","Start Down","number 1-256")
 addParam("chest", "Chest Drop Side", "side front", nil, nil, "dropSide")
 addParam("enderChest","Ender Chest Enabled","boolean special", nil, nil, "enderChestEnabled") --This will accept anything (including numbers) thats not "f" or "n"
 addParam("enderChest", "Ender Chest Slot", "number 1-16", nil, nil, "enderChestSlot") --This will get the number slot if given
+if not enderChestEnabled then enderChestSlot = 0 end --This makes everything better
 --Rednet
 addParam("rednet", "Rednet Enabled","boolean",true, supportsRednet, "rednetEnabled")
 addParam("gps", "GPS Location Services", "force", nil, (not restoreFoundSwitch) and supportsRednet, "gpsEnabled" ) --Has these triggers so that does not record position if restarted.
@@ -495,8 +516,10 @@ do --Because many local variables unneeded elsewhere
 end
 
 --Getting Fuel
+local hasRefueled --This is for oreQuarry prompting
 if doCheckFuel and checkFuel() < neededFuel then
-neededFuel = neededFuel + fuelTable[fuelSafety] --For safety
+  hasRefueled = true
+  neededFuel = neededFuel + fuelTable[fuelSafety] --For safety
   print("Not enough fuel")
   print("Current: ",checkFuel()," Needed: ",neededFuel)
   print("Starting SmartFuel...")
@@ -566,15 +589,23 @@ end
 --Setting which slots are marked as compare slots
 if oreQuarry then
   if not restoreFoundSwitch then --We don't want to reset compare blocks every restart
+    local counter = 0
+    for i=1, 16 do if turtle.getItemCount(i) > 0 and i ~= enderChestSlot then counter = counter+1 end end --If the slot has items, but isn't enderChest slot if it is enabled
+
     screen(1,1)
     print("You have selected an Ore Quarry!")
-    print("Please place your compare blocks in the first slots")
-    
-    print("Press Enter when done")
-    repeat until ({os.pullEvent("key")})[2] == 28 --Should wait for enter key to be pressed
+    if counter ~= 0 or hasRefueled then
+      print("Please place your compare blocks in the first slots\n")
+      
+      print("Press Enter when done")
+      repeat until ({os.pullEvent("key")})[2] == 28 --Should wait for enter key to be pressed
+    else
+      print("Registering slots as compare slots")
+      sleep(1)
+    end
     for i=1, 16 do
       if turtle.getItemCount(i) > 0 then
-        if (i ~= enderChestSlot and enderChestEnabled) or not enderChestEnabled then
+        if i ~= enderChestSlot then
           table.insert(compareSlots, i) --Compare slots are ones compared to while mining. Conditions are because we Don't want to compare to enderChest
           allowedItems[i] = 1 --Blacklist is for dropping off items. The number is maximum items allowed in slot when dropping off
           dumpSlots[i] = true --We also want to ignore all excess of these items, like dirt
@@ -593,7 +624,7 @@ if oreQuarry then
   end
 else
   dumpCompareItems = false --If not an ore quarry, this should definately be false
-  if enderChestEnabled and enderChestSlot == 1 then
+  if enderChestSlot == 1 then
     dumpSlots[2] = true
   else
     dumpSlots[1] = true
@@ -906,7 +937,7 @@ function count(add) --Done any time inventory dropped and at end, param is add o
   end
     
     for i=1,16 do
-      if enderChestEnabled and i == enderChestSlot then --Do nothing!
+      if i == enderChestSlot then --Do nothing!
       elseif slot[i][1] == 1 then totals.cobble = totals.cobble + (slot[i][2] * mod)
       elseif slot[i][1] == 2 then totals.fuel = totals.fuel + (slot[i][2] * mod)
       elseif slot[i][1] == 3 then totals.other = totals.other + (slot[i][2] * mod) end
@@ -1332,6 +1363,7 @@ function drop(side, final)
   end
   
   if oreQuarry then count(false) end--Subtract the items still there if oreQuarry
+  resetDumpSlots() --So that slots gone aren't counted as dump slots next
   
   select(1) --For fanciness sake
 

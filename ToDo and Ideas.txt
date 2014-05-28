@@ -129,8 +129,6 @@ Changelog so far:
   
   
 Things for 3.5.0:
-  If orequarry, have an "inventory snapshot" every time digging so you can see if a slot should be dumped.
-  Make dumpItems reset on item drop, and make checks at appropriate times. This is for the whole stone --> cobblestone conundrum
   --To Consider: Maybe checks for fuel before dump types, so it can refuel itself with that.
   Tests to Run:
     Dropping off inventory mid-run, with and without ender chest
