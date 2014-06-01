@@ -110,11 +110,15 @@ Random future thoughts: Maybe make more seamless. Have an arg/option to make cal
 Quarry Version 3.5.0:
 Changelog so far:
   new constants: VARIABLE, originalDay, numResumed, both used in logging.
+  Changed: invCheckFreq is now 5 instead of 10
   Added compareSlots, slots table that will be compared to when mining
   Added slotsBlacklist, slots that will not be dropped off (or conditionally dropped off)
   Added in section for putting in compare blocks
   Added various inventory counting functions
+  New Parameter: oreQuarry for using ore quarry or not
   New Parameter: dumpCompareItems for ore quarries to dump off excess cobblestone and things
+  New Parameter: extraDropItems that will prompt you for items to drop but not compare to
+  New Parameter: extraDumpItems is an alias for extraDropItems because I confused myself within five minutes
   Completely redid inventory tracking system. Now much, much smarter
   Completely redid dropping system. Now much better
   Added starting prompt for compareSlots
@@ -124,19 +128,15 @@ Changelog so far:
   Added a warning if you start an ore quarry with no compare slots
   Implemented Ore Quarry functionality
   Modified the turtle's behavior when digging up
-  Added super secret speedy start (skips ore quarry setup)
   Made a smart select function that only selects a slot if its not selected.
+  If the quarry has not been refueled and there are items in the slots, it will not prompt the user for input to confirm compare slots
+  Turtle will not select a new slot at the start of comparing, saving time.
+  Turtle will not compare to air slots. This may save time in caves, or may take more time (because it calls compareUp and Down every time it mines)
+  Turtle will leave one item of each compareSlot in inventory at the end
+  Turtle will refuel itself with materials when dropping goods (re added)
   
   
 Things for 3.5.0:
-  --To Consider: Maybe checks for fuel before dump types, so it can refuel itself with that.
-  Tests to Run:
-    Dropping off inventory mid-run, with and without ender chest
-    Dropping off compare items on the fly
-    Dealing with non-sequential compareItems
-    Resuming with and without oreQuarry
-  Make the turtle faster. This implementation is slower than the 3.4.1 version. Very noticeably so
-  Properly implement speedy start (it should be standard). It should check if the turtle has been refueled (if yes, then prompt), then check if there are items in inventory (if not, then prompt)
   
   
 Things for 3.5.1:

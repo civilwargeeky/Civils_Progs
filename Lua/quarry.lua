@@ -21,7 +21,7 @@ dropSide = "front" --Side it will eject to when full or done [Default "front"]
 careAboutResources = true --Will not stop mining once inventory full if false [Default true]
 doCheckFuel = true --Perform fuel check [Default true]
 doRefuel = false --Whenever it comes to start location will attempt to refuel from inventory [Default false]
-invCheckFreq = 10 --Will check for inventory full every <-- moved spaces [Default 10]
+invCheckFreq = 5 --Will check for inventory full every <-- moved spaces [Default 10]
 keepOpen = 1 --How many inventory slots it will attempt to keep open at all times [Default 1]
 fuelSafety = "moderate" --How much fuel it will ask for: safe, moderate, and loose [Default moderate]
 saveFile = "Civil_Quarry_Restore" --Where it saves restore data [Default "Civil_Quarry_Restore"]
@@ -71,7 +71,8 @@ Welcome!: Welcome to quarry help. Below are help entries for all parameters. Exa
 -sendChannel: [number] This is what channel your turtle will send rednet messages on
 -receiveChannel: [number] This is what channel your turtle will receive rednet messages on
 -startY: [current Y coord] Randomly encountering bedrock? This is the parameter for you! Just give it what y coordinate you are at right now. If it is not within bedrock range, it will never say it found bedrock
--dumpCompareItems: [t/f] If true, the turtle will dump off compare blocks instead of storing them in a chest
+-extraDropItems: [force] If oreQuarry then this will prompt the user for extra items to drop, but not compare to (like cobblestone)
+-dumpCompareItems: [t/f] If oreQuarry and this is true, the turtle will dump off compare blocks instead of storing them in a chest
 -maxTries: [number] This is the number of times the turtle will try to dig before deciding its run into bedrock.
 -logging: [t/f] If true, will record information about its mining run in a folder at the end of the mining run
 -doBackup: [t/f] If false, will not back up important information and cannot restore, but will not make an annoying file (Actually I don't really know why anyone would use this...)
@@ -147,8 +148,8 @@ local supportsRednet = (peripheral.wrap("right") ~= nil)
 
 local tArgs = {...}
 --Pre-defining variables
-      xPos,yPos,zPos,facing,percent,mined,moved,relxPos, rowCheck, connected, isInPath, layersDone, attacked, startY, chestFull, gotoDest, atChest, fuelLevel, numDropOffs, allowedItems, compareSlots, dumpSlots, selectedSlot
-    = 0,   1,   1,   0,     0,      0,    0,    1,       true   ,  false,     true,     1,          0,        0,      false,     "",       false,   0,         0,           {},             {},           {},      1
+      xPos,yPos,zPos,facing,percent,mined,moved,relxPos, rowCheck, connected, isInPath, layersDone, attacked, startY, chestFull, gotoDest, atChest, fuelLevel, numDropOffs, allowedItems, compareSlots, dumpSlots, selectedSlot, extraDropItems
+    = 0,   1,   1,   0,     0,      0,    0,    1,       true   ,  false,     true,     1,          0,        0,      false,     "",       false,   0,         0,           {},             {},           {},      1,            false
     
 for i=1, 16 do --Initializing various inventory management tables
   allowedItems[i] = 0 --Number of items allowed in slot when dropping items
@@ -196,9 +197,9 @@ end
 
 turtle.select(1) --To ensure this is correct
 function select(slot)
-  if slot ~= currentSlot then
-    currentSlot = slot
-    return turtle.select(slot), currentSlot
+  if slot ~= selectedSlot then
+    selectedSlot = slot
+    return turtle.select(slot), selectedSlot
   end
 end
   
@@ -277,7 +278,7 @@ function addParam(name, displayText, formatString, forcePrompt, trigger, variabl
   setfenv(func, getfenv(1))
   func()
   tempParam = nil --Cleanup of global
-  if toRet ~= originalValue then
+  if toRet ~= originalValue and displayText ~= "" then
     changedT.new(displayText, tostring(toRet))
   end
   return toRet
@@ -446,6 +447,9 @@ addParam("maxTries","Tries Before Bedrock", "number 1-9001")
 --Ore Quarry
 addParam("oreQuarry", "Ore Quarry", "boolean" )
 addParam("dumpCompareItems", "Dump Compare Items", "boolean", nil, oreQuarry) --Do not dump compare items if not oreQuarry
+addParam("extraDropItems", "", "force", nil, oreQuarry) --Prompt for extra dropItems
+addParam("extraDumpItems", "", "force", nil, oreQuarry, "extraDropItems") --changed to Dump
+
 --Manual Position
 if tArgs["-manualpos"] then --Gives current coordinates in xPos,zPos,yPos, facing
   local a = tArgs["-manualpos"]
@@ -594,7 +598,7 @@ if oreQuarry then
 
     screen(1,1)
     print("You have selected an Ore Quarry!")
-    if counter ~= 0 or hasRefueled then
+    if counter == 0 or hasRefueled then --If there are no compare slots, or the turtle has refueled, and probably has fuel in inventory
       print("Please place your compare blocks in the first slots\n")
       
       print("Press Enter when done")
@@ -609,6 +613,18 @@ if oreQuarry then
           table.insert(compareSlots, i) --Compare slots are ones compared to while mining. Conditions are because we Don't want to compare to enderChest
           allowedItems[i] = 1 --Blacklist is for dropping off items. The number is maximum items allowed in slot when dropping off
           dumpSlots[i] = true --We also want to ignore all excess of these items, like dirt
+        end
+      end
+    end
+    if extraDropItems then
+      screen(1,1)
+      print("Put in extra drop items now\n")
+      print("Press Enter when done")
+      repeat until ({os.pullEvent("key")})[2] == 28 --Should wait for enter key to be pressed
+      for i=1,16 do
+        if not dumpSlots[i] and turtle.getItemCount(i) > 0 then --I don't want to modify from above, so I check it hasn't been assigned.
+          dumpSlots[i] = true
+          allowedItems[i] = 1
         end
       end
     end
@@ -887,6 +903,7 @@ function assignTypes(types, count) --The parameters allow a preexisting table to
       
     end
   end
+  select(1)
   return types, count
 end
 function getTableOfType(which, list) --Returns a table of all the slots of which type
@@ -927,10 +944,10 @@ function count(add) --Done any time inventory dropped and at end, param is add o
   local rawTypes, numTypes = assignTypes(copyTable(initialTypes), initialCount) --This gets increasingly numbered types, copyTable because assignTypes will modify it
   
   for i=1, numTypes do
-    if dumpSlots[getRep(i,initialTypes)] then --If the rep of this slot is a dump item. This is intitial types so that the rep is in dump slots
-      iterate(i, rawTypes, 1) --This type is cobble/filler
-    elseif (select(getRep(i, rawTypes)) or true) and turtle.refuel(0) then --Selects the rep slot, checks if it is fuel
+    if (select(getRep(i, rawTypes)) or true) and turtle.refuel(0) then --Selects the rep slot, checks if it is fuel
       iterate(i, rawTypes, 2) --This type is fuel
+    elseif dumpSlots[getRep(i,initialTypes)] then --If the rep of this slot is a dump item. This is intitial types so that the rep is in dump slots
+      iterate(i, rawTypes, 1) --This type is cobble/filler
     else
       iterate(i, rawTypes, 3) --This type is other
     end
@@ -972,16 +989,16 @@ if inverted then --If inverted, switch the options
 end
 
 function smartDig(digUp, digDown) --This function is used only in mine when oreQuarry
-  local blockAbove, blockBelow= digUp and turtle.detectUp(), digDown and turtle.detectDown() --These control whether or not the turtle digs
-  local index
+  local blockAbove, blockBelow = digUp and turtle.detectUp(), digDown and turtle.detectDown() --These control whether or not the turtle digs
+  local index = 1
   for i=1, #compareSlots do
     if not (blockAbove or blockBelow) then break end --We don't want to go selecting if there is nothing to dig
-    index = i --So I can see what the last index was
+    index = i --To access out of scope
     select(compareSlots[i])
     if blockAbove and turtle.compareUp() then blockAbove = false end
     if blockBelow and turtle.compareDown() then blockBelow = false end
   end
-  table.insert(compareSlots, 1, table.remove(compareSlots, index)) --This is so the last selected slot is the first slot checked, saving a select call
+  table.insert(compareSlots, 1, table.remove(compareSlots, index)) --This is so the last selected slot is the first slot checked, saving a turtle.select call
   if blockAbove then dig(true, turtle.digUp) end
   if blockBelow then dig(true, turtle.digDown) end
 end
@@ -1352,13 +1369,15 @@ function drop(side, final)
   chestFull = false
   
   for i=1,16 do
-    if final then allowedItems[i] = 0 end --0 items allowed in all slots if final
+    --if final then allowedItems[i] = 0 end --0 items allowed in all slots if final ----It is already set to 1, so just remove comment if want change
     if turtle.getItemCount(i) > 0 then --Saves time, stops bugs
       if slot[i][1] == 1 and dumpCompareItems then turnTo(dropFacing) --Turn around to drop junk, not store it. dumpComapareItems is global config
       else turnTo(properFacing) --Turn back to proper position... or do nothing if already there
       end 
       select(i)
-      waitDrop(i, allowedItems[i], dropFunc)
+      if doRefuel and slot[i][1] == 2 then turtle.refuel(turtle.getItemCount(i)-allowedItems[i]) --Refueling option working
+      else waitDrop(i, allowedItems[i], dropFunc)
+      end
     end
   end
   
@@ -1406,7 +1425,7 @@ function endingProcedure() --Used both at the end and in "biometrics"
   if enderChestEnabled then
     if dropSide == "right" then eventAdd("turnTo(1)") end --Turn to proper drop side
     if dropSide == "left" then eventAdd("turnTo(3)") end
-    while turtle.detect() do dig(false) end --This gets rid of blocks in front of the turtle.
+    eventAdd("dig(false)") --This gets rid of a block in front of the turtle.
     eventAdd("select",enderChestSlot)
     eventAdd("turtle.place")
     eventAdd("select(1)")
