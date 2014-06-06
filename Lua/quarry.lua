@@ -204,9 +204,11 @@ if turtle then
   end --There is no "else" because it will already return the regular getFuel
   end
   checkFuel = turtle.getFuelLevel --Just an alias for backwards compat
+  
+  turtle.select(1) --To ensure this is correct
 end
 
-turtle.select(1) --To ensure this is correct
+
 function select(slot)
   if slot ~= selectedSlot then
     selectedSlot = slot

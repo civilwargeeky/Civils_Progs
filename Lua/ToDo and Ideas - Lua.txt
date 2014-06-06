@@ -115,6 +115,7 @@ Things for 3.5.2:
   Add in help for receiver
   Maybe, on bottom line of receiver, have a couple buttons for drop, return, etc.
     Ooh! Maybe have "buttonHandler" table of functions that would make, place, activate, and deactivate buttons.
+  In Receiver, command prompt line will appear at the bottom of base computer
 
 Things for 3.5.3:
   Organize all the things! Everything is so messy right now...
