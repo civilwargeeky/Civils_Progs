@@ -1,5 +1,6 @@
---[[ 
-Version 3.5.1
+--Civilwargeeky's Quarry Program--
+  VERSION = "3.5.1"
+--[[
 Recent Changes:
   Fixed Bug with modem in most recent version of CC
   Ore Quarry!!!
@@ -14,7 +15,6 @@ Recent Changes:
 ]]
 --Defining things
 civilTable = nil; _G.civilTable = {}; setmetatable(civilTable, {__index = _G}); setfenv(1,civilTable)
-VERSION = "3.5.0" --Adding this so I can differentiate versions on error messages
 originalDay = os.day() --Used in logging
 numResumed = 0 --Number of times turtle has been resumed
 -------Defaults for Arguments----------
