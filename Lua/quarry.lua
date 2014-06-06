@@ -1,9 +1,15 @@
 --[[ 
-Version 3.5.0
+Version 3.5.1
 Recent Changes:
+  Fixed Bug with modem in most recent version of CC
+  Ore Quarry!!!
+  Completely redid the system of dropping items off
   Improved session restoring for those using fuel
   Added New Rednet Support
   New Arguments!
+    -oreQuarry [t/f] This will start an oreQuarry :D
+    -dumpCompareItems [t/f] If true, the oreQuarry will drop off junk compare items
+    -extraDropItems [force] Tells the oreQuarry that you want to have extra drop-off items, like cobblestone
     -atChest [force] Using this with -resume will tell the turtle that it is at its chest, and needs to go back to where it was
 ]]
 --Defining things
@@ -144,7 +150,12 @@ end
 end
 
 
-local supportsRednet = (peripheral.wrap("right") ~= nil)
+local supportsRednet
+if peripheral.find then
+  supportsRednet = peripheral.find("modem")
+else
+  supportsRednet = peripheral.getType("right") == "modem"
+end
 
 local tArgs = {...}
 --Pre-defining variables
@@ -649,26 +660,30 @@ end
 
 --Initial Rednet Handshake
 if rednetEnabled then
-screen(1,1)
-print("Rednet is Enabled")
-print("The Channel to open is "..channels.send)
-modem = peripheral.wrap("right")
-modem.open(channels.receive)
-local i = 0
-  repeat
-    local id = os.startTimer(3)
-    i=i+1
-    print("Sending Initial Message "..i)
-    modem.transmit(channels.send, channels.receive, channels.message)
-    local message
+  screen(1,1)
+  print("Rednet is Enabled")
+  print("The Channel to open is "..channels.send)
+  if peripheral.find then
+    modem = peripheral.find("modem")
+  else
+    modem = peripheral.wrap("right")
+  end
+  modem.open(channels.receive)
+  local i = 0
     repeat
-      local event, idCheck, channel,_,locMessage, distance = os.pullEvent()
-      message = locMessage
-    until (event == "timer" and idCheck == id) or (event == "modem_message" and channel == channels.receive and message == channels.confirm)
-  until message == channels.confirm
-connected = true
-print("Connection Confirmed!")
-sleep(1.5)
+      local id = os.startTimer(3)
+      i=i+1
+      print("Sending Initial Message "..i)
+      modem.transmit(channels.send, channels.receive, channels.message)
+      local message
+      repeat
+        local event, idCheck, channel,_,locMessage, distance = os.pullEvent()
+        message = locMessage
+      until (event == "timer" and idCheck == id) or (event == "modem_message" and channel == channels.receive and message == channels.confirm)
+    until message == channels.confirm
+  connected = true
+  print("Connection Confirmed!")
+  sleep(1.5)
 end
 function biometrics(isAtBedrock)
   if not rednetEnabled then return end --This function won't work if rednet not enabled :P

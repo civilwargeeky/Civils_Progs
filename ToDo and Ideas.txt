@@ -107,47 +107,18 @@ Random future thoughts: Maybe make more seamless. Have an arg/option to make cal
 
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 
-Quarry Version 3.5.0:
-Changelog so far:
-  new constants: VARIABLE, originalDay, numResumed, both used in logging.
-  Changed: invCheckFreq is now 5 instead of 10
-  Added compareSlots, slots table that will be compared to when mining
-  Added slotsBlacklist, slots that will not be dropped off (or conditionally dropped off)
-  Added in section for putting in compare blocks
-  Added various inventory counting functions
-  New Parameter: oreQuarry for using ore quarry or not
-  New Parameter: dumpCompareItems for ore quarries to dump off excess cobblestone and things
-  New Parameter: extraDropItems that will prompt you for items to drop but not compare to
-  New Parameter: extraDumpItems is an alias for extraDropItems because I confused myself within five minutes
-  Completely redid inventory tracking system. Now much, much smarter
-  Completely redid dropping system. Now much better
-  Added starting prompt for compareSlots
-  Program errors if more compareSlots than "keepOpen" slots
-  Turtle trashes compareSlots mid run
-  If the turtle has an enderchest and is set to drop on the left or right, it will turn the proper direction at the end to place it
-  Added a warning if you start an ore quarry with no compare slots
-  Implemented Ore Quarry functionality
-  Modified the turtle's behavior when digging up
-  Made a smart select function that only selects a slot if its not selected.
-  If the quarry has not been refueled and there are items in the slots, it will not prompt the user for input to confirm compare slots
-  Turtle will not select a new slot at the start of comparing, saving time.
-  Turtle will not compare to air slots. This may save time in caves, or may take more time (because it calls compareUp and Down every time it mines)
-  Turtle will leave one item of each compareSlot in inventory at the end
-  Turtle will refuel itself with materials when dropping goods (re added)
+Quarry Version 3.5.1:
+Changelog so far:  
+  New Peripheral wrapping logic
   
-  
-Things for 3.5.0:
-  
-  
-Things for 3.5.1:
-  In the logic for wrapping a modem, check for that new peripheral finding function, then use it, otherwise just use right.
+Things for 3.5.2:
   Add in a "Pause" and "Resume" function for receiver interaction
   In receiver, add a size for pocket computer.
   Add in help for receiver
   Maybe, on bottom line of receiver, have a couple buttons for drop, return, etc.
     Ooh! Maybe have "buttonHandler" table of functions that would make, place, activate, and deactivate buttons.
 
-Things for 3.5.2:
+Things for 3.5.3:
   Organize all the things! Everything is so messy right now...
   
 Things to add for quarry version 3.6.0 (After rednet update and shell is done):
