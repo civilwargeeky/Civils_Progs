@@ -1,44 +1,88 @@
+ToDo: Seperate into ideas(python) and ideas(quarry) so no more merge conflicts
+
+Random idea:
+Maybe have a "master" and "slave" function on the quarry shell so that you could just slave multiple turtles to be controlled by a computer. So you could push quarry configurations
+ to individual turtles and view their progress through the quarry receiver.
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 
-Quarry Receiver 3.3.0 (matches current quarry):
-
-Program will just register items to display on receive. It will then print them in order if there is room. Each element will be a table containing the original value, the short value, the medium value,
- the long value, and a table containing the screenX required for all sizes. Maybe also have a priority (e.g. priority 1 will always disply, then priority two will display, then priority 3 will display if there is room.
- 
- Reinstate the thing where you can give commands from the rednet program. Like stop, or drop off items.
- New cool way to implement this: When new event system gets implemented, add a coroutine that adds events to the event queue based on messages received.
- 
- Ehh... I don't want to type all of my ideas, so here is an imgur link: http://i.imgur.com/EgDKyO4.jpg, http://i.imgur.com/84DDbbc.jpg
- 
- One idea would be to have three different coroutines. One that handles sending and receiving messages, one that handles printing data to screen, and one that deals with typing commands. They will all share a universal data table for important information, all other variables are local.
- 
+Quarry Receiver x.x.x (matches current quarry):
+  Add in "usage" parameter, because not even I can remember it. So like "usage", "help", "-help", "?" and "-?" bring up parameters.
+  Add in a "themes" system accessible by the command line
+  Ideas:
+  1. All themes are in files in a "themes" folder.
+  2. Some themes are included in the program code, and can be selected.
+  3. Command line argument could just be a file name, then will search included themes.
+  4. Layout for a "theme" file would just be "addColor(parameters)" for all the different styles. Maybe to be fancy you could have overrides on all different things, like give them an id and stuff
+  5. Integration with shell: Interactive menu to design/choose theme. Maybe have a default themes-set to download.
 
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 
 Quarry Shell 1.0.0:
 Program that can read logs and make a configuration file to run quarry from.
 Will feature an interactive menu where you can select start quarry, make configuration file, or read logs.
+All menu items will be clickable/scrollable with mouse. Different types of menus:
+  t/f can be changed with return key / arrow keys
+  number can be changed with arrow keys, maybe just do a popup menu and only accept integers. Because channel 35346 will take a while to get to.
+  text will open up a text box popup.
+  
+Will feature an interactive editor for configurations. It will be just like any other menu, but will have all possible parameters. 2 options for getting these:
+  1. Have a list that you make (lazy)
+  2. Have it search for "addParam" functions in the program and take parameters off of them.
+Option: Either interactive editor or raw editor. Raw editor will just be a file that will be parsed and loaded as parameters.
+
+Technical idea:
+  Definately a standard menu design. Have different types and have menu functions for up, down, enter, back, selct index. This will make the menus really cool and seamless.
+  So have a menu that interacts with different menu objects that can do different things if they are selected, clicked, etc.
 
 "Then I have a plan for making an installer that will perform various tasks like installing latest versions, 
 running pre-designated quarries (so like, load a set of parameters that you make in a file), reading quarry logs, 
 and possibly doing multiple quarries/rooms/however you use its in a row (quarry, go left 60, quarry). 
 So that will be cool."
 
+
 Menu Plans (w/ sub menu):
   Run Default Quarry
-  Run loaded configuration
-    All different configurations
-  Edit configuration
-    All different configurations --Since both same, maybe function "loaded quarries menu" or something
-  New configuration
+  Configurations
+    Run loaded configuration
+      All different configurations
+    Edit configuration
+      All different configurations --Since both same, maybe function "loaded quarries menu" or something
+    New configuration
   Setups --This is just a simple scripting file. Like a regular lua file except that when saved, things like "&config renault&" are replaced by "shell.run("quarry", args)"
     Run
     New
+    Edit
+      List of Configurations
+  Receiver Configs (If has wireless modem)
+    Default
+    Run
+      Menu
+    Edit
+      Menu
+    New
+  Themes (If advanced turtle/computer) --These will load a theme for the shell or reciever.
+    Shell Themes
+      Menu of installed
+    Receiver Themes
+      Menu of installed
+    Install Theme
+      Popup for pastebin code
   Read Logs
     List of logs
-  Update components --If update found, will ask user if they want to overwrite files. Updates will include those to the shell itself, quarry, and quarryReceiver
-  Download items --When given a pastebin, will check top for valid setup/config markings, and name it appropriately
-    pastebin id
+      Read Log
+        Pastebin put log
+        Delete log
+    Delete all logs
+      Are you sure?
+  Updates --If update found, will ask user if they want to overwrite files. Updates will include those to the shell itself, quarry, and quarryReceiver
+    Update All
+    Check Updates
+    Select Updates
+      Different updates possible
+    Configure update source --Possibly just have this go through github. So then every new version I would push to master, then they could take dev versions from luaDev.
+  Install/Register Components
+    Different components not installed --Installing here would register the program name
+    Register Component. If you already have "quarry" installed, register it as "quarry" here so the program knows what to run.
   Misc/Deletions
     Delete config
     Delete setup
@@ -46,7 +90,7 @@ Menu Plans (w/ sub menu):
     tips/help
     
 Arguments:
-  -run [config/setup] [name]: This will run the selected script instead of launching gui
+  -run [name]: This will run the selected script instead of launching gui
   -default: Will run the default quarry
 
 How things might work:
@@ -59,44 +103,32 @@ How things might work:
   
 Way in future: Add session persistence for setups
 
+Random future thoughts: Maybe make more seamless. Have an arg/option to make calling the program just start quarry with additional args supplied so like "shell -dim 5 5 5" would do the same as quarry
+
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 
-Quarry Version 3.4.0:
-Changelog so far:
-  Changed "biometrics" function for new rednet
-  Added in a few different calls to it.
-  Added new parameter for goto: destination
-  Fixed bug where it would error if run on a computer
-  Added in rednet orders "Stop" and "Return" (case sensitive)
-  Added biometrics calls in up and down
-
-Things to add for quarry version 3.4.0 (Rednet update):
-  Rednet support...
-
-Things to add for quarry version 3.4.1:
-  Use "for" loops for gps location checking on successful backup read --Cosmetic Change
-  Do some fuel checking for all your different variables and how they affect things
-  Maybe check so that if position gotten from GPS is different from stored, remove event queue.
-  Add in a "-atChest" parameter that resets position to 0,1,1,0 and rowCheck to right
-  See if you can change rowCheck "right" and "left" to true and false
-  Suck it up and have bedrock just check if it detects a block. If you can't detect, its not bedrock.
-  Have sanity check just put the turtle back on track. Like go back to layer start or something. If it gets called, pos system is working fine.
-  Quotes: 
-    "You could already do that if you want, though. Just put it in front of the chest and do "quarry -resume -manualPos 0 1 1 0". I'll add something like "-chestResume" or something as an alias for that, though.
-    Ooh, also, I could try out having an "-offset" parameter. Since it oftentimes is off by one position, this parameter would offset the position saved by 1 / -1 or whatever number you put in. Then people could help me test to make it better :)  "
-  Session Persistance: http://www.computercraft.info/forums2/index.php?/topic/13919-lama-location-aware-movement-api-v14/
-  "This API only works on turtles that have a label and that use fuel. The label is required for state persistence, the fuel is used for checking whether the turtle finished a move that was interrupted by a forced shut down (game quit / chunk unloaded)." Credit Sangar, from Lama - Location Aware Movement API V1.4
-
+Quarry Version 3.5.1:
+Changelog so far:  
+  New Peripheral wrapping logic
   
-Things to add for quarry version 3.5.0 (After rednet update and shell is done):
+Things for 3.5.2:
+  Add in a "Pause" and "Resume" function for receiver interaction
+  In receiver, add a size for pocket computer.
+  Add in help for receiver
+  Maybe, on bottom line of receiver, have a couple buttons for drop, return, etc.
+    Ooh! Maybe have "buttonHandler" table of functions that would make, place, activate, and deactivate buttons.
+
+Things for 3.5.3:
+  Organize all the things! Everything is so messy right now...
+  
+Things to add for quarry version 3.6.0 (After rednet update and shell is done):
   Add support for mods. Like openperipheral chest finding.
-  Improve drop function. Just... make it better in general. Also have an argument table of slots not to drop from.
   Improve end of layer logic. You should be able to just have it stop at the end of the layer and go down three with minimal hassle.
-  With inclusion of certain slots not to drop or slots to drop all but one of, you could make a more ore-driven quarry that will only mine ores and things not on its list of stuff to not mine
   Fix up and down functions. They may work, and they may be clever, but they are really dumb.
-  Maybe have a "-replaceStartup" parameter with string argument of what to rename other original startup to
+  Maybe have a "-autoResume" or "-autoRestore" parameter with string argument of what to rename other original startup to
   Maybe have seperate "goDown" and "goUp" parameters
     Or: Maybe just have an "offset" variable that could be positive or negative. -40 would go down 40 before it starts the quarry. Inverted or no.
+  Maybe have an option to change the home position. Like at 1,1,1 instead of 0,1,1. You could just replace all the "goto 1,1,1 goto 0,1,1" with a "go home" command
   
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 Ideas for a Remote Turtle:
@@ -125,6 +157,33 @@ Ideas for a Remote Turtle:
   Maybe turtle will maintain a record of its detects and everywhere its been. Then you could make a map :D
   
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
+
+Idea for a track layer:
+
+Interface:
+  Turtle will read track parameters from a file. The program will parse the file and record how much it has done for persistence.
+  Files will read something like this: In this example, we want regular and powered tracks placed along a route, with torches placed periodically and redstone torches placed under the powered rails.
+    define redstone 3 1 1 --redstone torches are type 3 in enderchest id 1 slot 1(for narcicistic turtles)
+    define torch 4 1 2 --torches are type 4 in enderchest id 1 slot 2
+    define rail 1 1 3-7 --rail type 1 is in enderchest 1 slots 3 through 7
+    define rail 2 1 8-10 powered --rail type 2 is in enderchest 1 slots 8-9
+    forward 100 3 2 15 1 --Go forward 100 blocks, alternating 3 track of type 2 and 15 track of type 1
+    zigzag 20 1 1 --Do the "zigzag" function with repeating 1 track of type 1
+    slope 20 5 up 4 1 1 2 --Slope function (maybe just pass the last arguments to move function), 20 blocks long, 1 block for every 5 blocks forward with 4 regular tracks, then a powered track
+    
+
+
+Function:
+  The turtle will first parse the specified configuration as a set of directions.
+  Core concepts:
+    Turtle will keep track of inventory (maybe not use full stacks of items for keeping purposes)
+    Turtle will have an enderchest to obtain resupplies (test if you can keep one item, then just pull all from chest)
+      If above does not work properly, turtle may be narcissistic and pull items from certain slots
+    Turtle will work out where it needs to place redstone torches for optimum powered rail coverage, and will smartly place them (know when it can't)
+    File making system will be awesome, and may eventually have a gui for making track systems.
+    Just make the system as robust as possible.
+
+-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
  
 Plans for a tower program:
 Make a program that fills in an X x Z x Until it hits ground hole. Will turn around, go up a certain number, then back one, then down until hits bottom, back up, place a block, and go up. Repeat this until gets to x. If last point will end in a down then will go to the bottom and place up. Keeps track of coordinates to go back to start.
@@ -146,7 +205,8 @@ Ideas for minecraft word:
   Some day...
   
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
-  
-Ideas for TTTClick:
-  Using SysPrint(once it is done), make a menu that the program will come back to once it is done with a game/ at start of game.
-  :D May get to work soon :D :D :D
+
+Idea for a modpack
+  Make a python script that will download mods from a list of urls on pastebin
+  The pastebin will be updated regularly by another python script
+  So when they start it up, it will check the pastebin, compare it to the mods already had (maybe), then download new mods and put them in the right folder.

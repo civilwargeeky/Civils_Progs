@@ -1,24 +1,22 @@
 --[[ 
-Version 3.4.0
+Version 3.5.1
 Recent Changes:
+  Fixed Bug with modem in most recent version of CC
+  Ore Quarry!!!
+  Completely redid the system of dropping items off
+  Improved session restoring for those using fuel
   Added New Rednet Support
-  Fixed bug that stopped program from working on computers
-  New Internals: Made event system and consolidated mining loops
-  New Restarting Logic!
-    As long as position is recorded properly, it should always restart properly
-  New Argument logic!
-    Arguments are much more modular for me to make, and they are no longer case-sensitive. Improved items changed interface
   New Arguments!
-    -enderChest [t/f or slot number] You can now use an enderchest! Try it out. There are directions
-    -startDown [number] The quarry will now start this many blocks down from its starting point (or up if invert). Great for getting diamonds and things from surface. Chest should still be placed on the top (or use ender chest)
-    -manualPos [xPos] [zPos] [yPos] [facing] Turtle ever gotten it's position wrong, but you don't want to reset? Use this! Check "quarry -help" for changes
-  Renamed several arguments
-  Arguments are no longer ignored if you use "-default", you just won't be prompted for anything. 
-  Boolean (t/f) arguments now accept "yes" as well as "true"
-  Fixed small issue in GPS location that may have broken it.
+    -oreQuarry [t/f] This will start an oreQuarry :D
+    -dumpCompareItems [t/f] If true, the oreQuarry will drop off junk compare items
+    -extraDropItems [force] Tells the oreQuarry that you want to have extra drop-off items, like cobblestone
+    -atChest [force] Using this with -resume will tell the turtle that it is at its chest, and needs to go back to where it was
 ]]
 --Defining things
 civilTable = nil; _G.civilTable = {}; setmetatable(civilTable, {__index = _G}); setfenv(1,civilTable)
+VERSION = "3.5.0" --Adding this so I can differentiate versions on error messages
+originalDay = os.day() --Used in logging
+numResumed = 0 --Number of times turtle has been resumed
 -------Defaults for Arguments----------
 --Arguments assignable by text
 x,y,z = 3,3,3 --These are just in case tonumber fails
@@ -29,12 +27,13 @@ dropSide = "front" --Side it will eject to when full or done [Default "front"]
 careAboutResources = true --Will not stop mining once inventory full if false [Default true]
 doCheckFuel = true --Perform fuel check [Default true]
 doRefuel = false --Whenever it comes to start location will attempt to refuel from inventory [Default false]
-invCheckFreq = 10 --Will check for inventory full every <-- moved spaces [Default 10]
+invCheckFreq = 5 --Will check for inventory full every <-- moved spaces [Default 10]
 keepOpen = 1 --How many inventory slots it will attempt to keep open at all times [Default 1]
 fuelSafety = "moderate" --How much fuel it will ask for: safe, moderate, and loose [Default moderate]
 saveFile = "Civil_Quarry_Restore" --Where it saves restore data [Default "Civil_Quarry_Restore"]
 doBackup = true --If it will keep backups for session persistence [Default true]
-numberOfStacksPerRun = 8 --How many stacks (number of items) the turtle expects (on average) to have before it must dump off. Not in arguments. [Default 8]
+uniqueExtras = 8 --How many different items (besides cobble) the turtle expects. [Default 8]
+maxTries = 50 --How many times turtle will try to dig a block before it "counts" bedrock [Default 50]
 gpsEnabled = false -- If option is enabled, will attempt to find position via GPS api [Default false]
 gpsTimeout = 3 --The number of seconds the program will wait to get GPS coords. Not in arguments [Default 3]
 logging = true --Whether or not the turtle will log mining runs. [Default ...still deciding]
@@ -43,6 +42,8 @@ logExtension = "" --The extension of the file (e.g. ".txt") [Default ""]
 startDown = 0 --How many blocks to start down from the top of the mine [Default 0]
 enderChestEnabled = false --Whether or not to use an ender chest [Default false]
 enderChestSlot = 16 --What slot to put the ender chest in [Default 16]
+oreQuarry = false --Enables ore quarry functionailty [Default false]
+dumpCompareItems = true --If ore quarry, the turtle will dump items compared to (like cobblestone) [Default true]
 --Standard number slots for fuel (you shouldn't care)
 fuelTable = { --Will add in this amount of fuel to requirement.
 safe = 1000,
@@ -50,11 +51,13 @@ moderate = 200,
 loose = 0 } --Default 1000, 200, 0
 --Standard rednet channels
 channels = {
-send = os.getComputerID()  ,
-receive = os.getComputerID() + 100 ,
+send = os.getComputerID() + 1  ,
+receive = os.getComputerID() + 101 ,
 confirm = "Turtle Quarry Receiver",
 message = "Civil's Quarry",
 }
+
+--AVERAGE USER: YOU DON'T CARE BELOW THIS POINT
 
 local help_paragraph = [[
 Welcome!: Welcome to quarry help. Below are help entries for all parameters. Examples and tips are at the bottom.
@@ -63,14 +66,20 @@ Welcome!: Welcome to quarry help. Below are help entries for all parameters. Exa
 -invert: [t/f] If true, quarry will be inverted (go up instead of down)
 -rednet: [t/f] If true and you have a wireless modem on the turtle, will attempt to make a rednet connection for sending important information to a screen
 -restore / -resume: If your quarry stopped in the middle of its run, use this to resume at the point where the turtle was. Not guarenteed to work properly. For more accurate location finding, check out the -GPS parameter
+-oreQuarry: [t/f] If true, the turtle will use ore quarry mode. It will not mine the blocks that are placed in the turtle initially. So if you put in stone, it will ignore stone blocks and only mine ores.
+-atChest: [force] This is for use with "-restore," this will tell the restarting turtle that it is at its home chest, so that if it had gotten lost, it now knows where it is.
 -doRefuel: [t/f] If true, the turtle will refuel itself with coal and planks it finds on its mining run
 -doCheckFuel: [t/f] If you for some reason don't want the program to check fuel usage, set to false. This is honestly a hold-over from when the refueling algorithm was awful...
+-uniqueExtras: [number] The expected number of slots filled with low-stacking items like ore. Higher numbers request more fuel.
 -chest: [side] This specifies what side the chest at the end will be on. You can say "top", "bottom", "front", "left", or "right"
 -enderChest: This one is special. If you use "-enderChest true" then it will use an enderChest in the default slot. However, you can also do "-enderChest [slot]" then it will take the ender chest from whatever slot you tell it to. Like 7... or 14... or whatever.
 -GPS: [force] If you use "-GPS" and there is a GPS network, then the turtle will record its first two positions to precisly calculate its position if it has to restart. This will only take two GPS readings
 -sendChannel: [number] This is what channel your turtle will send rednet messages on
 -receiveChannel: [number] This is what channel your turtle will receive rednet messages on
 -startY: [current Y coord] Randomly encountering bedrock? This is the parameter for you! Just give it what y coordinate you are at right now. If it is not within bedrock range, it will never say it found bedrock
+-extraDropItems: [force] If oreQuarry then this will prompt the user for extra items to drop, but not compare to (like cobblestone)
+-dumpCompareItems: [t/f] If oreQuarry and this is true, the turtle will dump off compare blocks instead of storing them in a chest
+-maxTries: [number] This is the number of times the turtle will try to dig before deciding its run into bedrock.
 -logging: [t/f] If true, will record information about its mining run in a folder at the end of the mining run
 -doBackup: [t/f] If false, will not back up important information and cannot restore, but will not make an annoying file (Actually I don't really know why anyone would use this...)
 -saveFile: [word] This is what the backup file will be called
@@ -141,38 +150,49 @@ end
 end
 
 
-local supportsRednet = (peripheral.wrap("right") ~= nil)
+local supportsRednet
+if peripheral.find then
+  supportsRednet = peripheral.find("modem")
+else
+  supportsRednet = peripheral.getType("right") == "modem"
+end
 
 local tArgs = {...}
---You don't care about these
-      xPos,yPos,zPos,facing,percent,mined,moved,relxPos, rowCheck, connected, isInPath, layersDone, attacked, startY, chestFull, gotoDest
-    = 0,   1,   1,   0,     0,      0,    0,    1,       "right",  false,     true,     1,          0,        0,      false,     ""
+--Pre-defining variables
+      xPos,yPos,zPos,facing,percent,mined,moved,relxPos, rowCheck, connected, isInPath, layersDone, attacked, startY, chestFull, gotoDest, atChest, fuelLevel, numDropOffs, allowedItems, compareSlots, dumpSlots, selectedSlot, extraDropItems
+    = 0,   1,   1,   0,     0,      0,    0,    1,       true   ,  false,     true,     1,          0,        0,      false,     "",       false,   0,         0,           {},             {},           {},      1,            false
+    
+for i=1, 16 do --Initializing various inventory management tables
+  allowedItems[i] = 0 --Number of items allowed in slot when dropping items
+  dumpSlots[i] = false --Does this slot contain junk items?
+end --compareSlots is a table of the compare slots, not all slots with a condition
+totals = {cobble = 0, fuel = 0, other = 0} -- Total for display (cannot go inside function), this goes up here because many functions use it
+
+function resetDumpSlots()
+    for i=1, 16 do
+      if oreQuarry then
+        if turtle.getItemCount(i) > 0 and i~= enderChestSlot then
+          dumpSlots[i] = true
+        else
+          dumpSlots[i] = false
+        end
+      else
+        dumpSlots[i] = false
+      end
+    end
+    if not oreQuarry and enderChestSlot == 1 then
+      dumpSlots[2] = true
+    elseif not oreQuarry then
+      dumpSlots[1] = true
+    end
+end
+        
+
+local function copyTable(tab) local toRet = {}; for a, b in pairs(tab) do toRet[a] = b end; return toRet end --This goes up here because it is a basic utility
+
+--NOTE: rowCheck is a bit. true = "right", false = "left"
     
 local foundBedrock = false
-
-local totals = {cobble = 0, fuel = 0, other = 0} -- Total for display (cannot go inside function)
-local function count() --Done any time inventory dropped and at end
-slot = {}        --1: Cobble 2: Fuel 3:Other
-for i=1, 16 do   --[1] is type, [2] is number
-slot[i] = {}
-slot[i][2] = turtle.getItemCount(i)
-end
-slot[1][1] = 1   -- = Assumes Cobble/Main
-for i=1, 16 do   --Cobble Check
-turtle.select(i)
-if turtle.compareTo(1)  then
-slot[i][1] = 1
-totals.cobble = totals.cobble + slot[i][2]
-elseif turtle.refuel(0) then
-slot[i][1] = 2
-totals.fuel = totals.fuel + slot[i][2]
-else
-slot[i][1] = 3
-totals.other = totals.other + slot[i][2]
-end
-end
-turtle.select(1)
-end
 
 local getFuel, checkFuel
 if turtle then
@@ -185,6 +205,15 @@ if turtle then
   end
   checkFuel = turtle.getFuelLevel --Just an alias for backwards compat
 end
+
+turtle.select(1) --To ensure this is correct
+function select(slot)
+  if slot ~= selectedSlot then
+    selectedSlot = slot
+    return turtle.select(slot), selectedSlot
+  end
+end
+  
 
  -----------------------------------------------------------------
 --Input Phase
@@ -260,7 +289,7 @@ function addParam(name, displayText, formatString, forcePrompt, trigger, variabl
   setfenv(func, getfenv(1))
   func()
   tempParam = nil --Cleanup of global
-  if toRet ~= originalValue then
+  if toRet ~= originalValue and displayText ~= "" then
     changedT.new(displayText, tostring(toRet))
   end
   return toRet
@@ -274,21 +303,21 @@ if not(turtle or tArgs["help"] or tArgs["-help"] or tArgs["-?"] or tArgs["?"]) t
 end
 
 if tArgs["help"] or tArgs["-help"] or tArgs["-?"] or tArgs["?"] then
-print("You have selected help, press any key to continue"); print("Use arrow keys to naviate, q to quit"); os.pullEvent("key")
-local pos = 1
-local key = 0
-while pos <= #help and key ~= keys.q do
-if pos < 1 then pos = 1 end
-screen(1,1) 
-print(help[pos].title)
-for a=1, #help[pos] do print(help[pos][a]) end
-repeat
-_, key = os.pullEvent("key")
-until key == 200 or key == 208 or key == keys.q
-if key == 200 then pos = pos - 1 end
-if key == 208 then pos = pos + 1 end
-end
-error("",0)
+  print("You have selected help, press any key to continue"); print("Use arrow keys to naviate, q to quit"); os.pullEvent("key")
+  local pos = 1
+  local key = 0
+  while pos <= #help and key ~= keys.q do
+    if pos < 1 then pos = 1 end
+    screen(1,1) 
+    print(help[pos].title)
+    for a=1, #help[pos] do print(help[pos][a]) end
+    repeat
+      _, key = os.pullEvent("key")
+    until key == 200 or key == 208 or key == keys.q
+    if key == 200 then pos = pos - 1 end
+    if key == 208 then pos = pos + 1 end
+  end
+  error("",0)
 end
 
 --Saving
@@ -296,16 +325,32 @@ addParam("doBackup", "Backup Save File", "boolean")
 addParam("saveFile", "Save File Name", "string")
 
 restoreFound = fs.exists(saveFile)
-restoreFoundSwitch = (tArgs["-restore"] or tArgs["-resume"]) and restoreFound
+restoreFoundSwitch = (tArgs["-restore"] or tArgs["-resume"] or tArgs["-atchest"]) and restoreFound
 if restoreFoundSwitch then
   local file = fs.open(saveFile,"r")
   local test = file.readAll() ~= ""
   file.close()
   if test then
-    os.run(getfenv(1),saveFile)
+    os.run(getfenv(1),saveFile) --This is where the actual magic happens
+    numResumed = numResumed + 1
+    if turtle.getFuelLevel() ~= math.huge then --If turtle uses fuel
+      if fuelLevel - turtle.getFuelLevel() == 1 then
+        if facing == 0 then xPos = xPos + 1
+        elseif facing == 2 then xPos = xPos - 1
+        elseif facing == 1 then zPos = zPos + 1
+        elseif facing == 3 then zPos = zPos - 1 end
+      elseif fuelLevel - turtle.getFuelLevel() ~= 0 then
+        print("Very Strange Fuel in Restore Section...")
+        print("Current: ",turtle.getFuelLevel())
+        print("Saved: ",fuelLevel)
+        print("Difference: ",fuelLevel - turtle.getFuelLevel())
+        os.pullEvent("char")
+      end
+     end
     if gpsEnabled then --If it had saved gps coordinates
       print("Found GPS Start Coordinates") 
       local currLoc = {gps.locate(gpsTimeout)} or {}
+      local backupPos = {xPos, yPos, zPos} --This is for comparing to later
       if #currLoc > 0 and #gpsStartPos > 0 and #gpsSecondPos > 0 then --Cover all the different positions I'm using
         print("GPS Position Successfully Read")
         if currLoc[1] == gpsStartPos[1] and currLoc[3] == gpsStartPos[3] then --X coord, y coord, z coord in that order
@@ -316,7 +361,6 @@ if restoreFoundSwitch then
           if inverted then --yPos setting
           ------------------------------------------------FIX THIS
           end
-          local function copyTable(tab) local toRet = {}; for a, b in pairs(tab) do toRet[a] = b end; return toRet end
           local a, b = copyTable(gpsStartPos), copyTable(gpsSecondPos) --For convenience
           if b[3] - a[3] == -1 then--If went north (-Z)
             a[1] = a[1] - 1 --Shift x one to west to create a "zero"
@@ -339,6 +383,11 @@ if restoreFoundSwitch then
         print("Y Pos: ",yPos)
         print("Z Pos: ",zPos)
         print("Facing: ",facing)
+        for i=1, 3, 2 do --We want 1 and 3, but 2 could be coming back to start.
+          if backupPos[i] ~= currLoc[i] then
+            events = {} --We want to remove event queue if not in proper place, so won't turn at end of row or things.
+          end
+        end
       else
         print("GPS Locate Failed, Using Standard Methods")
       end    
@@ -354,21 +403,27 @@ else --If turtle is just starting
   originalFuel = checkFuel() --For use in logging. To see how much fuel is REALLY used
 end
 
---Dimesnions
-if tArgs["-dim"] then local num = tArgs["-dim"];
-x = tonumber(tArgs[num + 1]) or x; z = tonumber(tArgs[num + 2]) or z; y = tonumber(tArgs[num + 3]) or y
+--Dimensions
+if tArgs["-dim"] then 
+  local a,b,c = x,y,z
+  local num = tArgs["-dim"]
+  x = tonumber(tArgs[num + 1]) or x; z = tonumber(tArgs[num + 2]) or z; y = tonumber(tArgs[num + 3]) or y
+  if a ~= x then changedT.new("Length", x) end
+  if c ~= z then changedT.new("Width", z) end
+  if b ~= y then changedT.new("Height", y) end
 elseif not (tArgs["-default"] or restoreFoundSwitch) then
-print("What dimensions?")
-print("")
---This will protect from negatives, letters, and decimals
-term.write("Length? ")
-x = math.floor(math.abs(tonumber(io.read()) or x))
-term.write("Width? ")
-z = math.floor(math.abs(tonumber(io.read()) or z))
-term.write("Height? ")
-y = math.floor(math.abs(tonumber(io.read()) or y))
-changedT.new("Length",x); changedT.new("Width",z); changedT.new("Height",y)
+  print("What dimensions?")
+  print("")
+  --This will protect from negatives, letters, and decimals
+  term.write("Length? ")
+  x = math.floor(math.abs(tonumber(io.read()) or x))
+  term.write("Width? ")
+  z = math.floor(math.abs(tonumber(io.read()) or z))
+  term.write("Height? ")
+  y = math.floor(math.abs(tonumber(io.read()) or y))
+  changedT.new("Length",x); changedT.new("Width",z); changedT.new("Height",y)
 end
+--Params: parameter/variable name, display name, type, force prompt, boolean condition, variable name override
 --Invert
 addParam("invert", "Inverted","boolean", true, nil, "inverted")
 addParam("startDown","Start Down","number 1-256")
@@ -376,6 +431,7 @@ addParam("startDown","Start Down","number 1-256")
 addParam("chest", "Chest Drop Side", "side front", nil, nil, "dropSide")
 addParam("enderChest","Ender Chest Enabled","boolean special", nil, nil, "enderChestEnabled") --This will accept anything (including numbers) thats not "f" or "n"
 addParam("enderChest", "Ender Chest Slot", "number 1-16", nil, nil, "enderChestSlot") --This will get the number slot if given
+if not enderChestEnabled then enderChestSlot = 0 end --This makes everything better
 --Rednet
 addParam("rednet", "Rednet Enabled","boolean",true, supportsRednet, "rednetEnabled")
 addParam("gps", "GPS Location Services", "force", nil, (not restoreFoundSwitch) and supportsRednet, "gpsEnabled" ) --Has these triggers so that does not record position if restarted.
@@ -386,6 +442,7 @@ end
 addParam("sendChannel", "Rednet Send Channel", "number 1-65535", false, supportsRednet, "channels.send")
 addParam("receiveChannel","Rednet Receive Channel", "number 1-65535", false, supportsRednet, "channels.receive")
 --Fuel
+addParam("uniqueExtras","Unique Items", "number 0-15")
 addParam("doRefuel", "Refuel from Inventory","boolean", nil, turtle.getFuelLevel() ~= math.huge) --math.huge due to my changes
 addParam("doCheckFuel", "Check Fuel", "boolean", nil, turtle.getFuelLevel() ~= math.huge)
 --Logging
@@ -397,6 +454,13 @@ addParam("startY", "Start Y","number 1-256")
 addParam("invCheckFreq","Inventory Check Frequency","number 1-342")
 addParam("keepOpen", "Slots to Keep Open", "number 1-15")
 addParam("careAboutResources", "Care About Resources","boolean")
+addParam("maxTries","Tries Before Bedrock", "number 1-9001")
+--Ore Quarry
+addParam("oreQuarry", "Ore Quarry", "boolean" )
+addParam("dumpCompareItems", "Dump Compare Items", "boolean", nil, oreQuarry) --Do not dump compare items if not oreQuarry
+addParam("extraDropItems", "", "force", nil, oreQuarry) --Prompt for extra dropItems
+addParam("extraDumpItems", "", "force", nil, oreQuarry, "extraDropItems") --changed to Dump
+
 --Manual Position
 if tArgs["-manualpos"] then --Gives current coordinates in xPos,zPos,yPos, facing
   local a = tArgs["-manualpos"]
@@ -404,6 +468,17 @@ if tArgs["-manualpos"] then --Gives current coordinates in xPos,zPos,yPos, facin
   changedT.new("xPos",xPos); changedT.new("zPos",zPos); changedT.new("yPos",yPos); changedT.new("facing",facing)
   restoreFoundSwitch = true --So it doesn't do beginning of quarry behavior
 end
+if addParam("atChest", "Is at Chest", "force") then --This sets position to 0,1,1, facing forward, and queues the turtle to go back to proper row.
+  local neededLayer = math.floor((yPos+1)/3)*3-1 --Make it a proper layer, +- because mining rows are 2, 5, etc.
+  if neededLayer > 2 and neededLayer%3 ~= 2 then --If turtle was not on a proper mining layer
+    print("Last known pos was not in proper layer, restarting quarry")
+    sleep(4)
+    neededLayer = 2
+  end
+  xPos, zPos, yPos, facing, rowCheck, layersDone = 0,1,1, 0, true, math.ceil(neededLayer/3)
+  events = {{"goto",1,1,neededLayer, 0}}
+end
+
 
 local function saveProgress(extras) --Session persistence
 exclusions = { modem = true, }
@@ -430,6 +505,9 @@ if type(extras) == "table" then
     file.write(a.." = "..tostring(b))
   end
 end
+if turtle.getFuelLevel() ~= math.huge then --Used for location comparing
+  file.write("fuelLevel = "..tostring(turtle.getFuelLevel()))
+end
 file.close()
 end
 end
@@ -441,16 +519,22 @@ layers = math.ceil(y/3)
 local yMult = layers --This is basically a smart y/3 for movement
 local moveVolume = (area * yMult) --Kept for display percent
 --Calculating Needed Fuel--
-local exStack = numberOfStacksPerRun --Expected stacks of items before full
-neededFuel = yMult * x * z + --This is volume it will run through
-      (startDown + y)*(2+1/(64*exStack)) + --This is simplified and includes the y to get up times up and down + how many times it will drop stuff off
-      (x+z)*(yMult + 1/(64*exStack))  --Simplified as well: It is getting to start of row plus getting to start of row how many times will drop off stuff
-      --Original equation: x*z*y/3 + y * 2 + (x+z) * y/3 + (x + z + y) * (1/64*8)
-neededFuel = math.ceil(neededFuel)
+do --Because many local variables unneeded elsewhere
+  local numItems = uniqueExtras --Convenience
+  local itemSize = extrasStackSize
+  local changeYFuel = 2*(y + startDown)
+  local dropOffSupplies = 2*(x + z + y + startDown) --Assumes turtle as far away as possible, and coming back
+  local frequency = math.floor(((volume/(64*(16-numItems))) ) --This is complicated: volume / inventory space of turtle, defined as (16-num unique stacks)
+                                 * (layers/y)) --This is the ratio of height to actual height mined. Close to 1/3 usually, so divide above by 3
+  if enderChestEnabled then frequency = 0 end
+  neededFuel = moveVolume + changeYFuel + frequency * dropOffSupplies
+end
 
 --Getting Fuel
+local hasRefueled --This is for oreQuarry prompting
 if doCheckFuel and checkFuel() < neededFuel then
-neededFuel = neededFuel + fuelTable[fuelSafety] --For safety
+  hasRefueled = true
+  neededFuel = neededFuel + fuelTable[fuelSafety] --For safety
   print("Not enough fuel")
   print("Current: ",checkFuel()," Needed: ",neededFuel)
   print("Starting SmartFuel...")
@@ -480,7 +564,7 @@ neededFuel = neededFuel + fuelTable[fuelSafety] --For safety
   end
   while checkFuel() <= neededFuel do
     currSlot = currSlot + 1
-    turtle.select(currSlot)
+    select(currSlot)
     updateScreen()
     while turtle.getItemCount(currSlot) == 0 do sleep(1.5) end
     repeat
@@ -498,7 +582,7 @@ neededFuel = neededFuel + fuelTable[fuelSafety] --For safety
   end
 end
 --Ender Chest Obtaining
-if enderChestEnabled then
+function promptEnderChest()
   while turtle.getItemCount(enderChestSlot) ~= 1 do
     screen(1,1)
     print("You have decided to use an Ender Chest!")
@@ -506,32 +590,103 @@ if enderChestEnabled then
     sleep(1)
   end
   print("Ender Chest in slot ",enderChestSlot, " checks out")
+end
+if enderChestEnabled then
+    if restoreFoundSwitch and turtle.getItemCount(enderChestSlot) == 0 then --If the turtle was stopped while dropping off items.
+      select(enderChestSlot)
+      turtle.dig()
+      select(1)
+    end
+  promptEnderChest()
+  allowedItems[enderChestSlot] = 64
   sleep(2)
 end
+--Setting which slots are marked as compare slots
+if oreQuarry then
+  if not restoreFoundSwitch then --We don't want to reset compare blocks every restart
+    local counter = 0
+    for i=1, 16 do if turtle.getItemCount(i) > 0 and i ~= enderChestSlot then counter = counter+1 end end --If the slot has items, but isn't enderChest slot if it is enabled
+
+    screen(1,1)
+    print("You have selected an Ore Quarry!")
+    if counter == 0 or hasRefueled then --If there are no compare slots, or the turtle has refueled, and probably has fuel in inventory
+      print("Please place your compare blocks in the first slots\n")
+      
+      print("Press Enter when done")
+      repeat until ({os.pullEvent("key")})[2] == 28 --Should wait for enter key to be pressed
+    else
+      print("Registering slots as compare slots")
+      sleep(1)
+    end
+    for i=1, 16 do
+      if turtle.getItemCount(i) > 0 then
+        if i ~= enderChestSlot then
+          table.insert(compareSlots, i) --Compare slots are ones compared to while mining. Conditions are because we Don't want to compare to enderChest
+          allowedItems[i] = 1 --Blacklist is for dropping off items. The number is maximum items allowed in slot when dropping off
+          dumpSlots[i] = true --We also want to ignore all excess of these items, like dirt
+        end
+      end
+    end
+    if extraDropItems then
+      screen(1,1)
+      print("Put in extra drop items now\n")
+      print("Press Enter when done")
+      repeat until ({os.pullEvent("key")})[2] == 28 --Should wait for enter key to be pressed
+      for i=1,16 do
+        if not dumpSlots[i] and turtle.getItemCount(i) > 0 then --I don't want to modify from above, so I check it hasn't been assigned.
+          dumpSlots[i] = true
+          allowedItems[i] = 1
+        end
+      end
+    end
+    --This is could go very wrong if this isn't here
+    if #compareSlots >= 16-keepOpen then screen(1,1); error("You have more quarry compare items than keep open slots, the turtle will continuously come back to start. Please fix.",0) end
+  end
+  local counter = 0
+  for a, b in pairs(compareSlots) do if  turtle.getItemCount(b) > 0 then counter = counter + 1 end end
+  if counter == 0 then
+    screen(1,1)
+    print("You have an ore quarry without any compare slots. Continue? y/n")
+    if ({os.pullEvent("char")})[2] ~= "y" then error("",0) end
+  end
+else
+  dumpCompareItems = false --If not an ore quarry, this should definately be false
+  if enderChestSlot == 1 then
+    dumpSlots[2] = true
+  else
+    dumpSlots[1] = true
+  end
+end
+
 --Initial Rednet Handshake
 if rednetEnabled then
-screen(1,1)
-print("Rednet is Enabled")
-print("The Channel to open is "..channels.send)
-modem = peripheral.wrap("right")
-modem.open(channels.receive)
-local i = 0
-  repeat
-    local id = os.startTimer(3)
-    i=i+1
-    print("Sending Initial Message "..i)
-    modem.transmit(channels.send, channels.receive, channels.message)
-    local message
+  screen(1,1)
+  print("Rednet is Enabled")
+  print("The Channel to open is "..channels.send)
+  if peripheral.find then
+    modem = peripheral.find("modem")
+  else
+    modem = peripheral.wrap("right")
+  end
+  modem.open(channels.receive)
+  local i = 0
     repeat
-      local event, idCheck, channel,_,locMessage, distance = os.pullEvent()
-      message = locMessage
-    until (event == "timer" and idCheck == id) or (event == "modem_message" and channel == channels.receive and message == channels.confirm)
-  until message == channels.confirm
-connected = true
-print("Connection Confirmed!")
-sleep(1.5)
+      local id = os.startTimer(3)
+      i=i+1
+      print("Sending Initial Message "..i)
+      modem.transmit(channels.send, channels.receive, channels.message)
+      local message
+      repeat
+        local event, idCheck, channel,_,locMessage, distance = os.pullEvent()
+        message = locMessage
+      until (event == "timer" and idCheck == id) or (event == "modem_message" and channel == channels.receive and message == channels.confirm)
+    until message == channels.confirm
+  connected = true
+  print("Connection Confirmed!")
+  sleep(1.5)
 end
-local function biometrics(isAtBedrock)
+function biometrics(isAtBedrock)
+  if not rednetEnabled then return end --This function won't work if rednet not enabled :P
   local toSend = { label = os.getComputerLabel() or "No Label", id = os.getComputerID(),
     percent = percent, relxPos = relxPos, zPos = zPos, xPos = xPos, yPos = yPos,
     layersDone = layersDone, x = x, z = z, layers = layers,
@@ -545,15 +700,17 @@ local function biometrics(isAtBedrock)
   local event, message
   repeat
     local locEvent, idCheck, confirm, _, locMessage, distance = os.pullEvent()
-    event, message = locEvent, locMessage
+    event, message = locEvent, locMessage or ""
   until (event == "timer" and idCheck == id) or (event == "modem_message" and confirm == channels.receive)
   if event == "modem_message" then connected = true else connected = false end
-  if message == "Stop" then error("Rednet said to stop...",0) end
-  if message == "Return" then
-    eventAdd("goto",1,1,yPos,2,"quarryStart") --Allows for startDown variable
-    eventAdd("goto",0,1,1,0, "quarryStart") --Go back to base
-    eventAdd("error('Rednet said go back to start...',0)")
-    runAllEvents()
+  message = message:lower()
+  if message == "stop" then error("Rednet said to stop...",0) end
+  if message == "return" then
+    endingProcedure()
+    error('Rednet said go back to start...',0)
+  end
+  if message == "drop" then
+    dropOff()
   end
 end
 --Showing changes to settings
@@ -572,6 +729,7 @@ print("\nStarting in 3"); sleep(1); print("2"); sleep(1); print("1"); sleep(1.5)
 
 ----------------------------------------------------------------
 --Define ALL THE FUNCTIONS
+--Event System Functions
 function eventAdd(...)
   return table.insert(events,1, {...}) or true
 end
@@ -604,7 +762,9 @@ function eventRun(value, ...)
     return func()
   end
 end
-      
+function eventClear(pos)
+  if pos then events[pos] = nil else events = {} end
+end   
 function runAllEvents()
   while #events > 0 do
     local toRun = eventGet()
@@ -614,6 +774,7 @@ function runAllEvents()
   end
 end
 
+--Display Related Functions
 function display() --This is just the last screen that displays at the end
   screen(1,1)
   print("Total Blocks Mined: "..mined)
@@ -655,40 +816,48 @@ screenLine(1,7)
 print("Connected: "..tostring(connected))
 end
 end
+--Utility functions
 function logMiningRun(textExtension, extras) --Logging mining runs
-if logging then
-local number
-if not fs.isDir(logFolder) then
-  fs.delete(logFolder)
-  fs.makeDir(logFolder)
-  number = 1
-else
-  local i = 0
-  repeat
-    i = i + 1
-  until not fs.exists(logFolder.."/Quarry_Log_"..tostring(i)..(textExtension or ""))
-  number = i
-end
-handle = fs.open(logFolder.."/Quarry_Log_"..tostring(number)..(textExtension or ""),"w")
-local function write(...)
-  for a, b in ipairs({...}) do
-    handle.write(tostring(b))
+  if not logging then return end
+  local number, name = 0
+  if not fs.isDir(logFolder) then
+    fs.delete(logFolder)
+    fs.makeDir(logFolder)
   end
-  handle.write("\n")
+  repeat
+    number = number + 1 --Number will be at least 2
+    name = logFolder.."/Quarry_Log_"..tostring(number)..(textExtension or "")
+  until not fs.exists(name)
+  local handle = fs.open(name,"w")
+  local function write(...)
+    for a, b in ipairs({...}) do
+      handle.write(tostring(b))
+    end
+    handle.write("\n")
+  end
+  local function boolToText(bool) if bool then return "Yes" else return "No" end end
+  write("Welcome to the Quarry Logs!")
+  write("Entry Number: ",number)
+  write("Quarry Version: ",VERSION)
+  write("Dimensions (X Z Y): ",x," ",z," ", y)
+  write("Blocks Mined: ", mined)
+  write("  Cobble: ", totals.cobble)
+  write("  Usable Fuel: ", totals.fuel)
+  write("  Other: ",totals.other)
+  write("Total Fuel Used: ",  (originalFuel or (neededFuel + checkFuel()))- checkFuel()) --Protect against errors with some precision
+  write("Expected Fuel Use: ", neededFuel)
+  write("Days to complete mining run: ",os.day()-originalDay)
+  write("Day Started: ", originalDay)
+  write("Number of times resumed: ", numResumed)
+  write("Was an ore quarry? ",boolToText(oreQuarry))
+  write("Was inverted? ",boolToText(invert))
+  write("Was using rednet? ",boolToText(rednetEnabled))
+  write("Chest was on the ",dropSide," side")
+  if startDown > 0 then write("Started ",startDown," blocks down") end
+  handle.close()
 end
-write("Welcome to the Quarry Logs!")
-write("Entry Number: ",number)
-write("Dimensions (X Z Y): ",x," ",z," ", y)
-write("Blocks Mined: ", mined)
-write("  Cobble: ", totals.cobble)
-write("  Usable Fuel: ", totals.fuel)
-write("  Other: ",totals.other)
-write("Total Fuel Used: ",  (originalFuel or (neededFuel + checkFuel()))- checkFuel()) --Protect against errors with some precision
-write("Expected Fuel Use: ", neededFuel)
-handle.close()
-end
-end
-function isFull(slots)
+--Inventory related functions
+function isFull(slots) --Checks if there are more than "slots" used inventory slots.
   slots = slots or 16
   local numUsed = 0
   sleep(0)
@@ -700,8 +869,118 @@ function isFull(slots)
   end
   return false
 end
+function countUsedSlots() --Returns number of slots with items in them, as well as a table of item counts
+  local toRet, toRetTab = 0, {}
+  for i=1, 16 do
+    local a = turtle.getItemCount(i)
+    if a > 0 then toRet = toRet + 1 end
+    table.insert(toRetTab, a)
+  end
+  return toRet, toRetTab
+end
+function getSlotsTable() --Just get the table from above
+  local _, toRet = countUsedSlots()
+  return toRet
+end
+function getChangedSlots(tab1, tab2) --Returns a table of changed slots. Format is {slotNumber, numberChanged}
+  local toRet = {}
+  for i=1, min(#tab1, #tab2) do
+    diff = math.abs(tab2[i]-tab1[i])
+    if diff > 0 then
+      table.insert(toRet, {i, diff})
+    end
+  end
+  return toRet
+end
+function getFirstChanged(tab1, tab2) --Just a wrapper. Probably not needed
+  local a = getChangedSlots(tab1,tab2)
+  return a[1][1]
+end
+
+function getRep(which, list) --Gets a representative slot of a type. Expectation is a sequential table of types
+  for a,b in pairs(list) do
+    if b == which then return a end
+  end
+  return false
+end
+function assignTypes(types, count) --The parameters allow a preexisting table to be used, like a table from the origianl compareSlots...
+  types, count = types or {1}, count or 1 --Table of types and current highest type
+  for i=1, 16 do
+    if turtle.getItemCount(i) > 0 then 
+      select(i)
+      for k=1, count do
+        if turtle.compareTo(getRep(k, types)) then types[i] = k end
+      end
+      if not types[i] then
+        count = count + 1
+        types[i] = count
+      end
+      
+    end
+  end
+  select(1)
+  return types, count
+end
+function getTableOfType(which, list) --Returns a table of all the slots of which type
+  local toRet = {}
+  for a, b in pairs(list) do 
+    if b == which then
+      table.insert(toRet, a)
+    end
+  end
+  return toRet
+end
+
+--This is so the turtle will properly get types, otherwise getRep of a type might not be a dumpSlot, even though it should be.
+if not restoreFoundSwitch then --We only want this to happen once
+  if oreQuarry then --If its not ore quarry, this screws up type assigning
+    initialTypes, initialCount = assignTypes()
+  else
+    initialTypes, initialCount = {1}, 1
+  end
+end
+
+function count(add) --Done any time inventory dropped and at end, param is add or subtract
+  local mod = -1
+  if add then mod = 1 end
+  slot = {}        --1: Filler 2: Fuel 3:Other --[1] is type, [2] is number
+  for i=1, 16 do   
+    slot[i] = {}
+    slot[i][2] = turtle.getItemCount(i)
+  end
+  
+  local function iterate(toSet , rawTypes, set)
+    for _, a in pairs(getTableOfType(toSet, rawTypes)) do --Get all slots matching type
+      slot[a][1] = set --Set official type to "set"
+    end
+  end
+  
+  --This assigns "dumb" types to all slots based on comparing, then based on knowledge of dump type slots, changes all slots matching a dump type to one. Otherwise, if the slot contains fuel, it is 2, else 3
+  local rawTypes, numTypes = assignTypes(copyTable(initialTypes), initialCount) --This gets increasingly numbered types, copyTable because assignTypes will modify it
+  
+  for i=1, numTypes do
+    if (select(getRep(i, rawTypes)) or true) and turtle.refuel(0) then --Selects the rep slot, checks if it is fuel
+      iterate(i, rawTypes, 2) --This type is fuel
+    elseif dumpSlots[getRep(i,initialTypes)] then --If the rep of this slot is a dump item. This is intitial types so that the rep is in dump slots
+      iterate(i, rawTypes, 1) --This type is cobble/filler
+    else
+      iterate(i, rawTypes, 3) --This type is other
+    end
+  end
+    
+    for i=1,16 do
+      if i == enderChestSlot then --Do nothing!
+      elseif slot[i][1] == 1 then totals.cobble = totals.cobble + (slot[i][2] * mod)
+      elseif slot[i][1] == 2 then totals.fuel = totals.fuel + (slot[i][2] * mod)
+      elseif slot[i][1] == 3 then totals.other = totals.other + (slot[i][2] * mod) end
+    end
+
+  select(1)
+end
+
+--Mining functions
 function dig(doAdd, func)
-  doAdd = doAdd or true
+  if doAdd == nil then doAdd = true end
   func = func or turtle.dig
   if func() then
     if doAdd then
@@ -711,23 +990,39 @@ function dig(doAdd, func)
   end
   return false
 end
-if not inverted then --Regular functions :) I switch definitions for optimizatoin (I thinK)
-  function digUp(doAdd)
-    return dig(doAdd,turtle.digUp)
-  end
-  function digDown(doAdd)
-    return dig(doAdd,turtle.digDown)
-  end
-else
-  function digDown(doAdd)
-    return dig(doAdd,turtle.digUp)
-  end
-  function digUp(doAdd)
-    return dig(doAdd,turtle.digDown)
-  end
+
+
+
+function digUp(doAdd)--Regular functions :) I switch definitions for optimization (I think)
+  return dig(doAdd, turtle.digUp)
 end
-function relativeXCalc()
-  if rowCheck == "right" then relxPos = xPos else relxPos = (x-xPos)+1 end
+function digDown(doAdd)
+  return dig(doAdd, turtle.digDown)
+end
+if inverted then --If inverted, switch the options
+  digUp, digDown = digDown, digUp
+end
+
+function smartDig(digUp, digDown) --This function is used only in mine when oreQuarry
+  local blockAbove, blockBelow = digUp and turtle.detectUp(), digDown and turtle.detectDown() --These control whether or not the turtle digs
+  local index = 1
+  for i=1, #compareSlots do
+    if not (blockAbove or blockBelow) then break end --We don't want to go selecting if there is nothing to dig
+    index = i --To access out of scope
+    select(compareSlots[i])
+    if blockAbove and turtle.compareUp() then blockAbove = false end
+    if blockBelow and turtle.compareDown() then blockBelow = false end
+  end
+  table.insert(compareSlots, 1, table.remove(compareSlots, index)) --This is so the last selected slot is the first slot checked, saving a turtle.select call
+  if blockAbove then dig(true, turtle.digUp) end
+  if blockBelow then dig(true, turtle.digDown) end
+end
+
+function setRowCheckFromPos()
+  rowCheck = (zPos % 2 == 1) --It will turn right at odd rows
+end
+function relxCalc()
+  if rowCheck then relxPos = xPos else relxPos = (x-xPos)+1 end
 end
 function forward(doAdd)
   if doAdd == nil then doAdd = true end
@@ -746,7 +1041,7 @@ function forward(doAdd)
     else
       error("Function forward, facing should be 0 - 3, got "..tostring(facing),2)
     end
-    relativeXCalc()
+    relxCalc()
     return true
   end
   return false
@@ -765,7 +1060,7 @@ function up(sneak)
     yPos = yPos - sneak --Oh! I feel so clever
   end                   --This works because inverted :)
   saveProgress()
-  if rednetEnabled then biometrics() end
+  biometrics()
 end
 function down(sneak)
   sneak = sneak or 1
@@ -784,7 +1079,7 @@ function down(sneak)
     yPos = yPos + sneak
   end
   saveProgress()
-  if rednetEnabled then biometrics() end
+  biometrics()
 end
 function right(num)
   num = num or 1
@@ -822,83 +1117,100 @@ end
 
 
 function mine(doDigDown, doDigUp, outOfPath,doCheckInv) -- Basic Move Forward
-if doCheckInv == nil then doCheckInv = true end
-if doDigDown == nil then doDigDown = true end
-if doDigUp == nil then doDigUp = true end
-if outOfPath == nil then outOfPath = false end
-if inverted then
-  doDigUp, doDigDown = doDigDown, doDigUp --Just Switch the two if inverted
-end
-if doRefuel and checkFuel() <= fuelTable[fuelSafety]/2 then
-  for i=1, 16 do
-  if turtle.getItemCount(i) > 0 then
-    turtle.select(i)
-    if checkFuel() < 200 + fuelTable[fuelSafety] then
-      turtle.refuel()
+  if doCheckInv == nil then doCheckInv = true end
+  if doDigDown == nil then doDigDown = true end
+  if doDigUp == nil then doDigUp = true end
+  if outOfPath == nil then outOfPath = false end
+  isInPath = (not outOfPath) --For rednet
+  if inverted then
+    doDigUp, doDigDown = doDigDown, doDigUp --Just Switch the two if inverted
+  end
+  if doRefuel and checkFuel() <= fuelTable[fuelSafety]/2 then
+    for i=1, 16 do
+    if turtle.getItemCount(i) > 0 then
+      select(i)
+      if checkFuel() < 200 + fuelTable[fuelSafety] then
+        turtle.refuel()
+      end
     end
-  end
-  end
-end
-local count = 0
-while not forward(not outOfPath) do
-  sleep(0) --Calls coroutine.yield to prevent errors
-  count = count + 1
-  if not dig() then
-    attack()
-  end
-  if count > 10 then
-    attack()
-    sleep(0.2)
-  end
-  if count > 50 then
-    if turtle.getFuelLevel() == 0 then --Don't worry about inf fuel because I modified this function
-      saveProgress({doCheckFuel = true})
-      error("No more fuel",0)
-    elseif yPos > (startY-7) then --If it is near bedrock
-      bedrock()
-    else --Otherwise just sleep for a bit to avoid sheeps
-      sleep(1)
     end
+    select(1)
   end
-end
-checkSanity() --Not kidding... This is necessary
-saveProgress(tab)
-if doDigUp then
-while turtle.detectUp() do 
-  sleep(0) --Calls coroutine.yield
-  if not dig(true,turtle.digUp) then --This needs to be an absolute, because we are switching doDigUp/Down
-    attackUp()
+  local count = 0
+  while not forward(not outOfPath) do
+    sleep(0) --Calls coroutine.yield to prevent errors
     count = count + 1
+    if not dig() then
+      attack()
+    end
+    if count > 10 then
+      attack()
+      sleep(0.2)
+    end
+    if count > maxTries then
+      if turtle.getFuelLevel() == 0 then --Don't worry about inf fuel because I modified this function
+        saveProgress({doCheckFuel = true})
+        error("No more fuel",0)
+      elseif yPos > (startY-7) and turtle.detect() then --If it is near bedrock
+        bedrock()
+      else --Otherwise just sleep for a bit to avoid sheeps
+        sleep(1)
+      end
+    end
   end
-  if count > 50 and yPos > (startY-7) then --Same deal with bedrock as above
-    bedrock()
+  checkSanity() --Not kidding... This is necessary
+  saveProgress(tab)
+  if not oreQuarry then --The digging up and down part
+    if doDigUp then
+      while turtle.detectUp() do 
+        sleep(0) --Calls coroutine.yield
+        if not dig(true,turtle.digUp) then --This needs to be an absolute, because we are switching doDigUp/Down
+          if not attackUp() then
+            if yPos > (startY-7) then bedrock() end --Checking for bedrock, but respecting user wishes
+          end
+        end
+      end
+    end
+    if doDigDown then
+     dig(true,turtle.digDown) --This needs to be absolute as well
+    end
+  else
+    smartDig(doDigUp, doDigDown)
   end
+  percent = math.ceil(moved/moveVolume*100)
+  updateDisplay()
+  if doCheckInv and careAboutResources then
+    if moved%invCheckFreq == 0 then
+     if isFull(16-keepOpen) then dropOff() end
+    end
   end
-end
-if doDigDown then
- dig(true,turtle.digDown) --This needs to be absolute as well
-end
-percent = math.ceil(moved/moveVolume*100)
-updateDisplay()
-isInPath = (not outOfPath) --For rednet
-if doCheckInv and careAboutResources then
-if moved%invCheckFreq == 0 then
- if isFull(16-keepOpen) then dropOff() end
-end; end
-if rednetEnabled then biometrics() end
+  biometrics()
 end
 --Insanity Checking
 function checkSanity()
-  if isInPath and not (facing == 0 or facing == 2) and #events == 0 then --If mining and not facing proper direction and not in a turn
+  if not isInPath then --I don't really care if its not in the path.
+    return true
+  end
+  if not (facing == 0 or facing == 2) and #events == 0 then --If mining and not facing proper direction and not in a turn
     turnTo(0)
-    rowCheck = "right"
+    rowCheck = true
   end
   if xPos < 0 or xPos > x or zPos < 0 or zPos > z or yPos < 0 then
     saveProgress()
+    print("I have gone outside boundaries, attempting to fix (maybe)")
+    if xPos > x then goto(x, zPos, yPos, 2) end --I could do this with some fancy math, but this is much easier
+    if xPos < 0 then goto(1, zPos, yPos, 0) end
+    if zPos > z then goto(xPos, z, yPos, 3) end
+    if zPos < 0 then goto(xPos, 1, yPos, 1) end
+    setRowCheckFromPos() --Row check right (maybe left later)
+    relxCalc() --Get relxPos properly
+    eventClear()
+    
+    --[[
     print("Oops. Detected that quarry was outside of predefined boundaries.")
     print("Please go to my forum thread and report this with a short description of what happened")
     print("If you could also run \"pastebin put Civil_Quarry_Restore\" and give me that code it would be great")
-    error("",0)
+    error("",0)]]
   end
 end
 
@@ -915,12 +1227,11 @@ return math.abs((limit*fromBoolean(num < 0))-(math.abs(num)%limit))
 end
 if tArgs["-manualpos"] then
   facing = coterminal(facing) --Done to improve support for "-manualPos"
-  if facing == 0 then rowCheck = "right" elseif facing == 2 then rowCheck = "left" end --Ditto
-  relativeXCalc() --Ditto
+  if facing == 0 then rowCheck = true elseif facing == 2 then rowCheck = false end --Ditto
+  relxCalc() --Ditto
 end
 
 --Direction: Front = 0, Right = 1, Back = 2, Left = 3
-
 function turnTo(num)
   num = num or facing
   num = coterminal(num) --Prevent errors
@@ -970,6 +1281,8 @@ function getNumOpenSlots()
   end
   return toRet
 end
+
+--[[
 function drop(side, final, allowSkip)
 side = sides[side] or "front"    --The final number means that it will
 if final then final = 0 else final = 1 end --drop a whole stack at the end
@@ -978,10 +1291,10 @@ count()
 if doRefuel then
   for i=1, 16 do
     if slot[i][1] == 2 then
-      turtle.select(i); turtle.refuel()
+      select(i); turtle.refuel()
     end
   end
-  turtle.select(1)
+  select(1)
 end
 if side == "right" then turnTo(1) end
 if side == "left" then turnTo(3) end
@@ -1015,7 +1328,7 @@ if detected then
   for i=1, 2 do --This is so I quit flipping missing items when chests are partially filled
     for i=2, 16 do
       if turtle.getItemCount(i) > 0 then
-        turtle.select(i)
+        select(i)
         waitDrop(nil, i)
       end
     end
@@ -1028,55 +1341,140 @@ elseif not allowSkip then
 end
 until detected or allowSkip
 if not allowSkip then totals.cobble = totals.cobble - 1 end
-turtle.select(1)
+select(1)
 end
+]]
+
+--Ideas: Bring in inventory change-checking functions, count blocks that have been put in, so it will wait until all blocks have been put in.
+local function waitDrop(slot, allowed, whereDrop) --This will just drop, but wait if it can't
+  allowed = allowed or 0
+  while turtle.getItemCount(slot) > allowed do --No more half items stuck in slot!
+    local tries = 1
+    while not whereDrop(turtle.getItemCount(slot)-allowed) do --Drop off only the amount needed
+      screen(1,1)
+      print("Chest Full, Try "..tries)
+      chestFull = true
+      biometrics()--To send that the chest is full
+      tries = tries + 1
+      sleep(2)
+    end
+    chestFull = false
+  end
+end
+  
+function drop(side, final)
+  side = sides[side] or "front"
+  local dropFunc, detectFunc, dropFacing = turtle.drop, turtle.detect, facing+2
+  if side == "top" then dropFunc, detectFunc = turtle.dropUp, turtle.detectUp end
+  if side == "bottom" then dropFunc, detectFunc = turtle.dropDown, turtle.detectDown end
+  if side == "right" then turnTo(1); dropFacing = 0 end
+  if side == "left" then turnTo(3); dropFacing = 0 end
+  local properFacing = facing --Capture the proper direction to be facing
+  
+  count(true) --Count number of items before drop. True means add. This is before chest detect, because could be final
+  
+  while not detectFunc() do 
+    if final then return end --If final, we don't need a chest to be placed, we just won't drop.
+    chestFull = true
+    biometrics() --Let the user know there is a problem with chest
+    screen(1,1) --Clear screen
+    print("Waiting for chest placement on ",side," side (when facing quarry)")
+    sleep(2)
+  end
+  chestFull = false
+  
+  for i=1,16 do
+    --if final then allowedItems[i] = 0 end --0 items allowed in all slots if final ----It is already set to 1, so just remove comment if want change
+    if turtle.getItemCount(i) > 0 then --Saves time, stops bugs
+      if slot[i][1] == 1 and dumpCompareItems then turnTo(dropFacing) --Turn around to drop junk, not store it. dumpComapareItems is global config
+      else turnTo(properFacing) --Turn back to proper position... or do nothing if already there
+      end 
+      select(i)
+      if doRefuel and slot[i][1] == 2 then turtle.refuel(turtle.getItemCount(i)-allowedItems[i]) --Refueling option working
+      else waitDrop(i, allowedItems[i], dropFunc)
+      end
+    end
+  end
+  
+  if oreQuarry then count(false) end--Subtract the items still there if oreQuarry
+  resetDumpSlots() --So that slots gone aren't counted as dump slots next
+  
+  select(1) --For fanciness sake
+
+end
+
 function dropOff() --Not local because called in mine()
   local currX,currZ,currY,currFacing = xPos, zPos, yPos, facing
   if careAboutResources then
     if not enderChestEnabled then --Regularly
-    eventAdd("goto", 1,1,currY,2) --Need this step for "-startDown"
-    eventAdd("goto(0,1,1,2)")
-    eventAdd("drop", dropSide,false)
-    eventAdd("turnTo(0)")
-    eventAdd("mine",false,false,true,false)
-    eventAdd("goto(1,1,1, 0)")
-    eventAdd("goto", 1, 1, currY, 0)
-    eventAdd("goto", currX,currZ,currY,currFacing)
+      eventAdd("goto", 1,1,currY,2) --Need this step for "-startDown"
+      eventAdd("goto(0,1,1,2)")
+      eventAdd("drop", dropSide,false)
+      eventAdd("turnTo(0)")
+      eventAdd("mine",false,false,true,false)
+      eventAdd("goto(1,1,1, 0)")
+      eventAdd("goto", 1, 1, currY, 0)
+      eventAdd("goto", currX,currZ,currY,currFacing)
     else --If using an enderChest
-    eventAdd("turnTo",currFacing-2)
-    eventAdd("dig",false)
-    eventAdd("turtle.select",enderChestSlot)
-    eventAdd("turtle.place")
-    eventAdd("drop","front",false)
-    eventAdd("turtle.select", enderChestSlot)
-    eventAdd("dig",false)
-    eventAdd("turnTo",currFacing)
-    eventAdd("turtle.select(1)")
+      if turtle.getItemCount(enderChestSlot) ~= 1 then eventAdd("promptEnderChest()") end
+      eventAdd("turnTo",currFacing-2)
+      eventAdd("dig",false)
+      eventAdd("select",enderChestSlot)
+      eventAdd("turtle.place")
+      eventAdd("drop","front",false)
+      eventAdd("select", enderChestSlot)
+      eventAdd("dig",false)
+      eventAdd("turnTo",currFacing)
+      eventAdd("select(1)")
     end
   runAllEvents()
+  numDropOffs = numDropOffs + 1 --Analytics tracking
   end
 return true
 end
-function bedrock()
-foundBedrock = true --Let everyone know
-if rednetEnabled then biometrics() end
-if checkFuel() == 0 then error("No Fuel",0) end
-local origin = {x = xPos, y = yPos, z = zPos}
-print("Bedrock Detected")
-if turtle.detectUp() then
-print("Block Above")
-local var
-if facing == 0 then var = 2 elseif facing == 2 then var = 0 else error("Was facing left or right on bedrock") end
-goto(xPos,zPos,yPos,var)
-for i=1, relxPos do mine(true,true); end
+function endingProcedure() --Used both at the end and in "biometrics"
+  eventAdd("goto",1,1,yPos,2,"quarryStart") --Allows for startDown variable
+  eventAdd("goto",0,1,1,2, "quarryStart") --Go back to base
+  runAllEvents()
+  --Output to a chest or sit there
+  if enderChestEnabled then
+    if dropSide == "right" then eventAdd("turnTo(1)") end --Turn to proper drop side
+    if dropSide == "left" then eventAdd("turnTo(3)") end
+    eventAdd("dig(false)") --This gets rid of a block in front of the turtle.
+    eventAdd("select",enderChestSlot)
+    eventAdd("turtle.place")
+    eventAdd("select(1)")
+  end
+  eventAdd("drop",dropSide, true)
+  eventAdd("turnTo(0)")
+
+  --Display was moved above to be used in bedrock function
+  eventAdd("display")
+  --Log current mining run
+  eventAdd("logMiningRun",logExtension)
+  toQuit = true --I'll use this flag to clean up
+  runAllEvents()
+  --Cleanup
+  turtle.getFuelLevel = getFuel
 end
-goto(0,1,1,2)
-drop(dropSide, true)
-turnTo(0)
-display()
-print("\nFound bedrock at these coordinates: ")
-print(origin.x," Was position in row\n",origin.z," Was row in layer\n",origin.y," Blocks down from start")
-error("",0)
+function bedrock()
+  foundBedrock = true --Let everyone know
+  if rednetEnabled then biometrics() end
+  if checkFuel() == 0 then error("No Fuel",0) end
+  local origin = {x = xPos, y = yPos, z = zPos}
+  print("Bedrock Detected")
+  if turtle.detectUp() then
+    print("Block Above")
+    local var
+    if facing == 0 then var = 2 elseif facing == 2 then var = 0 else error("Was facing left or right on bedrock") end
+    goto(xPos,zPos,yPos,var)
+    for i=1, relxPos do mine(false, false); end
+  end
+  eventClear() --Get rid of any excess events that may be run. Don't want that.
+  endingProcedure()
+  print("\nFound bedrock at these coordinates: ")
+  print(origin.x," Was position in row\n",origin.z," Was row in layer\n",origin.y," Blocks down from start")
+  error("",0)
 end
 
 function endOfRowTurn(startZ, wasFacing, mineFunctionTable)
@@ -1090,6 +1488,7 @@ if facing ~= toFace then
   turnTo(toFace)
 end
 end
+
 
 -------------------------------------------------------------------------------------
 --Pre-Mining Stuff dealing with session persistence
@@ -1109,65 +1508,48 @@ if not restoreFoundSwitch then --Regularly
   end
   mine(false,false,true) --Get into quarry by going forward one
   if gpsEnabled and not restoreFoundSwitch then --The initial locate is done in the arguments. This is so I can figure out what quadrant the turtle is in.
-  gpsSecondPos = {gps.locate(gpsTimeout)} --Note: Does not run this if it has already been restarted.
-end
+    gpsSecondPos = {gps.locate(gpsTimeout)} --Note: Does not run this if it has already been restarted.
+  end
   for i = 1, startDown do
     eventAdd("down") --Add a bunch of down events to get to where it needs to be.
   end
   runAllEvents()
   if not(y == 1 or y == 2) then down() end --Go down. If y is one or two, it doesn't need to do this.
 else --restore found
-  if doDigDown then digDown() end
-  if doDigUp then digUp() end  --Get blocks missed before stopped
+  if not(layersDone == layers and not doDigDown) then digDown() end
+  if not(layersDone == layers and not doDigUp) then digUp() end  --Get blocks missed before stopped
 end
 --Mining Loops--------------------------------------------------------------------------
-turtle.select(1)
+select(1)
 while layersDone <= layers do -------------Height---------
 local lastLayer = layersDone == layers --If this is the last layer
 local secondToLastLayer = (layersDone + 1) == layers --This is for the going down at the end of a layer.
 moved = moved + 1 --To account for the first position in row as "moved"
-if doDigDown then digDown() end --This is because it doesn't mine first block in layer
-if not restoreFoundSwitch then rowCheck = "right" end
-relativeXCalc()
+if not(layersDone == layers and not doDigDown) then digDown() end --This is because it doesn't mine first block in layer
+if not restoreFoundSwitch then rowCheck = true end
+relxCalc()
 while zPos <= z do -------------Width----------
 while relxPos < x do ------------Length---------
 mine(not lastLayer or (doDigDown and lastLayer), not lastLayer or (doDigUp and lastLayer)) --This will be the idiom that I use for the mine function
 end ---------------Length End-------
 if zPos ~= z then --If not on last row of section
   local func
-  if rowCheck == "right" then --Swithcing to next row
-  func = "right"; rowCheck = "left"; else func = "left"; rowCheck = "right" end --Which way to turn
+  if rowCheck == true then --Swithcing to next row
+  func = "right"; rowCheck = false; else func = false; rowCheck = true end --Which way to turn
     eventAdd("endOfRowTurn", zPos, facing , {not lastLayer or (doDigDown and lastLayer), not lastLayer or (doDigUp and lastLayer)}) --The table is passed to the mine function
     runAllEvents()
 else break
 end
 end ---------------Width End--------
 eventAdd("goto",1,1,yPos,0, "layerStart") --Goto start of layer
-runAllEvents()
 if not lastLayer then --If there is another layer
-  for i=1, 2+fromBoolean(not(lastHeight~=0 and secondToLastLayer)) do down() end --The fromBoolean stuff means that if lastheight is 1 and last and layer, will only go down two
+  for i=1, 2+fromBoolean(not(lastHeight~=0 and secondToLastLayer)) do eventAdd("down()") end --The fromBoolean stuff means that if lastheight is 1 and last and layer, will only go down two
 end
+eventAdd("setRowCheckFromPos")
+eventAdd("relxCalc")
 layersDone = layersDone + 1
 restoreFoundSwitch = false --This is done so that rowCheck works properly upon restore
+runAllEvents()
 end ---------------Height End-------
 
-eventAdd("goto",1,1,yPos,2,"quarryStart") --Allows for startDown variable
-eventAdd("goto",0,1,1,2, "quarryStart") --Go back to base
-
---Output to a chest or sit there
-if enderChestEnabled and not turtle.detect() then
-  eventAdd("turtle.select",enderChestSlot)
-  eventAdd("turtle.place")
-  eventAdd("turtle.select(1)")
-end
-eventAdd("drop",dropSide, true)
-eventAdd("turnTo(0)")
-
---Display was moved above to be used in bedrock function
-eventAdd("display")
---Log current mining run
-eventAdd("logMiningRun",logExtension)
-toQuit = true --I'll use this flag to clean up
-runAllEvents()
---Cleanup
-turtle.getFuelLevel = getFuel
+endingProcedure() --This takes care of getting to start, dropping in chest, and displaying ending screen
