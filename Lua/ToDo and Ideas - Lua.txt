@@ -1,5 +1,3 @@
-ToDo: Seperate into ideas(python) and ideas(quarry) so no more merge conflicts
-
 Random idea:
 Maybe have a "master" and "slave" function on the quarry shell so that you could just slave multiple turtles to be controlled by a computer. So you could push quarry configurations
  to individual turtles and view their progress through the quarry receiver.
