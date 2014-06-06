@@ -1,4 +1,4 @@
---Quarry Receiver Version 3.5.1
+--Quarry Receiver Version 3.5.2
 --Made by Civilwargeeky
 --[[
 Ideas:
