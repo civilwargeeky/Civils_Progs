@@ -1,4 +1,4 @@
---Quarry Receiver Version 3.4.0
+--Quarry Receiver Version 3.5.2
 --Made by Civilwargeeky
 --[[
 Ideas:
@@ -9,6 +9,15 @@ Recent Changes:
   Made from scratch!
 ]]
 
+local commandHelpParagraph = [[
+Stop: Stops the turtle where it is
+Return: The turtle will return to its starting point, drop off its load, and stop
+Drop: Turtle will immediately go and drop its inventory
+Pause: Pauses the turtle
+Resume: Resumes paused turtles
+Help: This :D
+]]
+
 local debug = false
 local sloppyHandshake = true --If receiver can pick back up in the middle w/o handshake
 local defaultCheckScreen = false --If this is true, it will automatically check for a screen around it.
@@ -16,16 +25,18 @@ local defaultCheckScreen = false --If this is true, it will automatically check 
 local mon, modem, sendChannel, receiveChannel, isDone
 local currBackgroundColor = colors.black
 local currTextColor = colors.white
-local function setTextColor(color)
-  if mon.isColor() then
+local function setTextColor(color, obj)
+  obj = obj or mon
+  if color and obj.isColor() then
     currTextColor = color
-    return mon.setTextColor(color)
+    return obj.setTextColor(color)
   end
 end
-local function setBackgroundColor(color)
-  if mon.isColor() then
+local function setBackgroundColor(color, obj)
+  obj = obj or mon
+  if color and obj.isColor() then
     currBackgroundColor = color
-    return mon.setBackgroundColor(color)
+    return obj.setBackgroundColor(color)
   end
 end
 local function swapKeyValue(tab)
@@ -51,8 +62,8 @@ end
 --Initializing Variables
 local sendChannel, receiveChannel
 local periphSides = {monitor = nil, modem = nil}
-local expectedMessage = "Civil's Quarry"
-local respondMessage = "Turtle Quarry Receiver"
+local expectedMessage = "Civil's Quarry" --Expected initial message
+local respondMessage = "Turtle Quarry Receiver" --Message to respond to  handshake with
 local stopMessage = "stop"
 local sides = swapKeyValue({"top","bottom","right","left","front","back"}) --This allows sides[1] and sides.front
 --tArgs and peripheral list init
@@ -71,8 +82,8 @@ end
 foundSides = swapKeyValue(foundSides)
 
 --Size functions
-local sizes = {monitor = {51, 19}, turtle = {39,13}, {7, 5}, {18, 12}, {29, 19}, 39, 50} --Monitor dimensions
-local sizesEnum = {small = 1, medium = 2, large = 3, monitor = 4, turtle = 5} --For reference
+local sizes = {{7, 5}, {18, 12}, {29, 19}, 39, 50, computer = {51, 19}, turtle = {39,13}, pocket = {26,20}} --Monitor dimensions
+local sizesEnum = {small = 1, medium = 2, large = 3, computer = 4, turtle = 5} --For reference
 local dim, screenSize
 local function setSize()
   if mon == term or not mon.getCursorPos() then --You should be able to swap out screens
@@ -85,16 +96,13 @@ local function setSize()
   end
   screenSize = {}
   dim = {mon.getSize()} --Just pretend its large if it doesn't exist
-  if dim[1] == sizes.monitor[1] and dim[2] == sizes.monitor[2] then
-    screenSize.isComputer = true
-  else
-    screenSize.isComputer = false
+  local function isX(dim, what)
+    return dim[1] == sizes[what][1] and dim[2] == sizes[what][2]
   end
-  if dim[1] == sizes.turtle[1] and dim[2] == sizes.turtle[2] then
-    screenSize.isTurtle = true
-  else 
-    screenSize.isTurtle = false
-  end
+  screenSize.isComputer = isX(dim, "computer")
+  screenSize.isTurtle = isX(dim, "turtle")
+  screenSize.isPocket = isX(dim, "pocket")
+
   for a=1, 2 do --X and Y
     for i=3, 1, -1 do --Different sizes 1 - 3
       if dim[a] >= sizes[i][a] then --This will get decrementing screen sizes. Can even be adjusted later!
@@ -108,6 +116,11 @@ local function setSize()
     print("Screen Size Reset:")
     print("Size X: ",screenSize[1]," Size Y: ",screenSize[2])
     print("Dim X: ",dim[1]," Dim Y: ",dim[2])
+  end
+  if screenSize.isComputer or screenSize.isTurtle or screenSize.isPocket then
+    screenSize.acceptsInput = true
+  else
+    screenSize.acceptsInput = false
   end
 end
 
@@ -178,8 +191,7 @@ setSize()
 modem = peripheral.wrap(periphSides.modem)
 
 if debug then
-  print("Is computer: ",screenSize.isComputer)
-  print("Is turtle: ",screenSize.isTurtle)
+  print("Accepts Input: ",screenSize.acceptsInput)
   os.pullEvent("char")
 end
 
@@ -203,37 +215,6 @@ repeat
 until sendChannel --This will be assigned when message is received
 
 
-
---[[
-Items to add:
-+Title with computer name and number
-+Dimensions of quarry
-+Open space
-+Current Fuel
-+Percent Done
-+Current position x
-+Current position z
-+Current number of layers done
-+Number of blocks mined
-+Number of blocks moved
-+If going to next layer, if going back to start, if it home position.
-+Any errors, like chest is full or something.
-Distance to turtle might be cool
-]]
---[[
-Needed Fields:
-label
-percent
-relxPos,zPos,layersDone
-x, z, layers
-openSlots
-mined
-moved
-atHome
-chestFull
-fuel
-volume
-]]
 --This is for testing purposes. Rec will be "receivedMessage"
 --Nevermind, I actually need a default thing with keys in it.
 local rec = {
@@ -273,6 +254,8 @@ addColor("extra", colors.lightGray)
 addColor("error", colors.red, colors.white)
 addColor("info", colors.blue, colors.lightGray)
 addColor("inverse", colors.yellow, colors.lightGray)
+addColor("command", colors.lightBlue)
+addColor("help", colors.red, colors.white)
 
 
 local function reset(color)
@@ -280,18 +263,19 @@ local function reset(color)
   mon.clear()
   mon.setCursorPos(1,1)
 end
-local function say(text, color, inc)
+local function say(text, color, obj)
   local currColor = currBackgroundColor
-  setTextColor(color.text)
+  obj, color = obj or mon, color or {}
+  setTextColor(color.text, obj)
   if debug and #text > dim[1] then error("Tried printing: "..text..", but was too big") end
-  if color.background then setBackgroundColor(color.background) end
+  setBackgroundColor(color.background, obj)
   for i=1, dim[1]-#text do --This is so the whole line's background gets filled.
     text = text.." "
   end
-  mon.write(text)
-  setBackgroundColor(currColor)
-  local pos = ({mon.getCursorPos()})[2] or setSize() or 1
-  mon.setCursorPos(1, pos+1)
+  obj.write(text)
+  setBackgroundColor(currColor, obj)
+  local pos = ({obj.getCursorPos()})[2] or setSize() or 1
+  obj.setCursorPos(1, pos+1)
 end
 
 local toPrint = {}
@@ -310,6 +294,7 @@ local function tryAdd(text, color, ...) --This will try to add text if Y dimensi
   if #text > dim[1] then return false else return true end
 end
 local function align(text, number)
+  text = tostring(text) or ""
   if #text >= number then return text end
   for i=1, number-#text do
     text = " "..text
@@ -493,10 +478,13 @@ local messageToSend --This will be a command string sent to turtle
 
 function rednetHandler() while true do sleep(0)--Super sneaky loop
 --Will send rednet message to send if it exists, otherwise sends default message.
-  local event, sideCheck, receiveCheck, sendCheck, message, distance = os.pullEvent("modem_message")
-  if periphSides.modem == sideCheck and receiveCheck == receiveChannel and sendCheck == sendChannel and message == stopMessage then isDone = true end --Flag for other programs
-  if not isDone then --Normally
-    if periphSides.modem == sideCheck and receiveCheck == receiveChannel and sendCheck == sendChannel then
+  local event, sideCheck, receiveCheck, sendCheck, message, distance
+  repeat
+    event, sideCheck, receiveCheck, sendCheck, message, distance = os.pullEvent()
+  until (event == "modem_message" and periphSides.modem == sideCheck and receiveCheck == receiveChannel and sendCheck == sendChannel) or (event == "send_message")
+  if message == stopMessage then isDone = true end --Flag for other programs
+  if event == "modem_message" then
+    if not isDone then --Normally
       rec = textutils.unserialize(message) or {}
       rec.distance = math.floor(distance)
       if rec then
@@ -506,49 +494,65 @@ function rednetHandler() while true do sleep(0)--Super sneaky loop
         if debug then error("expected Table, got "..message) end
       end
       
-      local toSend
-      if messageToSend then
-        toSend = messageToSend
-        messageToSend = nil
+    elseif message ~= stopMessage then --If is done
+      if debug then print("Received final final message") end
+      modem.close(receiveChannel)
+      rec = textutils.unserialize(message)
+      extraLine = nil
+      if rec then
+        os.queueEvent("updateScreen")
       else
-        toSend = respondMessage
+        error("Finished with program, but received bad message", 0)
       end
-      modem.transmit(sendChannel, receiveChannel, toSend)
-    else
-      print("Message was not sent on proper channel/ modem") --Maybe here do something about other channels?
-      if debug then
-        print("ReceiveCheck: ",receiveCheck," ReceiveChannel: ",receiveChannel)
-        print("SendCheck: ",sendCheck," SendChannel: ",sendChannel)
-        print("Side: ",periphSides.modem, " SideCheck: ",sideCheck)
-        error("improper message received") end
+      
+      print("\nDone with program")
+    else --If is done, before final message
+      if debug then print("Received final: ", message) end
     end
-  elseif message ~= stopMessage then --If is done
-    if debug then print("Received final final message") end
-    modem.close(receiveChannel)
-    rec = textutils.unserialize(message)
-    if rec then
+  elseif event == "send_message" then
+    --pass
+  end
+  if not isDone then --Return message sending
+    local toSend
+    if messageToSend then
+      toSend = messageToSend
+      messageToSend = nil
+    else
+      toSend = respondMessage
+    end
+    modem.transmit(sendChannel, receiveChannel, toSend)
+  end
+  
+end end
+
+
+
+function commandSender() 
+  local text = "Command: "
+  while true do sleep(0)
+    if screenSize.acceptsInput then
+      extraLine = {text, typeColors.command}
+      mon.setCursorPos(#extraLine[1]+1, dim[2])
+    else
+      extraLine = nil
+      local mainDim = {term.getSize()} --Of computer
+      term.setCursorPos(1, mainDim[2])
+      say(text, typeColors.command, term)
+      term.setCursorPos(#text+1,mainDim[2])
+    end    
+    messageToSend = read():lower()
+    if messageToSend == "help" then
+      setTextColor(typeColors.help[1], term)
+      setBackgroundColor(typeColors.help[2], term)
+      write(commandHelpParagraph)
+      os.pullEvent("key")
+    elseif messageToSend == "resume" then
+     os.queueEvent("send_message")
+    else  
       os.queueEvent("updateScreen")
-    else
-      error("Finished with program, but received bad message", 0)
     end
-    print("Done with program")
-  else --If is done, before final message
-    if debug then print("Received final: ", message) end
-  end
-end end
-
-
-
-function commandSender() while true do sleep(0)
-  if screenSize.isComputer or screenSize.isTurtle then
-    extraLine = {"Command: ", {text = colors.lightBlue}}
-    mon.setCursorPos(#extraLine[1]+1, dim[2])
-    messageToSend = read()
-    os.queueEvent("updateScreen") --Update Screen
-  else
-    extraLine = nil
-  end
-end end
+  end 
+end
 
 ------------------------------------------
 sleep(0.5)

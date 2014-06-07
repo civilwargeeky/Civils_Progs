@@ -1,7 +1,8 @@
 --Civilwargeeky's Quarry Program--
-  VERSION = "3.5.1"
---[[
+  VERSION = "3.5.2"
+--[[ 
 Recent Changes:
+  Changes with receiver
   Fixed Bug with modem in most recent version of CC
   Ore Quarry!!!
   Completely redid the system of dropping items off
@@ -714,6 +715,13 @@ function biometrics(isAtBedrock)
   if message == "drop" then
     dropOff()
   end
+  if message == "pause" then
+    print("\nTurtle is paused. Send 'resume' or press any character to resume")
+    repeat
+      local event, idCheck, confirm, _, message, distance = os.pullEvent()
+    until (event == "modem_message" and confirm == channels.receive and message == "resume") or (event == "char")
+  end
+  
 end
 --Showing changes to settings
 screen(1,1)

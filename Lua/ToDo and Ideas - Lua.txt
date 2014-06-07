@@ -105,20 +105,20 @@ Random future thoughts: Maybe make more seamless. Have an arg/option to make cal
 
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 
-Quarry Version 3.5.1:
+Quarry Version 3.5.2:
 Changelog so far:  
   New Peripheral wrapping logic
-  
-Things for 3.5.2:
-  Add in a "Pause" and "Resume" function for receiver interaction
-  In receiver, add a size for pocket computer.
-  Add in help for receiver
-  Maybe, on bottom line of receiver, have a couple buttons for drop, return, etc.
-    Ooh! Maybe have "buttonHandler" table of functions that would make, place, activate, and deactivate buttons.
-  In Receiver, command prompt line will appear at the bottom of base computer
+  Added in pause and resume functions from receiver
+  Added a size for pocket computers
 
 Things for 3.5.3:
   Organize all the things! Everything is so messy right now...
+  Refactor quarryReceiver so that everything is generalized into classes. This will lead to having multiple screens: each in their own class with their own colors and attributes.
+  Take out all the "str"s in the main loop of reveiver
+  
+Things for 3.5.4:
+  Maybe, on bottom line of receiver, have a couple buttons for drop, return, etc.
+    Ooh! Maybe have "buttonHandler" table of functions that would make, place, activate, and deactivate buttons.
   
 Things to add for quarry version 3.6.0 (After rednet update and shell is done):
   Add support for mods. Like openperipheral chest finding.
