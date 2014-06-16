@@ -124,24 +124,30 @@ while true do --MAIN LOOP
     subIndex()
   elseif rate > 0 then
     print("Battery charging")
-    if getPercent(cell) < fullPercent and favorFastCharge then
-      print("Less than full and want fast charge, adding engines")
-      while not( rate > (getMax(cell)-getStored(cell))*20*checkRate) and index ~= #engines and favorFastCharge do --Keep adding engines until the rate would instantly fill it, or until we are out of engines
+    if favorFastCharge then
+      if getPercent(cell) < fullPercent and favorFastCharge then
+        print("Less than full and want fast charge, adding engines")
+        while not( rate > (getMax(cell)-getStored(cell))*20*checkRate) and index ~= #engines and favorFastCharge do --Keep adding engines until the rate would instantly fill it, or until we are out of engines
+          addIndex()
+          rate = rate + (turnOn(engineAt(index)) or 0)
+        end
+      else
+        print("More than full, removing unnessesary enginess")
+        while rate > engineAt(index).rf do
+          rate = rate - (turnOff(engineAt(index)) or 0)
+          subIndex()
+        end
+      end
+    end
+  else
+    if not(getPercent(cell) > fullPercent) then
+    print("Battery draining, trying to stablize")
+      while rate < 0 and index ~= #engines and not(getPercent(cell) > fullPercent) do
         addIndex()
         rate = rate + (turnOn(engineAt(index)) or 0)
       end
     else
-      print("More than full, removing unnessesary enginess")
-      while rate > engineAt(index).rf do
-        rate = rate - (turnOff(engineAt(index)) or 0)
-        subIndex()
-      end
-    end
-  else
-    print("Battery draining, trying to stablize")
-    while rate < 0 and index ~= #engines do
-      addIndex()
-      rate = rate + (turnOn(engineAt(index)) or 0)
+      print("Battery draining, but full. It's fine")
     end
   end
 
