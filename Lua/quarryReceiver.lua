@@ -316,7 +316,7 @@ function display() while true do sleep(0)
   toPrint = {} --Reset table
   if not isDone then --Normally
     if screenSize[1] == sizesEnum.small then
-      if not tryAdd(rec.label or "Quarry!", typeColors.title, false, false, true) then --This will be a title, basically
+      if not tryAdd(rec.label, typeColors.title, false, false, true) then --This will be a title, basically
         toPrint[#toPrint] = nil
         tryAdd("Quarry!", typeColors.title, false, false, true)
       end
@@ -356,7 +356,7 @@ function display() while true do sleep(0)
       
     end
     if screenSize[1] == sizesEnum.medium then
-      if not tryAdd(rec.label or "Quarry!", typeColors.title, false, false, true) then --This will be a title, basically
+      if not tryAdd(rec.label, typeColors.title, false, false, true) then --This will be a title, basically
         toPrint[#toPrint] = nil
         tryAdd("Quarry!", typeColors.title, false, false, true)
       end
@@ -487,6 +487,7 @@ function rednetHandler() while true do sleep(0)--Super sneaky loop
     if not isDone then --Normally
       rec = textutils.unserialize(message) or {}
       rec.distance = math.floor(distance)
+      rec.label = rec.label or "Quarry!"
       if rec then
         os.queueEvent("updateScreen") --Tell display that there is new information
       else
