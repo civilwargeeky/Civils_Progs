@@ -509,7 +509,7 @@ if type(extras) == "table" then
   end
 end
 if turtle.getFuelLevel() ~= math.huge then --Used for location comparing
-  file.write("fuelLevel = "..tostring(turtle.getFuelLevel()))
+  file.write("\nfuelLevel = "..tostring(turtle.getFuelLevel()))
 end
 file.close()
 end
