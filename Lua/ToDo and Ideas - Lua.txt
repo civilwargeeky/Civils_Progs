@@ -197,6 +197,8 @@ The actual program will handle stuff like key presses, scrolling, adjusting reds
 
 Cool mockup in the notebook in your backpack.
 
+Each item will be brought in from an external file in a folder. These files will be sandboxed and spawn in a list object that will be inserted into the full list
+
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 
 Ideas for minecraft word:
