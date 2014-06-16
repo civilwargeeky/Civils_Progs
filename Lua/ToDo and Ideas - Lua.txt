@@ -115,6 +115,7 @@ Things for 3.5.3:
   Organize all the things! Everything is so messy right now...
   Refactor quarryReceiver so that everything is generalized into classes. This will lead to having multiple screens: each in their own class with their own colors and attributes.
   Take out all the "str"s in the main loop of reveiver
+  Test what happens when turtle is out of fuel.
   
 Things for 3.5.4:
   Maybe, on bottom line of receiver, have a couple buttons for drop, return, etc.
