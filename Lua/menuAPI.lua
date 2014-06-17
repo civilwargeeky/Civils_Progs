@@ -8,7 +8,7 @@ end
 return text
 end
 
-function menu(title, description, textTable, isNumbered, titleAlign, textAlign, prefixCharacter, suffixCharacter, incrementFunction)
+function menu(title, description, textTable, isNumbered, titleAlign, textAlign, prefixCharacter, suffixCharacter, spaceCharacter incrementFunction)
 local x, y = term.getSize() --Screen size
 local alignments = { left = "left", center = "center", right = "right" } --Used for checking if alignment is valid
 if not (title and textTable) then error("Requires title and menu list",2) end
@@ -19,10 +19,13 @@ titleAlign = alignments[titleAlign] or alignments.center --Default title alignme
 textAlign = alignments[textAlign] or alignments.left --Default options alignment
 prefixCharacter = prefixCharacter or "["
 suffixCharacter = suffixCharacter or "]"
+spaceCharacter = spaceCharacter or "."
 for i=1, #textTable do
-  if type(textTable[i]) == "table" then --This allows you to have tables of text, function pairs. So my function returns 1, and you call input[1].func()
-    textTable[i] = textTable[i].text
+  if type(textTable[i]) ~= "table" then 
+    textTable[i] = {text = textTable[i]} --If it is given without key and value pairs
   end
+  textTable[i].text = textTable[i].text or textTable[i].value --This allows you to have tables of text, function pairs. So my function returns 1, and you call input[1].func()
+  textTable[i].key = textTable[i].key or i
 end
 local function align(text, alignment) --Used to align text to a certain direction
   if alignment == "left" then return 1 end
@@ -61,13 +64,13 @@ while true do
   end
   for i = 1, math.min(y - titleLines,#textTable) do --The min because may be fewer table entries than the screen is big
     local prefix, suffix = "", "" --Stuff like spaces and numbers
-    if isNumbered then prefix = tostring(i+scroll)..". " end --Attaches a number to the front
+    if isNumbered then prefix = tostring(textTable[i+scroll].key)..spaceCharacter.." " end --Attaches a number to the front
     if i + scroll == currIndex then prefix = prefixCharacter.." "..prefix; suffix = suffix.." "..suffixCharacter  --Puts brackets on the one highlighted
       elseif textAlign == "left" then for i=1, #prefixCharacter+1 do prefix = " "..prefix end --This helps alignment
       elseif textAlign == "right" then for i=1, #suffixCharacter+1 do suffix  = suffix.." " end --Same as above
     end
-    if not (#(prefix..textTable[i+scroll]..suffix) <= x) then term.clear(); term.setCursorPos(1,1); error("Menu item "..tostring(i+scroll).." is longer than one line. Cannot Print",2) end
-    output(prefix..textTable[i+scroll]..suffix, i + titleLines, textAlign)
+    if not (#(prefix..textTable[i+scroll].text..suffix) <= x) then term.clear(); term.setCursorPos(1,1); error("Menu item "..tostring(i+scroll).." is longer than one line. Cannot Print",2) end
+    output(prefix..textTable[i+scroll].text..suffix, i + titleLines, textAlign)
   end
   if type(incrementFunction) ~= "function" then --This allows you to have your own custom logic for how to shift up and down and press enter. 
     incrementFunction = function()                --e.g. You could use redstone on left to increment, right to decrement, front to press enter.
@@ -91,7 +94,7 @@ while true do
   elseif action == "down" and currIndex < #textTable then
     currIndex = currIndex + 1
   elseif action == "enter" then
-    return currIndex, textTable[currIndex]
+    return currIndex, textTable[currIndex].text
   end
 end
 end
