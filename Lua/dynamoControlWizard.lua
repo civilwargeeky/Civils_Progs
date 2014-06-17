@@ -23,9 +23,11 @@ print("This will guide you to making config files\n")
 local basicSides = {"top", "bottom", "front", "back", "left", "right"}
 print("To start, we will register the engines")
 local file = fs.open(enginesFile,"w")
+local engines = 0
 while true do 
+  engines = engines + 1
   local rf, side, data, isColored
-  print("New Engine\n")
+  print("New Engine "..tostring(engines).."\n")
   print("How much power per tick does this engine produce?")
   print("Or type 'quit' to end the engine section")
   rf = read()
@@ -49,14 +51,16 @@ file.close()
 home()
 print("Now for the Energy Cells")
 print("Assuming you are using TE ones, this could work for other mods, though\n")
-sleep(1)
+sleep(2)
 local periphSides = peripheral.getNames()
 table.insert(periphSides,"Quit")
 local file = fs.open(peripheralsFile, "w")
+local periphs = 0
 while true do
+  periphs = periphs + 1
   local side
   local rm
-  rm, side = menu.menu("New Cell", "Select which side/peripheral the cell is on, or select quit to quit", periphSides)
+  rm, side = menu.menu("New Cell "..tostring(periphs), "Select which side/peripheral the cell is on, or select quit to quit", periphSides)
   if rm == #periphSides then 
     break
   else
@@ -67,4 +71,22 @@ end
 file.close()
 
 home()
-print("Thank you for using the Dynamo Control Station Wizard!")
+local fileName = "dynamoControl.lua"
+local should = menu.menu("Thank you for using the Dynamo Control Station Wizard!","Would you like to install dynamoControl?",{"Yes","No"},nil, nil, "center")
+if should == 1 then
+  if fs.exists(fileName) then
+    shell.run("rm "..fileName)
+  end
+  shell.run("pastebin get 6gUUv3Ng "..fileName)
+  local shouldAgain = menu.menu("Done","Would you like to replace startup and reboot?",{"Yes","No"},nil, nil, "center")
+  if shouldAgain == 1 then
+    if fs.exists("startup") then
+      shell.run("rm startup")
+    end
+    local file = fs.open("startup","w")
+    file.write("shell.run("..fileName..")")
+    file.close()
+    shell.run("reboot")
+  end
+end
+

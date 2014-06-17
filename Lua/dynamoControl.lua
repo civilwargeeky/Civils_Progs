@@ -4,7 +4,7 @@
 local checkRate = 10
 local emptyPercent = 0.01
 local fullPercent = .95
-local favorFastCharge = true
+local favorFastCharge = false
 local enginesFile = "dynamoEngines"
 local peripheralsFile = "dynamoBatteries"
 
@@ -23,34 +23,24 @@ local function addEngine(rf, side, data, isColored) --Data is a number, either t
   isColored = false --Not yet supported
   data = data or 15 --Default strength/color
   local toRet = {rf = rf or 80, side = side, data = data, isColored = isColored}
-  print(side)
   toRet.isActive = isOn(toRet, color)
   toRet.id = #engines + 1
   engines[toRet.id] = toRet
 end
 local cells = {}
 local function addCell(side)
-  print("Adding cell")
-  print(side)
-  os.pullEvent()
   local toRet = {side = side, id = #cells+1}
   toRet.handle = peripheral.wrap(side) or error("Peripheral "..side.." failed to wrap")
-  print(toRet.id)
   cells[toRet.id] = toRet
 end
 
 do --This is the file reading portion
   for a, current in pairs({{enginesFile,addEngine},{peripheralsFile,addCell}}) do
-    print("Iter ",a)
     local file = fs.open(current[1],"r") or error("File not found, please use wizard or create "..current[1],0)
     local input = file.readAll()
-    print(input)
-    print("_______")
     if not input or input == "" then error("File empty: "..current[1],0) end
     for line in input:gmatch("[^\n]+") do --Seperates lines
-      print(line)
       if not (line:sub(1,2) == "--") then --If not comment
-        print("got here")
         local toRet = {}
         for entry in line:gmatch("[\"\'_%w]+") do --Matches sets of letters, numbers, quotes, and underscores
           table.insert(toRet,tonumber(entry) or loadstring("return "..entry)()) --This gets numbers as numbers, but still allows non numbers
@@ -60,7 +50,6 @@ do --This is the file reading portion
         --current[2](line) --Better Idea. This 'should' work
       end
     end
-    os.pullEvent()
   end
 end
 
@@ -73,9 +62,6 @@ end
 --Program Part--
 local function getLocalStored(periph) return periph.getEnergyStored("west") end
 local function getLocalMax(periph) return periph.getMaxEnergyStored("west") end
-
-print(getLocalStored(cells[1].handle))
-os.pullEvent()
 
 local function getCellsInfo(fn) --Generic
   local count = 0
@@ -111,7 +97,7 @@ local function getPercent(periph) return getStored(periph)/getMax(periph) end
 local function turnOn(engine)
   if engine.isActive then return false end
   if not color then
-    rs.setOutput(engine.side, true)
+    rs.setAnalogOutput(engine.side, engine.data)
   else --I don't care because screw MFR for breaking
   end
   print("Turning on engine ", engine.id)
@@ -122,7 +108,17 @@ end
 local function turnOff(engine)
   if not engine.isActive then return false end
   if not color then
-    rs.setOutput(engine.side, false)
+    local toSet = 0
+    for a, b in pairs(engines) --This is for setting to the next analog engine
+      if b.side == engine.side then --If we use the same side for analog
+        if b.data >= engine.data then
+          b.isActive = false --We want to confirm that this one is off too
+        elseif b.data > toSet and b.isActive --We want to turn the power to the next lowest engine
+          toSet = b.data
+        end
+      end
+    end
+    rs.setAnalogOutput(engine.side, toSet)
   else --I don't care
   end
   print("Turning off engine ",engine.id)
