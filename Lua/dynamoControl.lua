@@ -109,11 +109,11 @@ local function turnOff(engine)
   if not engine.isActive then return false end
   if not color then
     local toSet = 0
-    for a, b in pairs(engines) --This is for setting to the next analog engine
+    for a, b in pairs(engines) do --This is for setting to the next analog engine
       if b.side == engine.side then --If we use the same side for analog
         if b.data >= engine.data then
           b.isActive = false --We want to confirm that this one is off too
-        elseif b.data > toSet and b.isActive --We want to turn the power to the next lowest engine
+        elseif b.data > toSet and b.isActive then --We want to turn the power to the next lowest engine
           toSet = b.data
         end
       end
