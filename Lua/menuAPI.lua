@@ -49,7 +49,7 @@ local function seperateLines(text) --Seperates multi-line text into a table
   while true do
     local count = 0
     text = originalText
-    if not text:match("[^ ]") then --If there are no non-space characters, you are done
+    if #toRet >= 1 and not text:match("[^ ]") then --If there are no non-space characters, you are done
       toRet[#toRet] = toRet[#toRet]..text:match(" *$") --Get buffer spaces at end
       return toRet, #toRet 
     end 
