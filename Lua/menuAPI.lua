@@ -104,11 +104,11 @@ local upperLines = descriptionLines + titleLines --The title line, descriptions,
 if upperLines > y-3 then error("Top takes up too many lines",2) end --So at least two options are on screen
 local top, bottom = 1, (y-upperLines) --These two are used to determine what options are on the screen right now (through scroll)
 while true do
-  if currIndex <= top and top > 1 then --If index is at top, scroll up
+  while currIndex <= top and top > 1 do --If index is at top, scroll up
     scroll = scroll - 1
     top, bottom = top - 1, bottom - 1
   end
-  if currIndex >= bottom and bottom < #textTable then --If at bottom scroll down. Change to > instead of >= to only do on bottom line. Same for above
+  while currIndex >= bottom and bottom < #textTable do --If at bottom scroll down. Change to > instead of >= to only do on bottom line. Same for above
     scroll = scroll + 1
     top, bottom = top + 1, bottom + 1
   end
