@@ -4,38 +4,64 @@ checkRate = 10
 emptyPercent = 0.01
 fullPercent = .95
 favorFastCharge = true
+enginesFile = "dynamoEngines"
+peripheralsFile = "dynamoBatteries"
 
 
-sides = { front = 1, right = 2, left = 3, back = 4, top = 5, bottom = 6}
-
-local function checkSide(side)
-  if not sides[side] then error("Caller gave side "..tostring(side), 3) end
-  return side
-end
-
-local function isOn(side, color)
-  checkSide(side)
-  if not color then
-    return rs.getOutput(side)
+local function isOn(engine)
+  if not engine.isColored then
+    return rs.getOutput(engine.side)
   else
-    return colors.test(rs.getBundledOutput(side), color)
+    return colors.test(rs.getBundledOutput(side), engine.data)
   end
 end
   
 
 local engines = {} --A table of engines. #1 is top priority and will be used first
-local function addEngine(rf, side, color) --Color can be "false" for regular redstone output
-  local toRet = {rf = rf or 80, side = checkSide(side), color = color}
-  toRet.isActive = isOn(side, color)
+local function addEngine(rf, side, data, isColored) --Data is a number, either the redstone strength or the color.
+  isColored = false --Not yet supported
+  data = data or 15 --Default strength/color
+  local toRet = {rf = rf or 80, side = side, data = data, isColored = isColored}
+  print(side)
+  toRet.isActive = isOn(toRet, color)
   toRet.id = #engines + 1
   engines[toRet.id] = toRet
 end
+cells = {}
+local function addCell(side)
+  print("Adding cell")
+  print(side)
+  os.pullEvent()
+  local toRet = {side = side, id = #cells+1}
+  toRet.handle = peripheral.wrap(side) or error("Peripheral "..side.." failed to wrap")
+  print(toRet.id)
+  cells[toRet.id] = toRet
+end
 
---Eventually this will be in a seperate file
-addEngine(80, "bottom", false)
-addEngine(80, "left", false)
-addEngine(80, "front", false)
-addEngine(90, "top", false)
+do --This is the file reading portion
+  for a, current in pairs({{enginesFile,addEngine},{peripheralsFile,addCell}}) do
+    print("Iter ",a)
+    local file = fs.open(current[1],"r") or error("File not found, please use wizard or create "..current[1],0)
+    local input = file.readAll()
+    print(input)
+    print("_______")
+    if not input or input == "" then error("File empty: "..current[1],0) end
+    for line in input:gmatch("[^\n]+") do --Seperates lines
+      print(line)
+      if not (line:sub(1,2) == "--") then --If not comment
+        print("got here")
+        local toRet = {}
+        for entry in line:gmatch("[\"\'_%w]+") do --Matches sets of letters, numbers, quotes, and underscores
+          table.insert(toRet,tonumber(entry) or loadstring("return "..entry)()) --This gets numbers as numbers, but still allows non numbers
+        end
+        current[2](unpack(toRet)) --Makes a new engine/cell from the parameters
+
+        --current[2](line) --Better Idea. This 'should' work
+      end
+    end
+    os.pullEvent()
+  end
+end
 
 local function engineAt(index)
   if engines[index] then return engines[index] end
@@ -43,13 +69,28 @@ local function engineAt(index)
   elseif index > #engines then return engines[#engines] end
 end
 
-local cell = {side = "back"}
-cell.handle = peripheral.wrap(cell.side) or error("peripheral failed to wrap")
 --Program Part--
-local function getStored(periph) return periph.handle.getEnergyStored("west") end
-local function getMax(periph) return periph.handle.getMaxEnergyStored("west") end
+local function getLocalStored(periph) return periph.getEnergyStored("west") end
+local function getLocalMax(periph) return periph.getMaxEnergyStored("west") end
 
-local function getRate(periph, period)
+print(getLocalStored(cells[1].handle))
+os.pullEvent()
+
+local function getCellsInfo(fn) --Generic
+  local count = 0
+  for a, cell in pairs(cells) do
+    count = count + fn(cell.handle)
+  end
+  return count
+end
+local function getStored()
+  return getCellsInfo(getLocalStored)
+end
+local function getMax()
+  return getCellsInfo(getLocalMax)
+end
+
+local function getRate(periph, period) --This is the main "waiting" part
   local start = getStored(periph)
   local timer, passed = os.startTimer(checkRate), false
   repeat
