@@ -96,13 +96,12 @@ while true do
     if num <= #textTable and num > 0 then
       currIndex = num
     end
-  end
-  if action == "up" and currIndex > 1 then
+  elseif action == "up" and currIndex > 1 then
     currIndex = currIndex - 1
   elseif action == "down" and currIndex < #textTable then
     currIndex = currIndex + 1
   elseif action == "enter" then
-    return currIndex, textTable[currIndex].text
+    return textTable[currIndex].text, textTable[currIndex].key, currIndex
   end
 end
 end
