@@ -505,11 +505,11 @@ until file --WHY DOES IT SAY ATTEMPT TO INDEX NIL!!!
 file.write(toWrite)
 if type(extras) == "table" then
   for a, b in pairs(extras) do
-    file.write(a.." = "..tostring(b))
+    file.write(a.." = "..tostring(b).."\n")
   end
 end
 if turtle.getFuelLevel() ~= math.huge then --Used for location comparing
-  file.write("\nfuelLevel = "..tostring(turtle.getFuelLevel()))
+  file.write("fuelLevel = "..tostring(turtle.getFuelLevel()).."\n")
 end
 file.close()
 end
