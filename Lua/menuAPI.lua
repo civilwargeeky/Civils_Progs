@@ -16,12 +16,13 @@ function prepareTable(tab)
   return toRet
 end
 
-function menu(title, description, textTable, isNumbered, titleAlign, textAlign, prefixCharacter, suffixCharacter, spaceCharacter incrementFunction)
+function menu(title, description, textTable, isNumbered, titleAlign, textAlign, prefixCharacter, suffixCharacter, spaceCharacter, incrementFunction)
 local x, y = term.getSize() --Screen size
+local currIndex, scroll = 1, 0 --currIndex is the item from the table it is on, scroll is how many down it should go.
+local titleLines, descriptionLines = 0,0 --How many lines the title and description take up
 local alignments = { left = "left", center = "center", right = "right" } --Used for checking if alignment is valid
 if not (title and textTable) then error("Requires title and menu list",2) end
 if not type(textTable) == "table" and #textTable >= 1 then error("Menu list must be a table with values",2) end
-if #title > x then error("Title too long",2) end --If the title is longer than a line, program messes up
 if isNumbered == nil then isNumbered = true end --Setting isNumbered default
 titleAlign = alignments[titleAlign] or alignments.center --Default title alignment
 textAlign = alignments[textAlign] or alignments.left --Default options alignment
@@ -42,14 +43,18 @@ local function align(text, alignment) --Used to align text to a certain directio
   error("Invalid Alignment",3) --Three because is only called by output
 end
 local function seperateLines(text) --Seperates multi-line text into a table
+  if type(text) ~= "string" then error("Seperate Lines expects string, got "..type(text),2) end
   local toRet = {}
   local originalText = text --I do this because it may break the gsub if I modify while iterating
   while true do
     local count = 0
     text = originalText
-    if not text:find("%S") then return toRet, #toRet end --If there are no non-space characters, you are done
+    if not string.match(text, "%S") then return toRet, #toRet end --If there are no non-space characters, you are done
     table.insert(toRet, "")
-    for word in text:gmatch("%S+ ?") do --Non space characters with an optional space at the end
+    if #toRet == 1 then --We want to add in buffer spaces at the beginning
+      toRet[1] = toRet[1]..text:match("^ *")
+    end
+    for word in text:gmatch("%S+ *") do --Non space characters with an optional space at the end
       count = count + #word --The one is for the space
       if count <= x or #word > x then  --The second is for emergencies, if the word is longer than a line
         toRet[#toRet] = toRet[#toRet]..word
@@ -62,17 +67,32 @@ local function seperateLines(text) --Seperates multi-line text into a table
 end
 
 local function output(text,y, alignment) --My own term.write with more control
-  local x = align(text, alignment)
-  term.setCursorPos(x,y)
-  term.clearLine()
-  return term.write(text)
+  local originalAlignment, printTab, lines = alignment --Setting locals
+  if type(text) == "table" then --Assuming this is from seperateLines
+    printTab, lines = text, #text
+  else
+    printTab, lines = seperateLines(text)
+  end
+  for i=1, lines do
+    local x
+    if lines > 1 and originalAlignment == "center" then --Simulate text wrapping
+      if i == 1 then alignment = "right"
+      elseif i == lines then alignment = "left"
+      else alignment = "center"
+      end
+    end
+    x = align(printTab[1], alignment)
+    term.setCursorPos(x,y+i-1) ---1 because it will always be at least +1
+    term.clearLine()
+    term.write(printTab[1])
+  end
 end
-local currIndex, descriptionLines, scroll = 1, 0, 0 --currIndex is the item from the table it is on, scroll is how many down it should go.
+title, titleLines = seperateLines(title)
 if description then  --descriptionLines is how many lines the description takes up
-  descriptionLines = print(description); term.clear(); term.setCursorPos(1,1)--This is my way of figuring out how many lines the description is
+  description, descriptionLines = seperateLines(description)
 end
-local upperLines = descriptionLines + 2 --The title line, descriptions, plus extra line
-if upperLines > y-3 then error("Description takes up too many lines",2) end --So at least two options are on screen
+local upperLines = descriptionLines + titleLines --The title line, descriptions, plus extra line
+if upperLines > y-3 then error("Top takes up too many lines",2) end --So at least two options are on screen
 local top, bottom = 1, (y-upperLines) --These two are used to determine what options are on the screen right now (through scroll)
 while true do
   if currIndex <= top and top > 1 then --If index is at top, scroll up
@@ -85,10 +105,8 @@ while true do
   end
   term.clear()
   output(title,1, titleAlign) --Print title
-  if descriptionLines == 1 then --Not an else because we don't want to print nothing
-    output(description,2, titleAlign)
-  elseif descriptionLines > 1 then
-    term.setCursorPos(1,2); print(description)
+  if descriptionLines >= 1 then --Not an else because we don't want to print nothing
+    output(description,titleLines+1, titleAlign)
   end
   for i = 1, math.min(y - upperLines,#textTable) do --The min because may be fewer table entries than the screen is big
     local prefix, suffix = "", "" --Stuff like spaces and numbers
