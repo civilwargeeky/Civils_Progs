@@ -73,19 +73,24 @@ while true do
     incrementFunction = function()                --e.g. You could use redstone on left to increment, right to decrement, front to press enter.
       _, key = os.pullEvent("key")
       if key == 200 then return "up"
-        elseif key == 208 then return "down"
-        elseif key == 28 then return "enter"
+      elseif key == 208 then return "down"
+      elseif key == 28 then return "enter"
+      elseif key >= 2 and key <= 11 then return key-1 --This is for quickly selected a menu option
       end
     end
   end
   action = incrementFunction()
+  if type(action) == number or tonumber(action) then
+    local num = tonumber(action)
+    if num <= #textTable and num > 0 then
+      currIndex = num
+    end
+  end
   if action == "up" and currIndex > 1 then
     currIndex = currIndex - 1
-  end
-  if action == "down" and currIndex < #textTable then
+  elseif action == "down" and currIndex < #textTable then
     currIndex = currIndex + 1
-  end
-  if action == "enter" then
+  elseif action == "enter" then
     return currIndex, textTable[currIndex]
   end
 end
