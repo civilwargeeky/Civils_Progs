@@ -1,6 +1,6 @@
 function titleize(text)
 local x = term.getSize()
-if #text+2 > x then return text end
+if #text+2 > x then return text:upper() end
 text = " "..string.upper(text).." "
 for i=1, math.floor((x-#text)/2) do
   text = "="..text.."="
@@ -39,7 +39,7 @@ end
 local function align(text, alignment) --Used to align text to a certain direction
   if alignment == "left" then return 1 end
   if alignment == "center" then return (x/2)-(#text/2) end
-  if alignment == "right" then return x - #text end
+  if alignment == "right" then return x - #text+1 end
   error("Invalid Alignment",3) --Three because is only called by output
 end
 local function seperateLines(text) --Seperates multi-line text into a table
@@ -49,18 +49,25 @@ local function seperateLines(text) --Seperates multi-line text into a table
   while true do
     local count = 0
     text = originalText
-    if not string.match(text, "%S") then return toRet, #toRet end --If there are no non-space characters, you are done
+    if not text:match("[^ ]") then --If there are no non-space characters, you are done
+      toRet[#toRet] = toRet[#toRet]..text:match(" *$") --Get buffer spaces at end
+      return toRet, #toRet 
+    end 
     table.insert(toRet, "")
     if #toRet == 1 then --We want to add in buffer spaces at the beginning
       toRet[1] = toRet[1]..text:match("^ *")
+      count = #toRet[1]
+      originalText = originalText:sub(#toRet[1]+1)
     end
-    for word in text:gmatch("%S+ *") do --Non space characters with an optional space at the end
+    for word in text:gmatch("[^ ]+ *") do --Non space characters with an optional space(s) at the end
       count = count + #word --The one is for the space
       if count <= x or #word > x then  --The second is for emergencies, if the word is longer than a line
+        local found = word:find("\n")--This makes newLines actually work (hopefully)
+        if found then word = word:sub(1,found) end
         toRet[#toRet] = toRet[#toRet]..word
         originalText = originalText:sub(#word+1) --Sub out the beginning
       else
-        break
+        break --Go to next line
       end
     end
   end
@@ -74,19 +81,15 @@ local function output(text,y, alignment) --My own term.write with more control
     printTab, lines = seperateLines(text)
   end
   for i=1, lines do
-    local x
-    if lines > 1 and originalAlignment == "center" then --Simulate text wrapping
-      if i == 1 then alignment = "right"
-      elseif i == lines then alignment = "left"
-      else alignment = "center"
-      end
-    end
-    x = align(printTab[1], alignment)
+    local x = align(printTab[i], alignment)
     term.setCursorPos(x,y+i-1) ---1 because it will always be at least +1
     term.clearLine()
-    term.write(printTab[1])
+    term.write(printTab[i])
+    --term.write(" Writing to "..tostring(x)..","..tostring(y+i-1).." lines "..tostring(lines)) --Debug
+    --os.pullEvent("char")
   end
 end
+
 title, titleLines = seperateLines(title)
 if description then  --descriptionLines is how many lines the description takes up
   description, descriptionLines = seperateLines(description)
@@ -120,11 +123,13 @@ while true do
   end
   if type(incrementFunction) ~= "function" then --This allows you to have your own custom logic for how to shift up and down and press enter. 
     incrementFunction = function()                --e.g. You could use redstone on left to increment, right to decrement, front to press enter.
-      _, key = os.pullEvent("key")
-      if key == 200 then return "up"
-      elseif key == 208 then return "down"
-      elseif key == 28 then return "enter"
-      elseif key >= 2 and key <= 11 then return key-1 --This is for quickly selected a menu option
+      while true do --So it doesn't redraw every time button pressed
+        _, key = os.pullEvent("key")
+        if key == 200 then return "up"
+        elseif key == 208 then return "down"
+        elseif key == 28 then return "enter"
+        elseif key >= 2 and key <= 11 then return key-1 --This is for quickly selected a menu option
+        end
       end
     end
   end
