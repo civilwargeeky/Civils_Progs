@@ -8,6 +8,14 @@ end
 return text
 end
 
+function prepareTable(tab)
+  local toRet = {}
+  for a,b in pairs(tab) do
+    table.insert(toRet, {key = a, value = b})
+  end
+  return toRet
+end
+
 function menu(title, description, textTable, isNumbered, titleAlign, textAlign, prefixCharacter, suffixCharacter, spaceCharacter incrementFunction)
 local x, y = term.getSize() --Screen size
 local alignments = { left = "left", center = "center", right = "right" } --Used for checking if alignment is valid
