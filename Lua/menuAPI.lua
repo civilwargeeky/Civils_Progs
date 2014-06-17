@@ -8,6 +8,18 @@ end
 return text
 end
 
+function sentenceCaseTable(tab) --Expects a prepared table or sequentially numbered
+  local toRet = {} --So we don't go modifying people's tables
+  for a, b in pairs(tab) do
+    if type(b) == "table" then
+      local toMod = (b.value or b.text) --Priority to value so you can have pretty yet functional tables
+      table.insert(toRet[a], toMod:sub(1,1):upper()..toMod(2))
+    elseif type(b) == "string" then
+      table.insert(toRet[a], b:sub(1,1):upper()..toMod(2))
+    end
+  end
+ end
+      
 function prepareTable(tab)
   local toRet = {}
   for a,b in pairs(tab) do
@@ -79,10 +91,12 @@ local function seperateLines(text) --Seperates multi-line text into a table
   end
 end
 
-local function output(text,y, alignment) --My own term.write with more control
+local function output(text,y, alignment, assumeSingle) --My own term.write with more control
   local originalAlignment, printTab, lines = alignment --Setting locals
   if type(text) == "table" then --Assuming this is from seperateLines
     printTab, lines = text, #text
+  elseif assumeSingle then --Saves from doing seperateLines on all the menu options
+    printTab, lines = {text}, 1
   else
     printTab, lines = seperateLines(text)
   end
@@ -124,8 +138,9 @@ while true do
       elseif textAlign == "left" then for i=1, #prefixCharacter+1 do prefix = " "..prefix end --This helps alignment
       elseif textAlign == "right" then for i=1, #suffixCharacter+1 do suffix  = suffix.." " end --Same as above
     end
-    if not (#(prefix..textTable[i+scroll].text..suffix) <= x) then term.clear(); term.setCursorPos(1,1); error("Menu item "..tostring(i+scroll).." is longer than one line. Cannot Print",2) end
-    output(prefix..textTable[i+scroll].text..suffix, i + upperLines, textAlign)
+    local toPrint = prefix..textTable[i+scroll].text..suffix
+    if #toPrint > x then term.clear(); term.setCursorPos(1,1); error("Menu item "..tostring(i+scroll).." is longer than one line. Cannot Print",2) end
+    output(toPrint, i + upperLines, textAlign, true)
   end
   if type(incrementFunction) ~= "function" then --This allows you to have your own custom logic for how to shift up and down and press enter. 
     incrementFunction = function()                --e.g. You could use redstone on left to increment, right to decrement, front to press enter.
@@ -150,7 +165,7 @@ while true do
   elseif action == "down" and currIndex < #textTable then
     currIndex = currIndex + 1
   elseif action == "enter" then
-    return textTable[currIndex].text, textTable[currIndex].key, currIndex
+    return textTable[currIndex].text, textTable[currIndex].key, currIndex, textTable[currIndex].value
   end
 end
 end
