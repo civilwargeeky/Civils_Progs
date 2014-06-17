@@ -7,7 +7,6 @@ for i=1, math.floor((x-#text)/2) do
 end
 return text
 end
-
 function sentenceCaseTable(tab) --Expects a prepared table or sequentially numbered
   local toRet = {} --So we don't go modifying people's tables
   for a, b in pairs(tab) do
@@ -15,9 +14,10 @@ function sentenceCaseTable(tab) --Expects a prepared table or sequentially numbe
       local toMod = (b.value or b.text) --Priority to value so you can have pretty yet functional tables
       table.insert(toRet[a], toMod:sub(1,1):upper()..toMod(2))
     elseif type(b) == "string" then
-      table.insert(toRet[a], b:sub(1,1):upper()..toMod(2))
+      toRet[a] = b:sub(1,1):upper()..b:sub(2)
     end
   end
+  return toRet
  end
       
 function prepareTable(tab)
@@ -143,16 +143,7 @@ while true do
     output(toPrint, i + upperLines, textAlign, true)
   end
   if type(incrementFunction) ~= "function" then --This allows you to have your own custom logic for how to shift up and down and press enter. 
-    incrementFunction = function()                --e.g. You could use redstone on left to increment, right to decrement, front to press enter.
-      while true do --So it doesn't redraw every time button pressed
-        _, key = os.pullEvent("key")
-        if key == 200 then return "up"
-        elseif key == 208 then return "down"
-        elseif key == 28 then return "enter"
-        elseif key >= 2 and key <= 11 then return key-1 --This is for quickly selected a menu option
-        end
-      end
-    end
+    incrementFunction = defaultMenuKeyHandler--e.g. You could use redstone on left to increment, right to decrement, front to press enter.
   end
   action = incrementFunction()
   if type(action) == number or tonumber(action) then
@@ -168,4 +159,15 @@ while true do
     return textTable[currIndex].text, textTable[currIndex].key, currIndex, textTable[currIndex].value
   end
 end
+end
+
+function defaultMenuKeyHandler()
+  while true do --So it doesn't redraw every time button pressed
+    _, key = os.pullEvent("key")
+    if key == 200 then return "up"
+    elseif key == 208 then return "down"
+    elseif key == 28 then return "enter"
+    elseif key >= 2 and key <= 11 then return key-1 --This is for quickly selected a menu option
+    end
+  end
 end
