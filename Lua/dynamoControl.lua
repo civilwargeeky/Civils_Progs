@@ -1,11 +1,12 @@
 --Designed to control dynamos feeding into an energy cell because they DONT limit themselves.
 --Designed to work with MFR rednet cable
-checkRate = 10
-emptyPercent = 0.01
-fullPercent = .95
-favorFastCharge = true
-enginesFile = "dynamoEngines"
-peripheralsFile = "dynamoBatteries"
+--Made by civilwargeeky
+local checkRate = 10
+local emptyPercent = 0.01
+local fullPercent = .95
+local favorFastCharge = true
+local enginesFile = "dynamoEngines"
+local peripheralsFile = "dynamoBatteries"
 
 
 local function isOn(engine)
@@ -27,7 +28,7 @@ local function addEngine(rf, side, data, isColored) --Data is a number, either t
   toRet.id = #engines + 1
   engines[toRet.id] = toRet
 end
-cells = {}
+local cells = {}
 local function addCell(side)
   print("Adding cell")
   print(side)

@@ -1,7 +1,8 @@
 --Wizard for making dynamoControls!
-enginesFile = "dynamoEngines"
-peripheralsFile = "dynamoBatteries"
-apiFile = "civilsMenuAPI"
+--Made by civilwargeeky
+local enginesFile = "dynamoEngines"
+local peripheralsFile = "dynamoBatteries"
+local apiFile = "civilsMenuAPI"
 
 if not fs.exists(apiFile) then
   print("Getting menu API")
