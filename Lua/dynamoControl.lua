@@ -152,10 +152,12 @@ local function subIndex() if index <= 0 then return false end index = index-1 re
 
 while true do --MAIN LOOP
   for i=1, term.getSize() do write("-") end
+  local percentCharged = getPercent()
   print("Starting loop")
-  print("Percent Charged: ",getPercent(cell))
+  print("Percent Charged: ", percentCharged)
   local rate = getRate(cell, checkRate)
-  if getPercent(cell) < emptyPercent then rate = -5000 end --Assuming that the battery is empty
+  percentCharged = getPercent()
+  if percentCharged < emptyPercent then rate = -5000 end --Assuming that the battery is empty
   if rate == 0 then
     print("Assuming battery at max, turning off to save power")
     turnOff(engineAt(index))
@@ -163,7 +165,7 @@ while true do --MAIN LOOP
   elseif rate > 0 then
     print("Battery charging")
     if favorFastCharge then
-      if getPercent(cell) < fullPercent and favorFastCharge then
+      if percentCharged < fullPercent and favorFastCharge then
         print("Less than full and want fast charge, adding engines")
         while not( rate > (getMax(cell)-getStored(cell))*20*checkRate) and index ~= #engines and favorFastCharge do --Keep adding engines until the rate would instantly fill it, or until we are out of engines
           addIndex()
@@ -178,9 +180,9 @@ while true do --MAIN LOOP
       end
     end
   else
-    if not(getPercent(cell) > fullPercent) then
+    if not(percentCharged > fullPercent) then
     print("Battery draining, trying to stablize")
-      while rate < 0 and index ~= #engines and not(getPercent(cell) > fullPercent) do
+      while rate < 0 and index ~= #engines and not(percentCharged > fullPercent) do
         addIndex()
         rate = rate + (turnOn(engineAt(index)) or 0)
       end
