@@ -60,12 +60,18 @@ local function seperateLines(text) --Seperates multi-line text into a table
       originalText = originalText:sub(#toRet[1]+1)
     end
     for word in text:gmatch("[^ ]+ *") do --Non space characters with an optional space(s) at the end
-      count = count + #word --The one is for the space
-      if count <= x or #word > x then  --The second is for emergencies, if the word is longer than a line
-        local found = word:find("\n")--This makes newLines actually work (hopefully)
-        if found then word = word:sub(1,found) end
+      local toBreak
+      local found = word:find("\n")--This makes newLines actually work (hopefully)
+      if found then
+        word = word:sub(1,found-1)
+        originalText = originalText:sub(1,found-1)..originalText:sub(found+1) --Cut out the newline
+        toBreak = true --If this line should be cut off
+      end
+      count = count + #word --Counts characters so we don't go over limit
+      if count <= x or #word > x then  --The second is for emergencies, if the word is longer than a line, put it here anyways
         toRet[#toRet] = toRet[#toRet]..word
         originalText = originalText:sub(#word+1) --Sub out the beginning
+        if toBreak then break end
       else
         break --Go to next line
       end
