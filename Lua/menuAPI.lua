@@ -41,6 +41,26 @@ local function align(text, alignment) --Used to align text to a certain directio
   if alignment == "right" then return x - #text end
   error("Invalid Alignment",3) --Three because is only called by output
 end
+local function seperateLines(text) --Seperates multi-line text into a table
+  local toRet = {}
+  local originalText = text --I do this because it may break the gsub if I modify while iterating
+  while true do
+    local count = 0
+    text = originalText
+    if not text:find("%S") then return toRet, #toRet end --If there are no non-space characters, you are done
+    table.insert(toRet, "")
+    for word in text:gmatch("%S+ ?") do --Non space characters with an optional space at the end
+      count = count + #word --The one is for the space
+      if count <= x or #word > x then  --The second is for emergencies, if the word is longer than a line
+        toRet[#toRet] = toRet[#toRet]..word
+        originalText = originalText:sub(#word+1) --Sub out the beginning
+      else
+        break
+      end
+    end
+  end
+end
+
 local function output(text,y, alignment) --My own term.write with more control
   local x = align(text, alignment)
   term.setCursorPos(x,y)
@@ -51,9 +71,9 @@ local currIndex, descriptionLines, scroll = 1, 0, 0 --currIndex is the item from
 if description then  --descriptionLines is how many lines the description takes up
   descriptionLines = print(description); term.clear(); term.setCursorPos(1,1)--This is my way of figuring out how many lines the description is
 end
-if descriptionLines > y-4 then error("Description takes up too many lines",2) end --So at least two options are on screen
-local titleLines = descriptionLines + 2 --The title line, descriptions, plus extra line
-local top, bottom = 1, (y-titleLines) --These two are used to determine what options are on the screen right now (through scroll)
+local upperLines = descriptionLines + 2 --The title line, descriptions, plus extra line
+if upperLines > y-3 then error("Description takes up too many lines",2) end --So at least two options are on screen
+local top, bottom = 1, (y-upperLines) --These two are used to determine what options are on the screen right now (through scroll)
 while true do
   if currIndex <= top and top > 1 then --If index is at top, scroll up
     scroll = scroll - 1
@@ -70,7 +90,7 @@ while true do
   elseif descriptionLines > 1 then
     term.setCursorPos(1,2); print(description)
   end
-  for i = 1, math.min(y - titleLines,#textTable) do --The min because may be fewer table entries than the screen is big
+  for i = 1, math.min(y - upperLines,#textTable) do --The min because may be fewer table entries than the screen is big
     local prefix, suffix = "", "" --Stuff like spaces and numbers
     if isNumbered then prefix = tostring(textTable[i+scroll].key)..spaceCharacter.." " end --Attaches a number to the front
     if i + scroll == currIndex then prefix = prefixCharacter.." "..prefix; suffix = suffix.." "..suffixCharacter  --Puts brackets on the one highlighted
@@ -78,7 +98,7 @@ while true do
       elseif textAlign == "right" then for i=1, #suffixCharacter+1 do suffix  = suffix.." " end --Same as above
     end
     if not (#(prefix..textTable[i+scroll].text..suffix) <= x) then term.clear(); term.setCursorPos(1,1); error("Menu item "..tostring(i+scroll).." is longer than one line. Cannot Print",2) end
-    output(prefix..textTable[i+scroll].text..suffix, i + titleLines, textAlign)
+    output(prefix..textTable[i+scroll].text..suffix, i + upperLines, textAlign)
   end
   if type(incrementFunction) ~= "function" then --This allows you to have your own custom logic for how to shift up and down and press enter. 
     incrementFunction = function()                --e.g. You could use redstone on left to increment, right to decrement, front to press enter.
