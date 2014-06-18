@@ -54,8 +54,8 @@ local function align(text, alignment) --Used to align text to a certain directio
   if alignment == "right" then return x - #text+1 end
   error("Invalid Alignment",3) --Three because is only called by output
 end
-local function seperateLines(text) --Seperates multi-line text into a table
-  if type(text) ~= "string" then error("Seperate Lines expects string, got "..type(text),2) end
+local function seperateLines(text) --Separates multi-line text into a table
+  if type(text) ~= "string" then error("Separate Lines expects string, got "..type(text),2) end
   local toRet = {}
   local originalText = text --I do this because it may break the gsub if I modify while iterating
   while true do

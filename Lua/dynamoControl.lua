@@ -39,7 +39,7 @@ do --This is the file reading portion
     local file = fs.open(current[1],"r") or error("File not found, please use wizard or create "..current[1],0)
     local input = file.readAll()
     if not input or input == "" then error("File empty: "..current[1],0) end
-    for line in input:gmatch("[^\n]+") do --Seperates lines
+    for line in input:gmatch("[^\n]+") do --Separates lines
       if not (line:sub(1,2) == "--") then --If not comment
         local toRet = {}
         for entry in line:gmatch("[\"\'_%w]+") do --Matches sets of letters, numbers, quotes, and underscores
@@ -141,7 +141,7 @@ local function getMaxOutput()
   return toRet
 end
 
-for i=1, #engines do --Maybe make this smarter later. I don't want nonsequential engines on
+for i=1, #engines do --Maybe make this smarter later. I don't want non sequential engines on
   turnOff(engineAt(i))
 end
 
@@ -172,7 +172,7 @@ while true do --MAIN LOOP
           rate = rate + (turnOn(engineAt(index)) or 0)
         end
       else
-        print("More than full, removing unnessesary enginess")
+        print("More than full, removing unnecessary engines")
         while rate > engineAt(index).rf do
           rate = rate - (turnOff(engineAt(index)) or 0)
           subIndex()
@@ -181,7 +181,7 @@ while true do --MAIN LOOP
     end
   else
     if not(percentCharged > fullPercent) then
-    print("Battery draining, trying to stablize")
+    print("Battery draining, trying to stabilize")
       while rate < 0 and index ~= #engines and not(percentCharged > fullPercent) do
         addIndex()
         rate = rate + (turnOn(engineAt(index)) or 0)
