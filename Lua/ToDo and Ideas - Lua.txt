@@ -99,6 +99,11 @@ How things might work:
     Maybe just have it be a centered menu with no identifiers (or only a small one), so they can be scrolled and stuff.
   You could reuse both the menu API and the arguments system from other projects. Also, you may look into using your colorPrint api as well for menus It would be cool
   
+  Each menu set is intricately tied with a table. e.g. The table controls all that goes on for that context menu, and just happens to have .text fields for all elements.
+  The table would be passed a "parent table" by the previous menu so that each table can have a back button.
+  
+  In menu api, add in that each element can have a color and background color: either for the whole line or just where the text is.
+  
 Way in future: Add session persistence for setups
 
 Random future thoughts: Maybe make more seamless. Have an arg/option to make calling the program just start quarry with additional args supplied so like "shell -dim 5 5 5" would do the same as quarry
