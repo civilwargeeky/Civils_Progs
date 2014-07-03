@@ -122,18 +122,18 @@ Things for 3.5.3:
 Things for 3.5.4:
   Organize all the things! Everything is so messy right now...
   Refactor quarryReceiver so that everything is generalized into classes. This will lead to having multiple screens: each in their own class with their own colors and attributes.
-  Take out all the "str"s in the main loop of reveiver
+  Take out all the "str"s in the main loop of receiver
   
 Things for 3.5.5:
   Maybe, on bottom line of receiver, have a couple buttons for drop, return, etc.
     Ooh! Maybe have "buttonHandler" table of functions that would make, place, activate, and deactivate buttons.
   
 Things to add for quarry version 3.6.0 (After rednet update and shell is done):
-  Add support for mods. Like openperipheral chest finding.
+  Add support for mods. Like open peripheral chest finding.
   Improve end of layer logic. You should be able to just have it stop at the end of the layer and go down three with minimal hassle.
   Fix up and down functions. They may work, and they may be clever, but they are really dumb.
   Maybe have a "-autoResume" or "-autoRestore" parameter with string argument of what to rename other original startup to
-  Maybe have seperate "goDown" and "goUp" parameters
+  Maybe have separate "goDown" and "goUp" parameters
     Or: Maybe just have an "offset" variable that could be positive or negative. -40 would go down 40 before it starts the quarry. Inverted or no.
   Maybe have an option to change the home position. Like at 1,1,1 instead of 0,1,1. You could just replace all the "goto 1,1,1 goto 0,1,1" with a "go home" command
   
@@ -170,10 +170,10 @@ Idea for a track layer:
 Interface:
   Turtle will read track parameters from a file. The program will parse the file and record how much it has done for persistence.
   Files will read something like this: In this example, we want regular and powered tracks placed along a route, with torches placed periodically and redstone torches placed under the powered rails.
-    define redstone 3 1 1 --redstone torches are type 3 in enderchest id 1 slot 1(for narcicistic turtles)
-    define torch 4 1 2 --torches are type 4 in enderchest id 1 slot 2
-    define rail 1 1 3-7 --rail type 1 is in enderchest 1 slots 3 through 7
-    define rail 2 1 8-10 powered --rail type 2 is in enderchest 1 slots 8-9
+    define redstone 3 1 1 --redstone torches are type 3 in ender chest id 1 slot 1(for narcissistic turtles)
+    define torch 4 1 2 --torches are type 4 in ender chest id 1 slot 2
+    define rail 1 1 3-7 --rail type 1 is in ender chest 1 slots 3 through 7
+    define rail 2 1 8-10 powered --rail type 2 is in ender chest 1 slots 8-9
     forward 100 3 2 15 1 --Go forward 100 blocks, alternating 3 track of type 2 and 15 track of type 1
     zigzag 20 1 1 --Do the "zigzag" function with repeating 1 track of type 1
     slope 20 5 up 4 1 1 2 --Slope function (maybe just pass the last arguments to move function), 20 blocks long, 1 block for every 5 blocks forward with 4 regular tracks, then a powered track
@@ -184,10 +184,10 @@ Function:
   The turtle will first parse the specified configuration as a set of directions.
   Core concepts:
     Turtle will keep track of inventory (maybe not use full stacks of items for keeping purposes)
-    Turtle will have an enderchest to obtain resupplies (test if you can keep one item, then just pull all from chest)
+    Turtle will have an ender chest to obtain resupplies (test if you can keep one item, then just pull all from chest)
       If above does not work properly, turtle may be narcissistic and pull items from certain slots
     Turtle will work out where it needs to place redstone torches for optimum powered rail coverage, and will smartly place them (know when it can't)
-    File making system will be awesome, and may eventually have a gui for making track systems.
+    File making system will be awesome, and may eventually have a GUI for making track systems.
     Just make the system as robust as possible.
 
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
@@ -210,12 +210,12 @@ Each item will be brought in from an external file in a folder. These files will
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 
 Ideas for minecraft word:
-  Completely seperate the data from the visual. The data will conatain all of the lines (seperated by line breaks), and the visual will handle printing it in a formatted way for reading.
+  Completely separate the data from the visual. The data will contain all of the lines (separated by line breaks), and the visual will handle printing it in a formatted way for reading.
   Some day...
   
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 
-Idea for a modpack
+Idea for a mod pack
   Make a python script that will download mods from a list of urls on pastebin
   The pastebin will be updated regularly by another python script
   So when they start it up, it will check the pastebin, compare it to the mods already had (maybe), then download new mods and put them in the right folder.

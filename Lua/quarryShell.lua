@@ -92,37 +92,68 @@ local function printPause(wait, ...)
   print(...)
   sleep(wait)
 end
-  
 
-main = {
-  title = "Welcome to Quarry Shell",
-  { text = "Option 1",
-    action = nil,
-    child = {
-      title = "Inner test",
-      { text = "Sub 1",
-        action  = {printPause, 3, "This works!"},
-      },
-      { text = "Back",
-        action = "return",
-      }
-    }
-  },
-  { text = "Exit",
-    action = {exit},
-  }
-}
+local menuItem = {__index = menuItem} --For class
+function menuItem:new(text, ...)
+  toRet = {text = text}
+  action = {...}
+  if action[1] == "return" then
+    toRet.action = "return"
+  elseif type(action[1]) == "table" then
+    toRet.child = action[1]
+  elseif #action > 0 then --We want to allow for nil actions, in case of table and linking later
+    toRet.action = action
+  end
+  setmetatable(toRet, self)
+  return toRet
+end
+
+local menuList = {} --For class
+function menuList:new(title, description)
+  toRet = {title = title, description = desctiption, class = "menuList"} --Class is to see if elements of a menu contain menus
+  setmetatable(toRet, self)
+  self.__index = self
+  return toRet
+end
+function menuList:link(tab, index) self[index or #self].child = tab; tab.parent = self return tab end
+function menuList:addElement(...) 
+  local tab = {...}
+  if type(tab[1]) ~= "table" then
+    table.insert(self, menuItem:new(...))
+  else
+    table.insert(self, tab[1])
+  end
+  return self
+end
+function menuList:addBack(text) self:addElement(menuItem:new(text or "Back", "return")); return self end
 
 
-local currentTab, parent = main
+
+local main = menuList:new("Welcome to Quarry Shell")
+main:addElement("Option 1"):link(menuList:new("Inner Test"))
+  :addElement("Sub 1", printPause,3, "Works!")
+  :addElement("Sub 2"):link(menuList:new("Far Out"))
+    :addElement("Way far out man")
+    :addElement("So far out"):link(menuList:new("Further out"))
+      :addElement("test")
+      :addBack().parent
+    :addElement("Tests of things", printPause, 2, "Woah")
+    :addBack().parent
+  :addBack()
+main:addElement("Option 2")
+main:addBack("Exit")
+
+local currentTab = main
 while true do
-  local text, index = menu.menu(currentTab.title, "", currentTab, false)
+  local text, index = menu.menu(currentTab.title, currentTab.description or "", currentTab, false)
   local selection = currentTab[index]
-  if not selection.action then
-    parent = currentTab
-    currentTab = selection.child
+  if not selection.action then --Assume it has a child
+    if selection.child then
+      local parent = currentTab
+      currentTab = selection.child
+    end
   elseif selection.action == "return" then
-    currentTab = parent or exit()
+    currentTab = currentTab.parent or exit()
   else
     local tab = copyTab(selection.action) --Don't want to be popping from a menu
     local func = table.remove(tab, 1) --Take out the function part
