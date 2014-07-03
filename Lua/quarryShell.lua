@@ -9,3 +9,45 @@ These will be registered in a config file specific to this program.]]
 --Changing global namespace to avoid conflicts
 globalTable = nil; _G.globalTable = {}; setmetatable(globalTable, {__index = getfenv(1)}); setfenv(1,globalTable)
 
+local fileNames = {
+  menuAPI = "menuAPI.lua"
+}
+local gettingAPI = {
+  version = "1.0.0"
+  pastebin = "4ptKaSQp"
+}
+
+--Basic screen functions
+  local doPrintDebug = true --For debugging messages
+  local function clearSet(x,y) term.clear(); term.setCursorPos(x or 1, y or 1) end
+  local function debug(...)
+    if doPrintDebug then
+      return print(...)
+    end
+  end
+--Acquiring menu api
+local requiresDownload = false
+if not fs.exists(fileNames.menuAPI) then
+  requiresDownload = true
+else
+  local file = fs.open(fileNames.menuAPI,"w")
+  if not file or file.readAll():match("Version (%d+%.%d+%.%d+)") ~= gettingAPI.version then --If we don't have the proper version, redownload stuff
+    requiresDownload = true
+  end
+  if file then file.close() end --Stupid file might not exist stuff
+end
+if requiresDownload then
+  debug("Downloading API")
+  if not http then --If we can't download it
+    clearSet()
+    print("HTTP API not enabled. For this program to work, go to my pastebin and download the menu api as ",fileNames.menuAPI)
+    error("",0)
+  end
+  shell.run("pastebin get ",gettingAPI.pastebin)
+  if not fs.exists(fileNames.menuAPI) then --If pastebin get failed
+    print("API Failed to download.")
+    print("Sorry, but this program cannot work without it. Try again later")
+    error("",0)
+  end
+  debug("API Successfully downloaded")
+end
