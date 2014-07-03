@@ -43,7 +43,7 @@ logExtension = "" --The extension of the file (e.g. ".txt") [Default ""]
 startDown = 0 --How many blocks to start down from the top of the mine [Default 0]
 enderChestEnabled = false --Whether or not to use an ender chest [Default false]
 enderChestSlot = 16 --What slot to put the ender chest in [Default 16]
-oreQuarry = false --Enables ore quarry functionailty [Default false]
+oreQuarry = false --Enables ore quarry functionality [Default false]
 dumpCompareItems = true --If ore quarry, the turtle will dump items compared to (like cobblestone) [Default true]
 --Standard number slots for fuel (you shouldn't care)
 fuelTable = { --Will add in this amount of fuel to requirement.
@@ -306,7 +306,7 @@ if not(turtle or tArgs["help"] or tArgs["-help"] or tArgs["-?"] or tArgs["?"]) t
 end
 
 if tArgs["help"] or tArgs["-help"] or tArgs["-?"] or tArgs["?"] then
-  print("You have selected help, press any key to continue"); print("Use arrow keys to naviate, q to quit"); os.pullEvent("key")
+  print("You have selected help, press any key to continue"); print("Use arrow keys to navigate, q to quit"); os.pullEvent("key")
   local pos = 1
   local key = 0
   while pos <= #help and key ~= keys.q do
@@ -497,7 +497,7 @@ for a,b in pairs(getfenv(1)) do
     end
   end
 end
-toWrite = toWrite.."doCheckFuel = false\n" --It has already used fuel, so calculation unnesesary
+toWrite = toWrite.."doCheckFuel = false\n" --It has already used fuel, so calculation unnecessary
 local file
 repeat
   file = fs.open(saveFile,"w")
@@ -653,7 +653,7 @@ if oreQuarry then
     if ({os.pullEvent("char")})[2] ~= "y" then error("",0) end
   end
 else
-  dumpCompareItems = false --If not an ore quarry, this should definately be false
+  dumpCompareItems = false --If not an ore quarry, this should definitely be false
   if enderChestSlot == 1 then
     dumpSlots[2] = true
   else
@@ -913,7 +913,7 @@ function getRep(which, list) --Gets a representative slot of a type. Expectation
   end
   return false
 end
-function assignTypes(types, count) --The parameters allow a preexisting table to be used, like a table from the origianl compareSlots...
+function assignTypes(types, count) --The parameters allow a preexisting table to be used, like a table from the original compareSlots...
   types, count = types or {1}, count or 1 --Table of types and current highest type
   for i=1, 16 do
     if turtle.getItemCount(i) > 0 then 
@@ -971,7 +971,7 @@ function count(add) --Done any time inventory dropped and at end, param is add o
   for i=1, numTypes do
     if (select(getRep(i, rawTypes)) or true) and turtle.refuel(0) then --Selects the rep slot, checks if it is fuel
       iterate(i, rawTypes, 2) --This type is fuel
-    elseif dumpSlots[getRep(i,initialTypes)] then --If the rep of this slot is a dump item. This is intitial types so that the rep is in dump slots
+    elseif dumpSlots[getRep(i,initialTypes)] then --If the rep of this slot is a dump item. This is initial types so that the rep is in dump slots
       iterate(i, rawTypes, 1) --This type is cobble/filler
     else
       iterate(i, rawTypes, 3) --This type is other
@@ -1545,7 +1545,7 @@ mine(not lastLayer or (doDigDown and lastLayer), not lastLayer or (doDigUp and l
 end ---------------Length End-------
 if zPos ~= z then --If not on last row of section
   local func
-  if rowCheck == true then --Swithcing to next row
+  if rowCheck == true then --Switching to next row
   func = "right"; rowCheck = false; else func = false; rowCheck = true end --Which way to turn
     eventAdd("endOfRowTurn", zPos, facing , {not lastLayer or (doDigDown and lastLayer), not lastLayer or (doDigUp and lastLayer)}) --The table is passed to the mine function
     runAllEvents()
