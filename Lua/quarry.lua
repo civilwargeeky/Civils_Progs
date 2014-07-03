@@ -568,8 +568,13 @@ if doCheckFuel and checkFuel() < neededFuel then
   while checkFuel() <= neededFuel do
     currSlot = currSlot + 1
     select(currSlot)
+    if currSlot ~= 1 and not turtle.refuel(0) then --If its not the first slot, and not fuel, go back to start
+      currSlot = 1; select(currSlot)
+    end
     updateScreen()
-    while turtle.getItemCount(currSlot) == 0 do sleep(1.5) end
+    while turtle.getItemCount(currSlot) == 0 do
+      sleep(1.5)
+    end
     repeat
       local previous = checkFuel()
       turtle.refuel(1)
