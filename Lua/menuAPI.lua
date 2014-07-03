@@ -1,3 +1,6 @@
+--Menu API made by Civilwargeeky
+--Version 1.0.0
+
 function titleize(text)
 local x = term.getSize()
 if #text+2 > x then return text:upper() end
