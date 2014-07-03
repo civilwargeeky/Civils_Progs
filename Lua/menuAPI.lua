@@ -1,5 +1,5 @@
 --Menu API made by Civilwargeeky
---Version 1.0.0
+--Version 1.0.1
 
 function titleize(text)
 local x = term.getSize()
@@ -148,7 +148,7 @@ while true do
   if type(incrementFunction) ~= "function" then --This allows you to have your own custom logic for how to shift up and down and press enter. 
     incrementFunction = defaultMenuKeyHandler--e.g. You could use redstone on left to increment, right to decrement, front to press enter.
   end
-  action = incrementFunction()
+  action = incrementFunction(currIndex, #textTable)
   if type(action) == number or tonumber(action) then
     local num = tonumber(action)
     if num <= #textTable and num > 0 then
@@ -164,11 +164,15 @@ while true do
 end
 end
 
-function defaultMenuKeyHandler()
+function defaultMenuKeyHandler(index, maxIndex)
   while true do --So it doesn't redraw every time button pressed
     _, key = os.pullEvent("key")
-    if key == 200 then return "up"
-    elseif key == 208 then return "down"
+    if key == 200 then 
+      if index == 1 then return maxIndex end --Go to bottom if at top
+      return "up"
+    elseif key == 208 then
+      if index == maxIndex then return 1 end --Go to top if at bottom
+      return "down"
     elseif key == 28 then return "enter"
     elseif key >= 2 and key <= 11 then return key-1 --This is for quickly selected a menu option
     end
