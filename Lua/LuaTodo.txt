@@ -115,6 +115,8 @@ Changelog so far:
   In saveProgress, fixed that extras would not be followed by a newLine
   In refuel, turtle now will go back start of inventory if item isn't fuel. Not pretty, but it will work ok
 
+  Cool Idea, not sure when:
+    maybe look for multiple "-forcePrompt setting" parameters, and each time one is found, add it to a table. When you do addParam function, check if on force prompt table, then prompt if so.
 Things for 3.5.3:
   Test what happens when turtle is out of fuel.
   In saveProgres, fix brute forcing the saveFile open
