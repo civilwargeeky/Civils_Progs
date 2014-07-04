@@ -29,7 +29,7 @@ Will feature an interactive editor for configurations. It will be just like any 
 Option: Either interactive editor or raw editor. Raw editor will just be a file that will be parsed and loaded as parameters.
 
 Technical idea:
-  Definately a standard menu design. Have different types and have menu functions for up, down, enter, back, selct index. This will make the menus really cool and seamless.
+  Definitely a standard menu design. Have different types and have menu functions for up, down, enter, back, selct index. This will make the menus really cool and seamless.
   So have a menu that interacts with different menu objects that can do different things if they are selected, clicked, etc.
 
 "Then I have a plan for making an installer that will perform various tasks like installing latest versions, 
@@ -58,7 +58,7 @@ Menu Plans (w/ sub menu):
     Edit
       Menu
     New
-  Themes (If advanced turtle/computer) --These will load a theme for the shell or reciever.
+  Themes (If advanced turtle/computer) --These will load a theme for the shell or receiver.
     Shell Themes
       Menu of installed
     Receiver Themes

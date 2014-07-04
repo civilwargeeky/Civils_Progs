@@ -14,8 +14,8 @@ local fileNames = {
   workingDirectory = "quarryResources",
   menuAPI = "menuAPI.lua",
 }
-local gettingAPI = {
-  version = "1.0.0",
+local gettingMenu = {
+  version = "1.0.1",
   pastebin = "4ptKaSQp",
 }
 --Setting directory
@@ -59,7 +59,7 @@ if not fs.exists(addDir(fileNames.menuAPI)) then
 else
   debug("API exists")
   local file = fs.open(addDir(fileNames.menuAPI),"r")
-  if not file or file.readAll():match("Version (%d+%.%d+%.%d+)") ~= gettingAPI.version then --If we don't have the proper version, redownload stuff
+  if not file or file.readAll():match("Version (%d+%.%d+%.%d+)") ~= gettingMenu.version then --If we don't have the proper version, redownload stuff
     debug("Improper API Version, downloading latest")
     requiresDownload = true
   end
@@ -73,7 +73,7 @@ if requiresDownload then
     exit(true)
   end
   if fs.exists(addDir(fileNames.menuAPI)) then fs.delete(addDir(fileNames.menuAPI)) end
-  shell.run("pastebin get ",gettingAPI.pastebin," ",fileNames.menuAPI) --No addDir because pastebin puts in working directory
+  shell.run("pastebin get ",gettingMenu.pastebin," ",fileNames.menuAPI) --No addDir because pastebin puts in working directory
   if not fs.exists(addDir(fileNames.menuAPI)) then --If pastebin get failed
     print("API Failed to download.")
     print("Sorry, but this program cannot work without it. Try again later")
@@ -87,13 +87,8 @@ local menu = {}
 os.run(menu, addDir(fileNames.menuAPI))
 if menu.menu then debug("Menu API loaded successfully") end
 
-
-local function printPause(wait, ...)
-  print(...)
-  sleep(wait)
-end
-
-local menuItem = {__index = menuItem} --For class
+--Menu Item Class
+local menuItem = {} --For class
 function menuItem:new(text, ...)
   toRet = {text = text}
   action = {...}
@@ -105,9 +100,15 @@ function menuItem:new(text, ...)
     toRet.action = action
   end
   setmetatable(toRet, self)
+  self.__index = self
   return toRet
 end
-
+function menuItem:run()
+  if type(self.action) ~= "table" then return end
+  local tab = copyTab(self.action)
+  return table.remove(tab, 1)(unpack(tab))
+end
+--Menu List Class
 local menuList = {} --For class
 function menuList:new(title, description)
   toRet = {title = title, description = desctiption, class = "menuList"} --Class is to see if elements of a menu contain menus
@@ -126,9 +127,10 @@ function menuList:addElement(...)
   return self
 end
 function menuList:addBack(text) self:addElement(menuItem:new(text or "Back", "return")); return self end
+function menuList:setTemp() menuList.temp = self; return self end --This is so you can break a chain, then come back to it
 
 
-
+--Defining main menu tree
 local main = menuList:new("Welcome to Quarry Shell")
 main:addElement("Option 1"):link(menuList:new("Inner Test"))
   :addElement("Sub 1", printPause,3, "Works!")
@@ -136,8 +138,13 @@ main:addElement("Option 1"):link(menuList:new("Inner Test"))
     :addElement("Way far out man")
     :addElement("So far out"):link(menuList:new("Further out"))
       :addElement("test")
-      :addBack().parent
-    :addElement("Tests of things", printPause, 2, "Woah")
+      :addBack().parent:setTemp()
+    if math.random(2) == 1 then
+      menuList.temp:addElement("Supra tests", printPause, 3, "I'm the best")
+    else
+      menuList.temp:addElement("Tests of things", printPause, 2, "Woah")
+    end
+    menuList.temp
     :addBack().parent
   :addBack()
 main:addElement("Option 2")
@@ -155,9 +162,10 @@ while true do
   elseif selection.action == "return" then
     currentTab = currentTab.parent or exit()
   else
-    local tab = copyTab(selection.action) --Don't want to be popping from a menu
-    local func = table.remove(tab, 1) --Take out the function part
-    func(unpack(tab)) --Pass everything else as arguments
+    --local tab = copyTab(selection.action) --Don't want to be popping from a menu
+    --local func = table.remove(tab, 1) --Take out the function part
+    --func(unpack(tab)) --Pass everything else as arguments
+    selection:run()
   end
   
 end
