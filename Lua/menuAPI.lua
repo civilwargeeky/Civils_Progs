@@ -31,34 +31,9 @@ function prepareTable(tab)
   return toRet
 end
 
-function menu(title, description, textTable, isNumbered, titleAlign, textAlign, prefixCharacter, suffixCharacter, spaceCharacter, incrementFunction)
-local x, y = term.getSize() --Screen size
-local currIndex, scroll = 1, 0 --currIndex is the item from the table it is on, scroll is how many down it should go.
-local titleLines, descriptionLines = 0,0 --How many lines the title and description take up
-local alignments = { left = "left", center = "center", right = "right" } --Used for checking if alignment is valid
-if not (title and textTable) then error("Requires title and menu list",2) end
-if not type(textTable) == "table" and #textTable >= 1 then error("Menu list must be a table with values",2) end
-if isNumbered == nil then isNumbered = true end --Setting isNumbered default
-titleAlign = alignments[titleAlign] or alignments.center --Default title alignment
-textAlign = alignments[textAlign] or alignments.left --Default options alignment
-prefixCharacter = prefixCharacter or "["
-suffixCharacter = suffixCharacter or "]"
-spaceCharacter = spaceCharacter or "."
-for i=1, #textTable do
-  if type(textTable[i]) ~= "table" then 
-    textTable[i] = {text = textTable[i]} --If it is given without key and value pairs
-  end
-  textTable[i].text = textTable[i].text or textTable[i].value --This allows you to have tables of text, function pairs. So my function returns 1, and you call input[1].func()
-  textTable[i].key = textTable[i].key or i
-end
-local function align(text, alignment) --Used to align text to a certain direction
-  if alignment == "left" then return 1 end
-  if alignment == "center" then return (x/2)-(#text/2) end
-  if alignment == "right" then return x - #text+1 end
-  error("Invalid Alignment",3) --Three because is only called by output
-end
-local function seperateLines(text) --Separates multi-line text into a table
+function separateLines(text, x) --Separates multi-line text into a table
   if type(text) ~= "string" then error("Separate Lines expects string, got "..type(text),2) end
+  if type(x) ~= "number" then x = term.getSize() end
   local toRet = {}
   local originalText = text --I do this because it may break the gsub if I modify while iterating
   while true do
@@ -94,14 +69,41 @@ local function seperateLines(text) --Separates multi-line text into a table
   end
 end
 
+function menu(title, description, textTable, isNumbered, titleAlign, textAlign, prefixCharacter, suffixCharacter, spaceCharacter, incrementFunction)
+local x, y = term.getSize() --Screen size
+local currIndex, scroll = 1, 0 --currIndex is the item from the table it is on, scroll is how many down it should go.
+local titleLines, descriptionLines = 0,0 --How many lines the title and description take up
+local alignments = { left = "left", center = "center", right = "right" } --Used for checking if alignment is valid
+if not (title and textTable) then error("Requires title and menu list",2) end
+if not type(textTable) == "table" and #textTable >= 1 then error("Menu list must be a table with values",2) end
+if isNumbered == nil then isNumbered = true end --Setting isNumbered default
+titleAlign = alignments[titleAlign] or alignments.center --Default title alignment
+textAlign = alignments[textAlign] or alignments.left --Default options alignment
+prefixCharacter = prefixCharacter or "["
+suffixCharacter = suffixCharacter or "]"
+spaceCharacter = spaceCharacter or "."
+for i=1, #textTable do
+  if type(textTable[i]) ~= "table" then 
+    textTable[i] = {text = textTable[i]} --If it is given without key and value pairs
+  end
+  textTable[i].text = textTable[i].text or textTable[i].value --This allows you to have tables of text, function pairs. So my function returns 1, and you call input[1].func()
+  textTable[i].key = textTable[i].key or i
+end
+local function align(text, alignment) --Used to align text to a certain direction
+  if alignment == "left" then return 1 end
+  if alignment == "center" then return (x/2)-(#text/2) end
+  if alignment == "right" then return x - #text+1 end
+  error("Invalid Alignment",3) --Three because is only called by output
+end
+
 local function output(text,y, alignment, assumeSingle) --My own term.write with more control
   local originalAlignment, printTab, lines = alignment --Setting locals
-  if type(text) == "table" then --Assuming this is from seperateLines
+  if type(text) == "table" then --Assuming this is from separateLines
     printTab, lines = text, #text
-  elseif assumeSingle then --Saves from doing seperateLines on all the menu options
+  elseif assumeSingle then --Saves from doing separateLines on all the menu options
     printTab, lines = {text}, 1
   else
-    printTab, lines = seperateLines(text)
+    printTab, lines = separateLines(text)
   end
   for i=1, lines do
     local x = align(printTab[i], alignment)
@@ -113,9 +115,9 @@ local function output(text,y, alignment, assumeSingle) --My own term.write with 
   end
 end
 
-title, titleLines = seperateLines(title)
+title, titleLines = separateLines(title)
 if description then  --descriptionLines is how many lines the description takes up
-  description, descriptionLines = seperateLines(description)
+  description, descriptionLines = separateLines(description)
 end
 local upperLines = descriptionLines + titleLines --The title line, descriptions, plus extra line
 if upperLines > y-3 then error("Top takes up too many lines",2) end --So at least two options are on screen

@@ -6,6 +6,18 @@ IDEA: You can have multiple different config files so you could say "shell quarr
 These will be registered in a config file specific to this program.]]
 --Will have optional parameter of "-quarry" to just run a quarry from the config file.
 
+--List of Menu Items this needs to implement:
+--[[
+  1. Configurations - Running a quarry configuration from a file, editing and making new configurations dynamically from parameters
+  2. Themes - Load receiver with themes (once implemented), reset shell with themes (once implemented in menu API)
+  3. Read logs from quarry
+  4. Update Programs (If not, title "Updates", if update, title "!!!Updates Available!!!")
+     at start of program, will go through all the registered files and check version numbers, including the shell.
+     If the shell needs an update, it will write a file to replace itself and prompt to reboot the computer. The new program will be called with a "-removeTemp" param to remove the startup
+  5. Register programs so that the shell will know where things are. Programs can also be downloaded here
+  6. Misc Settings
+]]
+
 --Changing global namespace to avoid conflicts
 globalTable = nil; _G.globalTable = {}; setmetatable(globalTable, {__index = getfenv(1)}); setfenv(1,globalTable)
 
@@ -128,6 +140,8 @@ function menuList:addElement(...)
 end
 function menuList:addBack(text) self:addElement(menuItem:new(text or "Back", "return")); return self end
 function menuList:setTemp() menuList.temp = self; return self end --This is so you can break a chain, then come back to it
+
+
 
 
 --Defining main menu tree
