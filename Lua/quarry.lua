@@ -523,16 +523,31 @@ local yMult = layers --This is basically a smart y/3 for movement
 local moveVolume = (area * yMult) --Kept for display percent
 --Calculating Needed Fuel--
 do --Because many local variables unneeded elsewhere
-  local numItems = uniqueExtras --Convenience
-  local itemSize = extrasStackSize
   local changeYFuel = 2*(y + startDown)
   local dropOffSupplies = 2*(x + z + y + startDown) --Assumes turtle as far away as possible, and coming back
-  local frequency = math.floor(((volume/(64*(16-numItems))) ) --This is complicated: volume / inventory space of turtle, defined as (16-num unique stacks)
-                                 * (layers/y)) --This is the ratio of height to actual height mined. Close to 1/3 usually, so divide above by 3
-  if enderChestEnabled then frequency = 0 end
-  neededFuel = moveVolume + changeYFuel + frequency * dropOffSupplies
+  local frequency = math.ceil(((moveVolume/(64*(15-uniqueExtras) + uniqueExtras)) ) ) --This is complicated: volume / inventory space of turtle, defined as 64*full stacks + 1 * unique stacks.
+                                                                                     --max of 15 full stacks because once one item is picked up, slot is "full". Ceil to count for initial back and forth
+  if enderChestEnabled then frequency = 0 end --Never goes back to start
+  neededFuel = moveVolume + changeYFuel + (frequency * dropOffSupplies) + ((x + z) * layers) --x + z *layers because turtle has to come back from far corner every layer
 end
 
+if turtle.getFuelLimit and neededFuel+checkFuel() > turtle.getFuelLimit() then--Checks for if refueling goes over turtle fuel limit
+  if not doRefuel then
+    screen()
+    print("Required fuel goes over the turtle's limit\n")
+    print("Press 'q' to quit and select a smaller size, or press any other key to enable mid-run refueling (note: you will not get any coal)")
+    if ({os.pullEvent("char")})[2] == "q" then 
+      screen(); print("Okay"); error("",0) 
+    else
+      doRefuel = true
+    end
+  end
+  if doRefuel = true then
+    neededFuel = turtle.getFuelLimit()-checkFuel()-1
+  end
+end
+    
+    
 --Getting Fuel
 local hasRefueled --This is for oreQuarry prompting
 if doCheckFuel and checkFuel() < neededFuel then
