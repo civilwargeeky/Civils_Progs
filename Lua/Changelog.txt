@@ -8,6 +8,7 @@
   In refueling, slightly modified the way unique extras affect the fuel count. However now 15 unique extras asks about 3x as much fuel. Fun fact, as you increase volume at unique extras = 15, the percent increase between the new and old formulas approaches 327% :D
   In refueling, removed useless locals
   In refueling, accounted for the fact that turtle must come from the far edge of layer
+  In mid-run refueling, turtle will not fuel itself over the fuel limit.
   
 ----MenuAPI----
 --Version 1.0.1

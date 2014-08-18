@@ -1413,6 +1413,7 @@ function drop(side, final)
   end
   chestFull = false
   
+  local fuelSwitch = true --If doRefuel, this switches so it won't overfuel
   for i=1,16 do
     --if final then allowedItems[i] = 0 end --0 items allowed in all slots if final ----It is already set to 1, so just remove comment if want change
     if turtle.getItemCount(i) > 0 then --Saves time, stops bugs
@@ -1420,8 +1421,18 @@ function drop(side, final)
       else turnTo(properFacing) --Turn back to proper position... or do nothing if already there
       end 
       select(i)
-      if doRefuel and slot[i][1] == 2 then turtle.refuel(turtle.getItemCount(i)-allowedItems[i]) --Refueling option working
-      else waitDrop(i, allowedItems[i], dropFunc)
+      if doRefuel and slot[i][1] == 2 then --Intelligently refuels to fuel limit
+        if not fuelSwitch then break end --Not in the conditional because we don't want to waitDrop excess fuel
+        local numToRefuel = turtle.getItemCount(i)-allowedItems[i]
+        if checkFuel() >= turtle.getFuelLimit() then fuelSwitch = true; break end --If it doesn't need fuel, then don't take any more.
+        local firstCheck = checkFuel()
+        if numToRefuel > 0 then turtle.refuel(1) end --This is so we can see how many fuel we need.
+        local singleFuel
+        if checkFuel() - firstFuel > 0 then singleFuel = checkFuel() - firstFuel else singleFuel = math.huge end --If fuel is 0, we want it to be huge so the below will result in 0 being taken
+        --Refuel      The lesser of   max allowable or         remaining fuel space         /    either inf or a single fuel (which can be 0)
+        turtle.refuel(math.min(numToRefuel-1, math.ceil((turtle.getFuelLimit()-checkFuel()) / singleFuel))) --The refueling part of the the doRefuel option
+      else 
+        waitDrop(i, allowedItems[i], dropFunc)
       end
     end
   end
