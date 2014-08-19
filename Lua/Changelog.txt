@@ -9,6 +9,10 @@
   In refueling, removed useless locals
   In refueling, accounted for the fact that turtle must come from the far edge of layer
   In mid-run refueling, turtle will not fuel itself over the fuel limit.
+  In main mine function, added a check to see if turtle can get back to base with the fuel that it has. If it can barely do so, it will try to emergency refuel, or else return to base and error
+  -manualPos argument no longer persists over multiple restores
+  New Parameter: -startAt. Usage: -startAt xPos zPos yPos facing. Intended to be used if turtle comes back to base for refuel ("will be added automatically by mine function")
+  If turtle runs low on fuel, comes back and errors, it will automatically go back to where it was if resumed
   
 ----MenuAPI----
 --Version 1.0.1

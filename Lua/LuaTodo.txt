@@ -116,12 +116,14 @@ Quarry Version 3.5.3:
 Things for 3.5.3:
   Test what happens when turtle is out of fuel.
   In saveProgres, fix brute forcing the saveFile open
-  Change so that if its calculated going back to start is close to its fuel level, then go back to start, add a goto to the stack, turn fuel check on, and error
+  Test mid-run refueling capabilities :)
+  Test low-fuel behavior now
 
 Things for 3.5.4:
   Organize all the things! Everything is so messy right now...
   Refactor quarryReceiver so that everything is generalized into classes. This will lead to having multiple screens: each in their own class with their own colors and attributes.
   Take out all the "str"s in the main loop of receiver
+  In quarry tArgs, make a way to take out key value pairs in all forms
   
 Things for 3.5.5:
   Maybe, on bottom line of receiver, have a couple buttons for drop, return, etc.

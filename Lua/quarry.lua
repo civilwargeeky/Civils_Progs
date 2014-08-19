@@ -470,6 +470,21 @@ if tArgs["-manualpos"] then --Gives current coordinates in xPos,zPos,yPos, facin
   xPos, zPos, yPos, facing = tonumber(tArgs[a+1]) or xPos, tonumber(tArgs[a+2]) or zPos, tonumber(tArgs[a+3]) or yPos, tonumber(tArgs[a+4]) or facing
   changedT.new("xPos",xPos); changedT.new("zPos",zPos); changedT.new("yPos",yPos); changedT.new("facing",facing)
   restoreFoundSwitch = true --So it doesn't do beginning of quarry behavior
+  for i=0,4 do tArgs[a+i] = "" end --Get rid of this argument from future restores
+end
+if tArgs["-startat"] then --Gives coordinates of where it was in a run with xPos,zPos,yPos,facing
+  local a = tArgs["-startat"]
+  local xGo,zGo,yGo,facingGo = tonumber(tArgs[a+1]), tonumber(tArgs[a+2]), tonumber(tArgs[a+3]), tonumber(tArgs[a+4])
+  if xGo and zGo and yGo and facingGo and xGo > 0 and zGo > 0 and yGo > 0 and facingGo >= 0 and xGo <= x and zGo <= z and yGo < y and facingGo <=3 then --All bounds checks
+    if zPos == 1 and yPos == 1 then --If in first row (probably at start)
+      if xPos == 0 then eventAddAt(#events+1, "goto", 1,1,1,0) end --Get out of start
+      if xPos == 1 or xPos == 0 then eventAddAt(#events+1,"goto", 1,1, yGo, 0) end --Allows for startDown to be preserved (==0 for the above too)
+    end
+    eventAddAt(#events+1, "goto",xGo,zGo,yGo,facing) --Add these at the end so that other resuming functions occur
+    eventAddAt(#events+1, "setRowCheckFromPos") --Properly set pos
+    eventAddAt(#events+1, "relxCalc")
+  end
+  for i=0,4 do tArgs[a+i] = "" end --Won't get called next restart
 end
 if addParam("atChest", "Is at Chest", "force") then --This sets position to 0,1,1, facing forward, and queues the turtle to go back to proper row.
   local neededLayer = math.floor((yPos+1)/3)*3-1 --Make it a proper layer, +- because mining rows are 2, 5, etc.
@@ -760,8 +775,10 @@ print("\nStarting in 3"); sleep(1); print("2"); sleep(1); print("1"); sleep(1.5)
 ----------------------------------------------------------------
 --Define ALL THE FUNCTIONS
 --Event System Functions
-function eventAdd(...)
-  return table.insert(events,1, {...}) or true
+function eventAddAt(pos, ...)
+  return table.insert(events,pos, {...}) or true
+function eventAdd(...) --Just a wrapper
+  return eventAddAt(1, ...)
 end
 function eventGet(pos)
   return events[tonumber(pos) or #events]
@@ -970,9 +987,10 @@ if not restoreFoundSwitch then --We only want this to happen once
   end
 end
 
-function count(add) --Done any time inventory dropped and at end, param is add or subtract
+function count(add) --Done any time inventory dropped and at end, true=add, false=nothing, nil=subtract
   local mod = -1
   if add then mod = 1 end
+  if add == false then mod = 0 end
   slot = {}        --1: Filler 2: Fuel 3:Other --[1] is type, [2] is number
   for i=1, 16 do   
     slot[i] = {}
@@ -1155,16 +1173,48 @@ function mine(doDigDown, doDigUp, outOfPath,doCheckInv) -- Basic Move Forward
   if inverted then
     doDigUp, doDigDown = doDigDown, doDigUp --Just Switch the two if inverted
   end
-  if doRefuel and checkFuel() <= fuelTable[fuelSafety]/2 then
-    for i=1, 16 do
-    if turtle.getItemCount(i) > 0 then
-      select(i)
-      if checkFuel() < 200 + fuelTable[fuelSafety] then
-        turtle.refuel()
+  if not outOfPath and (checkFuel <= xPos + zPos + yPos + 5) then --If the turtle can just barely get back to the start, we need to get it there. We don't want this to activate coming back though...
+    local continueEvac = true --This turns false if more fuel is acquired
+    if doRefuel then --Attempt an emergency refueling
+      screen()
+      print("Attempting an emergency refuel")
+      print("Fuel Level:    ",checkFuel())
+      print("Distance Back: ",(xPos+zPos+yPos+1))
+      print("Categorizing Items")
+      count(false) --Do not add count, but categorize
+      local fuelSwitch, initialFuel = false, checkFuel() --Fuel switch so we don't go over limit (in emergency...)
+      print("Going through available fuel slots")
+      for i=1, 16 do
+        if fuelSwitch then break end
+        if turtle.getItemCount(i) > 0 and slot[i][2] == 2 then
+          turtle.select(i)
+          fuelSwitch = midRunRefuel(i) --See above "function drop" for usage
+        end
+      end
+      turtle.select(1) --Cleanup
+      print("Done fueling")
+      if checkFuel() > initialFuel then 
+        continueEvac = false
+        print("Evac Aborted")
+      else
+        print("Evac is a go, returning to base")
+        sleep(1.5) --Pause for reading
       end
     end
+    if continueEvac then
+      eventClear() --Clear any annoying events
+      local a = #tArgs+1
+      tArgs[a] = "-startat" --Resume quarry from here. These args will be loaded if quarry is resumed
+      tArgs[a+1] = tostring(xPos)
+      tArgs[a+2] = tostring(zPos)
+      tArgs[a+3] = tostring(yPos)
+      if rowCheck then --Want to sanitize facing in case of events in queue
+        tArgs[a+4] = "0"
+      else
+        tArgs[a+4] = "2"
+      end
+      endingProcedure("Turtle ran low on fuel so was brought back to start for you :)") --Finish the program
     end
-    select(1)
   end
   local count = 0
   while not forward(not outOfPath) do
@@ -1312,69 +1362,6 @@ function getNumOpenSlots()
   return toRet
 end
 
---[[
-function drop(side, final, allowSkip)
-side = sides[side] or "front"    --The final number means that it will
-if final then final = 0 else final = 1 end --drop a whole stack at the end
-local allowSkip = allowSkip or (final == 0) --This will allow drop(side,t/f, rednetConnected)
-count()
-if doRefuel then
-  for i=1, 16 do
-    if slot[i][1] == 2 then
-      select(i); turtle.refuel()
-    end
-  end
-  select(1)
-end
-if side == "right" then turnTo(1) end
-if side == "left" then turnTo(3) end
-local whereDetect, whereDrop1, whereDropAll
-local _1 = slot[1][2] - final --All but one if final, all if not final
-if side == "top" then
-whereDetect = turtle.detectUp ; whereDrop = turtle.dropUp
-elseif side == "bottom" then
-whereDetect = turtle.detectDown ; whereDrop = turtle.dropDown
-else
-whereDetect = turtle.detect; whereDrop = turtle.drop
-end
-local function waitDrop(val) --This will just drop, but wait if it can't
-  val = val or 64
-  local try = 1
-  while not whereDrop(val) do
-    print("Chest Full, Try "..try)
-    chestFull = true
-    if rednetEnabled then --To send that the chest is full
-      biometrics()
-    end
-    try = try + 1
-    sleep(2)
-  end
-  chestFull = false
-end
-repeat
-local detected = whereDetect()
-if detected then
-  waitDrop(_1)
-  for i=1, 2 do --This is so I quit flipping missing items when chests are partially filled
-    for i=2, 16 do
-      if turtle.getItemCount(i) > 0 then
-        select(i)
-        waitDrop(nil, i)
-      end
-    end
-  end
-elseif not allowSkip then
-  print("Waiting for chest placement place a chest to continue")
-  while not whereDetect() do
-    sleep(1)
-  end
-end
-until detected or allowSkip
-if not allowSkip then totals.cobble = totals.cobble - 1 end
-select(1)
-end
-]]
-
 --Ideas: Bring in inventory change-checking functions, count blocks that have been put in, so it will wait until all blocks have been put in.
 local function waitDrop(slot, allowed, whereDrop) --This will just drop, but wait if it can't
   allowed = allowed or 0
@@ -1391,6 +1378,18 @@ local function waitDrop(slot, allowed, whereDrop) --This will just drop, but wai
     chestFull = false
   end
 end
+
+local function midRunRefuel(i)
+  local numToRefuel = turtle.getItemCount(i)-allowedItems[i]
+  if checkFuel() >= turtle.getFuelLimit() then return true end --If it doesn't need fuel, then signal to not take more
+  local firstCheck = checkFuel()
+  if numToRefuel > 0 then turtle.refuel(1) end --This is so we can see how many fuel we need.
+  local singleFuel
+  if checkFuel() - firstFuel > 0 then singleFuel = checkFuel() - firstFuel else singleFuel = math.huge end --If fuel is 0, we want it to be huge so the below will result in 0 being taken
+  --Refuel      The lesser of   max allowable or         remaining fuel space         /    either inf or a single fuel (which can be 0)
+  turtle.refuel(math.min(numToRefuel-1, math.ceil((turtle.getFuelLimit()-checkFuel()) / singleFuel))) --The refueling part of the the doRefuel option
+  return false --Turtle can still be fueled
+end
   
 function drop(side, final)
   side = sides[side] or "front"
@@ -1404,7 +1403,7 @@ function drop(side, final)
   count(true) --Count number of items before drop. True means add. This is before chest detect, because could be final
   
   while not detectFunc() do 
-    if final then return end --If final, we don't need a chest to be placed, we just won't drop.
+    if final then return end --If final, we don't need a chest to be placed, but there can be
     chestFull = true
     biometrics() --Let the user know there is a problem with chest
     screen(1,1) --Clear screen
@@ -1413,7 +1412,7 @@ function drop(side, final)
   end
   chestFull = false
   
-  local fuelSwitch = true --If doRefuel, this switches so it won't overfuel
+  local fuelSwitch = true --If doRefuel, this can switch so it won't overfuel
   for i=1,16 do
     --if final then allowedItems[i] = 0 end --0 items allowed in all slots if final ----It is already set to 1, so just remove comment if want change
     if turtle.getItemCount(i) > 0 then --Saves time, stops bugs
@@ -1422,22 +1421,16 @@ function drop(side, final)
       end 
       select(i)
       if doRefuel and slot[i][1] == 2 then --Intelligently refuels to fuel limit
-        if not fuelSwitch then break end --Not in the conditional because we don't want to waitDrop excess fuel
-        local numToRefuel = turtle.getItemCount(i)-allowedItems[i]
-        if checkFuel() >= turtle.getFuelLimit() then fuelSwitch = true; break end --If it doesn't need fuel, then don't take any more.
-        local firstCheck = checkFuel()
-        if numToRefuel > 0 then turtle.refuel(1) end --This is so we can see how many fuel we need.
-        local singleFuel
-        if checkFuel() - firstFuel > 0 then singleFuel = checkFuel() - firstFuel else singleFuel = math.huge end --If fuel is 0, we want it to be huge so the below will result in 0 being taken
-        --Refuel      The lesser of   max allowable or         remaining fuel space         /    either inf or a single fuel (which can be 0)
-        turtle.refuel(math.min(numToRefuel-1, math.ceil((turtle.getFuelLimit()-checkFuel()) / singleFuel))) --The refueling part of the the doRefuel option
+        if not fuelSwitch then --Not in the conditional because we don't want to waitDrop excess fuel. Not a break so we can drop junk
+          fuelSwitch = midRunRefuel(i)
+        end
       else 
         waitDrop(i, allowedItems[i], dropFunc)
       end
     end
   end
   
-  if oreQuarry then count(false) end--Subtract the items still there if oreQuarry
+  if oreQuarry then count(nil) end--Subtract the items still there if oreQuarry
   resetDumpSlots() --So that slots gone aren't counted as dump slots next
   
   select(1) --For fanciness sake
@@ -1469,12 +1462,12 @@ function dropOff() --Not local because called in mine()
       eventAdd("turnTo",currFacing)
       eventAdd("select(1)")
     end
-  runAllEvents()
-  numDropOffs = numDropOffs + 1 --Analytics tracking
+    runAllEvents()
+    numDropOffs = numDropOffs + 1 --Analytics tracking
   end
-return true
+  return true
 end
-function endingProcedure() --Used both at the end and in "biometrics"
+function endingProcedure(endingMessage) --Used both at the end and in "biometrics"
   eventAdd("goto",1,1,yPos,2,"quarryStart") --Allows for startDown variable
   eventAdd("goto",0,1,1,2, "quarryStart") --Go back to base
   runAllEvents()
@@ -1494,7 +1487,8 @@ function endingProcedure() --Used both at the end and in "biometrics"
   eventAdd("display")
   --Log current mining run
   eventAdd("logMiningRun",logExtension)
-  toQuit = true --I'll use this flag to clean up
+  eventAdd("error",endingMessage or "",0)
+  toQuit = true --I'll use this flag to clean up (legacy)
   runAllEvents()
   --Cleanup
   turtle.getFuelLevel = getFuel
@@ -1565,7 +1559,7 @@ end
 select(1)
 while layersDone <= layers do -------------Height---------
 local lastLayer = layersDone == layers --If this is the last layer
-local secondToLastLayer = (layersDone + 1) == layers --This is for the going down at the end of a layer.
+local secondToLastLayer = (layersDone + 1) == layers --This is a check for going down at the end of a layer.
 moved = moved + 1 --To account for the first position in row as "moved"
 if not(layersDone == layers and not doDigDown) then digDown() end --This is because it doesn't mine first block in layer
 if not restoreFoundSwitch then rowCheck = true end
