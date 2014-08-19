@@ -111,8 +111,10 @@ Random future thoughts: Maybe make more seamless. Have an arg/option to make cal
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 
 Quarry Version 3.5.3:
-  Cool Idea, not sure when:
-    maybe look for multiple "-forcePrompt setting" parameters, and each time one is found, add it to a table. When you do addParam function, check if on force prompt table, then prompt if so.
+  General Ideas:
+    maybe look for multiple "-forcePrompt setting" parameters, and each time one is found, 
+add it to a table. When you do addParam function, check if on force prompt table, then prompt if so.
+    instead of params being one-time, have them "register" a "listener" so that they can be called multiple times
 Things for 3.5.3:
   Test what happens when turtle is out of fuel.
   In saveProgres, fix brute forcing the saveFile open
