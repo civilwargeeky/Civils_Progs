@@ -57,7 +57,7 @@ function splitVersion(version)
 end
 function compareVersions(in1, in2) --Returns true if first is greater than, false otherwise
   for i=1, math.min(#in1,#in2) do
-    if in1[i] > in2[1] then return true end
+    if in1[i] > in2[i] then return true end
   end
   return false
 end
