@@ -61,10 +61,15 @@ if not exists(minecraft) then
 end
 
 
-
+--Config Area
 local versionFileName = "modpackversion.txt"
 local versionsFile = current:add(versionFileName)
 local modpacks = minecraft:add("modpacks")
+local switcherName = "runSwitcher.bat"
+local switcherShortcutName = "Mod Switcher.lnk"
+local desktop = getRet("echo ".."%userprofile%":sanitize()):add("Desktop")
+
+
 if not exists(modpacks) then
   status("Making Mod Pack Folder")
   mkDir(modpacks)
@@ -125,33 +130,37 @@ if doReplace then --If the current version is newer than installed
   copyDir(current:add("mods"), modpacks:add(pack))
   copyFile(current:add(versionFileName), modpacks:add(pack))
   
-  status("Checking for versions") --This checks if they have played 1.6.4 before
-  if not exists(minecraft:add("versions"):add("1.6.4")) then
-    status("1.6.4 Save not found, adding")
-    copyDir(current:add("versions"):add("1.6.4"), minecraft:add("versions"))
-  else
-    option = false --They already have minecraft
-  end
-
-
-  for a in scan(current) do --This checks if the proper forge version is installed
-    if a:match(".+%.jar$") then
-      local mcVersion, forgeVersion = a:match("forge%-(.+)%-(.+)%-installer%.jar$") --Two captures from the installer jar's name
-      if not exists(minecraft:add("versions"):add(mcVersion.."-Forge"..forgeVersion)) then
-        status("running forge: Please press OK When a window appears onscreen (it may take a bit)")
-        os.execute(current:add(a))
-        break
-      else
-        status("forge already loaded, good to go")
-      end
-    end
-  end
-  
 else
   print("You have a more recent pack than this one, or you have already installed.\nNo need to change anything :)")
 end
-
-
+  
+--Outside of regular install because this installer is also convenient for updating forge.
+status("Checking installed forge versions") --This checks if they have played current version before
+for a in scan(current) do --This checks if the proper forge version is installed
+  if a:match(".+installer%.jar$") then --This finds the forge installer jar in the current folder. 'a' is the filename
+    local mcVersion, forgeVersion = a:match("forge%-(.+)%-(.+)%-installer%.jar$") --Two captures from the installer jar's name
+    if not exists(minecraft:add("versions"):add(mcVersion))then --The vanilla versions files, this must exist before forge can install
+      status(mcVersion.." Versions Files not found, adding")
+      if not exists(current:add("versions"):add(mcVersion)) then --Pack maker didn't make pack properly
+        status("Pack Maker screwed up, no versions files")
+        status("Please ask them to not screw up in the future")
+        status("Cannot continue :(  ")
+        error("Expected "..mcVersion.." versions folder does not exist in install",0)
+      end
+      copyDir(current:add("versions"):add(mcVersion), minecraft:add("versions"))
+    else
+      option = false --They already have minecraft
+    end
+    local forgeVersionPath = minecraft:add("versions"):add(mcVersion.."-Forge"..forgeVersion)
+    if exists(forgeVersionPath) and countFiles(forgeVersionPath) > 0 then --Checking if forge version files exist inside folder (if fail, forge makes folder but not files)
+      status("forge already loaded, good to go")
+    else
+      status("running forge: Please press OK When a window appears onscreen (it may take a bit)")
+      os.execute(current:add(a):sanitize())
+      break
+    end
+  end
+end
 
 status("all done! :D")
 
@@ -159,15 +168,16 @@ if option and prompt("Place Minecraft.exe on your desktop? ") then
   copyFile(current:add("minecraft.exe"), getRet("echo %userprofile%"):add("desktop"))
 end
 
-local switcherName = "runSwitcher.bat"
-if not exists(minecraft:add("lua"):add(switcherName)) and prompt("Would you like to install my mod pack switcher?") then
+if not (exists(minecraft:add("lua"):add(switcherName)) and exists(  and prompt("Would you like to install my mod pack switcher?") then
   copyDir(base:add("lua"), minecraft)
   local file = io.open(minecraft:add("lua"):add(switcherName), "w") --Maker our own bat file for running
   file:write("@echo off\nlua.exe modpackSwitcher.lua\npause") --The running the program part of the program
   file:close()
   status("Making Desktop Shortcut")
-  os.execute(base:add("lua"):add("shortcut.exe").." /F:\""..getRet("echo %userprofile%"):add("Desktop"):add("Mod Switcher.lnk").."\" /A:C /T:"..minecraft:add("lua"):add(switcherName)..
-    " /W:"..minecraft:add("lua").." /I:"..minecraft:add("lua"):add("cookie.ico"))
+  os.execute(base:add("lua"):add("shortcut.exe").." /F:"..desktop:add(switcherShortcutName):sanitize().. --Adding a shortcut. f is link name
+  " /A:C /T:"..minecraft:add("lua"):add(switcherName):sanitize().. --A:C I think is type of link, T is destination
+    " /W:"..minecraft:add("lua"):sanitize().. --W is working directory
+    " /I:"..minecraft:add("lua"):add("cookie.ico"):sanitize()) --I is icon file
   status("Removing extra files")
   local lua = minecraft:add("lua")
   rmFile(lua:add("Shortcut.exe"))
