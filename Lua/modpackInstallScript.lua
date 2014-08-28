@@ -67,7 +67,7 @@ local versionsFile = current:add(versionFileName)
 local modpacks = minecraft:add("modpacks")
 local switcherName = "runSwitcher.bat"
 local switcherShortcutName = "Mod Switcher.lnk"
-local desktop = getRet("echo ".."%userprofile%":sanitize()):add("Desktop")
+local desktop = getRet("echo "..("%userprofile%"):sanitize()):add("Desktop")
 
 
 if not exists(modpacks) then
@@ -168,7 +168,7 @@ if option and prompt("Place Minecraft.exe on your desktop? ") then
   copyFile(current:add("minecraft.exe"), getRet("echo %userprofile%"):add("desktop"))
 end
 
-if not (exists(minecraft:add("lua"):add(switcherName)) and exists(  and prompt("Would you like to install my mod pack switcher?") then
+if not (exists(minecraft:add("lua"):add(switcherName)) and exists(desktop:add(switcherShortcutName)) )  and prompt("Would you like to install my mod pack switcher?") then
   copyDir(base:add("lua"), minecraft)
   local file = io.open(minecraft:add("lua"):add(switcherName), "w") --Maker our own bat file for running
   file:write("@echo off\nlua.exe modpackSwitcher.lua\npause") --The running the program part of the program
