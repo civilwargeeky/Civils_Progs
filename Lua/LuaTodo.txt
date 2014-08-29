@@ -12,6 +12,7 @@ Quarry Receiver x.x.x (matches current quarry):
   3. Command line argument could just be a file name, then will search included themes.
   4. Layout for a "theme" file would just be "addColor(parameters)" for all the different styles. Maybe to be fancy you could have overrides on all different things, like give them an id and stuff
   5. Integration with shell: Interactive menu to design/choose theme. Maybe have a default themes-set to download.
+  6. Maybe prepend a random number to the sent string so a relay can differentiate messages.
 
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 
