@@ -13,6 +13,8 @@
   -manualPos argument no longer persists over multiple restores
   New Parameter: -startAt. Usage: -startAt xPos zPos yPos facing. Intended to be used if turtle comes back to base for refuel ("will be added automatically by mine function")
   If turtle runs low on fuel, comes back and errors, it will automatically go back to where it was if resumed
+  Fixed turtle asking rednet enabled when there is no modem
+  Removed invCheckFreq parameter. I doubt anyone used it. It now just checks every 1
   
 ----MenuAPI----
 --Version 1.0.1

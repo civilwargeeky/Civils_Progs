@@ -153,9 +153,9 @@ end
 
 local supportsRednet
 if peripheral.find then
-  supportsRednet = peripheral.find("modem")
+  supportsRednet = peripheral.find("modem") or false
 else
-  supportsRednet = peripheral.getType("right") == "modem"
+  supportsRednet = (peripheral.getType("right") == "modem") or false
 end
 
 local tArgs = {...}
@@ -472,9 +472,14 @@ if tArgs["-manualpos"] then --Gives current coordinates in xPos,zPos,yPos, facin
   restoreFoundSwitch = true --So it doesn't do beginning of quarry behavior
   for i=0,4 do tArgs[a+i] = "" end --Get rid of this argument from future restores
 end
-if tArgs["-startat"] then --Gives coordinates of where it was in a run with xPos,zPos,yPos,facing
-  local a = tArgs["-startat"]
-  local xGo,zGo,yGo,facingGo = tonumber(tArgs[a+1]), tonumber(tArgs[a+2]), tonumber(tArgs[a+3]), tonumber(tArgs[a+4])
+if tArgs["-startat"] or startAt then --This starts the quarry at a specified point (hopefully). Used by variable from restart or tArg
+  local a, tab
+  if tArgs["-startat"] then
+    a, tab = tArgs["-startat"], tArgs
+  else
+    a, tab = 0, startAt
+  end
+  local xGo,zGo,yGo,facingGo = tonumber(tab[a+1]), tonumber(tab[a+2]), tonumber(tab[a+3]), tonumber(tab[a+4])
   if xGo and zGo and yGo and facingGo and xGo > 0 and zGo > 0 and yGo > 0 and facingGo >= 0 and xGo <= x and zGo <= z and yGo < y and facingGo <=3 then --All bounds checks
     if zPos == 1 and yPos == 1 then --If in first row (probably at start)
       if xPos == 0 then eventAddAt(#events+1, "goto", 1,1,1,0) end --Get out of start
@@ -484,7 +489,7 @@ if tArgs["-startat"] then --Gives coordinates of where it was in a run with xPos
     eventAddAt(#events+1, "setRowCheckFromPos") --Properly set pos
     eventAddAt(#events+1, "relxCalc")
   end
-  for i=0,4 do tArgs[a+i] = "" end --Won't get called next restart
+  startAt = nil --Reset so startAt won't be called again
 end
 if addParam("atChest", "Is at Chest", "force") then --This sets position to 0,1,1, facing forward, and queues the turtle to go back to proper row.
   local neededLayer = math.floor((yPos+1)/3)*3-1 --Make it a proper layer, +- because mining rows are 2, 5, etc.
@@ -516,7 +521,7 @@ toWrite = toWrite.."doCheckFuel = false\n" --It has already used fuel, so calcul
 local file
 repeat
   file = fs.open(saveFile,"w")
-until file --WHY DOES IT SAY ATTEMPT TO INDEX NIL!!!
+until file
 file.write(toWrite)
 if type(extras) == "table" then
   for a, b in pairs(extras) do
@@ -544,20 +549,21 @@ do --Because many local variables unneeded elsewhere
                                                                                      --max of 15 full stacks because once one item is picked up, slot is "full". Ceil to count for initial back and forth
   if enderChestEnabled then frequency = 0 end --Never goes back to start
   neededFuel = moveVolume + changeYFuel + (frequency * dropOffSupplies) + ((x + z) * layers) --x + z *layers because turtle has to come back from far corner every layer
+  neededFuel = neededFuel + fuelTable[fuelSafety] --For safety
 end
 
 if turtle.getFuelLimit and neededFuel+checkFuel() > turtle.getFuelLimit() then--Checks for if refueling goes over turtle fuel limit
   if not doRefuel then
     screen()
-    print("Required fuel goes over the turtle's limit\n")
-    print("Press 'q' to quit and select a smaller size, or press any other key to enable mid-run refueling (note: you will not get any coal)")
+    print("Turtle cannot hold enough fuel\n")
+    print("Options: \n1. Select a smaller size (press q) \n2. Enable Mid-Run Refueling (any other key)")
     if ({os.pullEvent("char")})[2] == "q" then 
       screen(); print("Okay"); error("",0) 
     else
       doRefuel = true
     end
   end
-  if doRefuel = true then
+  if doRefuel then
     neededFuel = turtle.getFuelLimit()-checkFuel()-1
   end
 end
@@ -567,7 +573,6 @@ end
 local hasRefueled --This is for oreQuarry prompting
 if doCheckFuel and checkFuel() < neededFuel then
   hasRefueled = true
-  neededFuel = neededFuel + fuelTable[fuelSafety] --For safety
   print("Not enough fuel")
   print("Current: ",checkFuel()," Needed: ",neededFuel)
   print("Starting SmartFuel...")
@@ -777,6 +782,7 @@ print("\nStarting in 3"); sleep(1); print("2"); sleep(1); print("1"); sleep(1.5)
 --Event System Functions
 function eventAddAt(pos, ...)
   return table.insert(events,pos, {...}) or true
+end
 function eventAdd(...) --Just a wrapper
   return eventAddAt(1, ...)
 end
@@ -1173,7 +1179,7 @@ function mine(doDigDown, doDigUp, outOfPath,doCheckInv) -- Basic Move Forward
   if inverted then
     doDigUp, doDigDown = doDigDown, doDigUp --Just Switch the two if inverted
   end
-  if not outOfPath and (checkFuel <= xPos + zPos + yPos + 5) then --If the turtle can just barely get back to the start, we need to get it there. We don't want this to activate coming back though...
+  if not outOfPath and (checkFuel() <= xPos + zPos + yPos + 5) then --If the turtle can just barely get back to the start, we need to get it there. We don't want this to activate coming back though...
     local continueEvac = true --This turns false if more fuel is acquired
     if doRefuel then --Attempt an emergency refueling
       screen()
@@ -1186,7 +1192,7 @@ function mine(doDigDown, doDigUp, outOfPath,doCheckInv) -- Basic Move Forward
       print("Going through available fuel slots")
       for i=1, 16 do
         if fuelSwitch then break end
-        if turtle.getItemCount(i) > 0 and slot[i][2] == 2 then
+        if turtle.getItemCount(i) > 0 and slot[i][1] == 2 then --If there are items and type 2 (fuel)
           turtle.select(i)
           fuelSwitch = midRunRefuel(i) --See above "function drop" for usage
         end
@@ -1202,18 +1208,15 @@ function mine(doDigDown, doDigUp, outOfPath,doCheckInv) -- Basic Move Forward
       end
     end
     if continueEvac then
-      eventClear() --Clear any annoying events
-      local a = #tArgs+1
-      tArgs[a] = "-startat" --Resume quarry from here. These args will be loaded if quarry is resumed
-      tArgs[a+1] = tostring(xPos)
-      tArgs[a+2] = tostring(zPos)
-      tArgs[a+3] = tostring(yPos)
-      if rowCheck then --Want to sanitize facing in case of events in queue
-        tArgs[a+4] = "0"
+      eventClear() --Clear any annoying events for evac
+      local a
+      if rowCheck then --Want to sanitize facing in case of events in queue when this happens
+        a = 0
       else
-        tArgs[a+4] = "2"
+        a = 2
       end
-      endingProcedure("Turtle ran low on fuel so was brought back to start for you :)") --Finish the program
+      startAt = {xPos,zPos,yPos, a} --Resume quarry from here. These args will be loaded if quarry is resumed
+      endingProcedure("Turtle ran low on fuel so was brought back to start for you :)\n\nIf resumed, the turtle will go back to where it was") --Finish the program
     end
   end
   local count = 0
@@ -1379,13 +1382,13 @@ local function waitDrop(slot, allowed, whereDrop) --This will just drop, but wai
   end
 end
 
-local function midRunRefuel(i)
+function midRunRefuel(i)
   local numToRefuel = turtle.getItemCount(i)-allowedItems[i]
   if checkFuel() >= turtle.getFuelLimit() then return true end --If it doesn't need fuel, then signal to not take more
   local firstCheck = checkFuel()
   if numToRefuel > 0 then turtle.refuel(1) end --This is so we can see how many fuel we need.
   local singleFuel
-  if checkFuel() - firstFuel > 0 then singleFuel = checkFuel() - firstFuel else singleFuel = math.huge end --If fuel is 0, we want it to be huge so the below will result in 0 being taken
+  if checkFuel() - firstCheck > 0 then singleFuel = checkFuel() - firstCheck else singleFuel = math.huge end --If fuel is 0, we want it to be huge so the below will result in 0 being taken
   --Refuel      The lesser of   max allowable or         remaining fuel space         /    either inf or a single fuel (which can be 0)
   turtle.refuel(math.min(numToRefuel-1, math.ceil((turtle.getFuelLimit()-checkFuel()) / singleFuel))) --The refueling part of the the doRefuel option
   return false --Turtle can still be fueled
