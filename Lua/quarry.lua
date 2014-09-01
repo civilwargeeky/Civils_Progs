@@ -1184,7 +1184,7 @@ function mine(doDigDown, doDigUp, outOfPath,doCheckInv) -- Basic Move Forward
     end
     if continueEvac then
       eventClear() --Clear any annoying events for evac
-      endingProcedure("Turtle ran low on fuel so was brought back to start for you :)\n\nIf resumed, the turtle will go back to where it was") --Finish the program
+      endingProcedure("Turtle ran low on fuel so was brought back to start for you :)\n\nTo resume where you left off, use '-startDown "..tostring(y-2).."' when you start") --Finish the program
     end
   end
   local count = 0
