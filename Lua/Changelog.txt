@@ -10,7 +10,6 @@
   In refueling, accounted for the fact that turtle must come from the far edge of layer
   In mid-run refueling, turtle will not fuel itself over the fuel limit.
   In main mine function, added a check to see if turtle can get back to base with the fuel that it has. If it can barely do so, it will try to emergency refuel, or else return to base and error
-  -manualPos argument no longer persists over multiple restores
   If turtle runs low on fuel, comes back and errors.
   Fixed turtle asking rednet enabled when there is no modem
   Removed invCheckFreq parameter. I doubt anyone used it. It now just checks every 1

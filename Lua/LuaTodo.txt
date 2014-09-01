@@ -116,8 +116,6 @@ Quarry Version 3.5.3:
     maybe look for multiple "-forcePrompt setting" parameters, and each time one is found, 
 add it to a table. When you do addParam function, check if on force prompt table, then prompt if so.
     instead of params being one-time, have them "register" a "listener" so that they can be called multiple times
-Things for 3.5.3:
-  In saveProgres, fix brute forcing the saveFile open
 
 Things for 3.5.4:
   Organize all the things! Everything is so messy right now...

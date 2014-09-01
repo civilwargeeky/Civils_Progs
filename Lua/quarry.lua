@@ -540,9 +540,7 @@ if turtle.getFuelLimit and neededFuel+checkFuel() > turtle.getFuelLimit() then--
       doRefuel = true
     end
   end
-  if doRefuel then
-    neededFuel = turtle.getFuelLimit()-checkFuel()-1
-  end
+  neededFuel = turtle.getFuelLimit()-checkFuel()-1
 end
     
     
