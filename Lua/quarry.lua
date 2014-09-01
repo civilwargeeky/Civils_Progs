@@ -28,7 +28,6 @@ dropSide = "front" --Side it will eject to when full or done [Default "front"]
 careAboutResources = true --Will not stop mining once inventory full if false [Default true]
 doCheckFuel = true --Perform fuel check [Default true]
 doRefuel = false --Whenever it comes to start location will attempt to refuel from inventory [Default false]
-invCheckFreq = 5 --Will check for inventory full every <-- moved spaces [Default 10]
 keepOpen = 1 --How many inventory slots it will attempt to keep open at all times [Default 1]
 fuelSafety = "moderate" --How much fuel it will ask for: safe, moderate, and loose [Default moderate]
 saveFile = "Civil_Quarry_Restore" --Where it saves restore data [Default "Civil_Quarry_Restore"]
@@ -86,8 +85,7 @@ Welcome!: Welcome to quarry help. Below are help entries for all parameters. Exa
 -saveFile: [word] This is what the backup file will be called
 -logFolder: [word] The folder that quarry logs will be stored in
 -logExtension: [word] The extension given to each quarry log (e.g. ".txt" or ".notepad" or whatever)
--invCheckFreq: [number] This is how often the turtle will check if it has the proper amount of slots open
--keepOpen: [number] This is the number of the slots the turtle will make sure are open. It will check every invCheckFreq blocks
+-keepOpen: [number] This is the number of the slots the turtle will make sure are open. It will check every time it mines
 -careAboutResources: [t/f] Who cares about the materials! If set to false, it will just keep mining when its inventory is full
 -startDown: [number] If you set this, the turtle will go down this many blocks from the start before starting its quarry
   =
@@ -149,7 +147,6 @@ elseif string.sub(current,1,1) == " " then
 table.insert(help[i], string.sub(current,2, -1).."")
 end
 end
-
 
 local supportsRednet
 if peripheral.find then
@@ -454,7 +451,6 @@ addParam("logFolder", "Log Folder", "string")
 addParam("logExtension","Log Extension", "string")
 --Misc
 addParam("startY", "Start Y","number 1-256")
-addParam("invCheckFreq","Inventory Check Frequency","number 1-342")
 addParam("keepOpen", "Slots to Keep Open", "number 1-15")
 addParam("careAboutResources", "Care About Resources","boolean")
 addParam("maxTries","Tries Before Bedrock", "number 1-9001")
@@ -471,25 +467,6 @@ if tArgs["-manualpos"] then --Gives current coordinates in xPos,zPos,yPos, facin
   changedT.new("xPos",xPos); changedT.new("zPos",zPos); changedT.new("yPos",yPos); changedT.new("facing",facing)
   restoreFoundSwitch = true --So it doesn't do beginning of quarry behavior
   for i=0,4 do tArgs[a+i] = "" end --Get rid of this argument from future restores
-end
-if tArgs["-startat"] or startAt then --This starts the quarry at a specified point (hopefully). Used by variable from restart or tArg
-  local a, tab
-  if tArgs["-startat"] then
-    a, tab = tArgs["-startat"], tArgs
-  else
-    a, tab = 0, startAt
-  end
-  local xGo,zGo,yGo,facingGo = tonumber(tab[a+1]), tonumber(tab[a+2]), tonumber(tab[a+3]), tonumber(tab[a+4])
-  if xGo and zGo and yGo and facingGo and xGo > 0 and zGo > 0 and yGo > 0 and facingGo >= 0 and xGo <= x and zGo <= z and yGo < y and facingGo <=3 then --All bounds checks
-    if zPos == 1 and yPos == 1 then --If in first row (probably at start)
-      if xPos == 0 then eventAddAt(#events+1, "goto", 1,1,1,0) end --Get out of start
-      if xPos == 1 or xPos == 0 then eventAddAt(#events+1,"goto", 1,1, yGo, 0) end --Allows for startDown to be preserved (==0 for the above too)
-    end
-    eventAddAt(#events+1, "goto",xGo,zGo,yGo,facing) --Add these at the end so that other resuming functions occur
-    eventAddAt(#events+1, "setRowCheckFromPos") --Properly set pos
-    eventAddAt(#events+1, "relxCalc")
-  end
-  startAt = nil --Reset so startAt won't be called again
 end
 if addParam("atChest", "Is at Chest", "force") then --This sets position to 0,1,1, facing forward, and queues the turtle to go back to proper row.
   local neededLayer = math.floor((yPos+1)/3)*3-1 --Make it a proper layer, +- because mining rows are 2, 5, etc.
@@ -1209,13 +1186,6 @@ function mine(doDigDown, doDigUp, outOfPath,doCheckInv) -- Basic Move Forward
     end
     if continueEvac then
       eventClear() --Clear any annoying events for evac
-      local a
-      if rowCheck then --Want to sanitize facing in case of events in queue when this happens
-        a = 0
-      else
-        a = 2
-      end
-      startAt = {xPos,zPos,yPos, a} --Resume quarry from here. These args will be loaded if quarry is resumed
       endingProcedure("Turtle ran low on fuel so was brought back to start for you :)\n\nIf resumed, the turtle will go back to where it was") --Finish the program
     end
   end
@@ -1263,9 +1233,7 @@ function mine(doDigDown, doDigUp, outOfPath,doCheckInv) -- Basic Move Forward
   percent = math.ceil(moved/moveVolume*100)
   updateDisplay()
   if doCheckInv and careAboutResources then
-    if moved%invCheckFreq == 0 then
-     if isFull(16-keepOpen) then dropOff() end
-    end
+    if isFull(16-keepOpen) then dropOff() end
   end
   biometrics()
 end
@@ -1415,7 +1383,7 @@ function drop(side, final)
   end
   chestFull = false
   
-  local fuelSwitch = true --If doRefuel, this can switch so it won't overfuel
+  local fuelSwitch = false --If doRefuel, this can switch so it won't overfuel
   for i=1,16 do
     --if final then allowedItems[i] = 0 end --0 items allowed in all slots if final ----It is already set to 1, so just remove comment if want change
     if turtle.getItemCount(i) > 0 then --Saves time, stops bugs
