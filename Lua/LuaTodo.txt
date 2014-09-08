@@ -13,6 +13,9 @@ Quarry Receiver x.x.x (matches current quarry):
   4. Layout for a "theme" file would just be "addColor(parameters)" for all the different styles. Maybe to be fancy you could have overrides on all different things, like give them an id and stuff
   5. Integration with shell: Interactive menu to design/choose theme. Maybe have a default themes-set to download.
   6. Maybe prepend a random number to the sent string so a relay can differentiate messages.
+  7. Instead of above, process: Using the fact that modem.transmit can send tables of strings natively. Turtle sends handshake. First repeater gets message, the message has no
+       protocol, so the repeater assigns itself id 1. It will only receive messages that have no protocol. It resends the message on the same channel with the protocol "1". The next receiver
+       identifies itself as 2, will receive "1" and send with "3". Since I'm using the modem API, there could also be a "distance" field that gets added to every repeat or made at receiver.
 
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 
