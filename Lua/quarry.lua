@@ -553,16 +553,16 @@ if doCheckFuel and checkFuel() < neededFuel then
   print("Starting SmartFuel...")
   sleep(2) --So they can read everything.
   term.clear()
-  local oneFuel, neededFuelItems
+  local oneFuel, neededFuelItems = 0,0 --Initializing Variables
   local currSlot = 0
-  local function output(text, x, y) --For displaying fuel
+  local function output(text, x, y) --For displaying fuel statistics
     local currX, currY = term.getCursorPos()
     term.setCursorPos(x,y)
     term.clearLine()
     term.write(text)
     term.setCursorPos(currX,currY)
-    end
-  local function roundTo(num, target) --For stacks of fuel
+  end
+  local function roundTo(num, target) --For stacks of fuel and turtle slots when undergoing addition/subtraction
     if num >= target then return target elseif num < 0 then return 0 else return num end
   end
   local function updateScreen()
@@ -570,33 +570,33 @@ if doCheckFuel and checkFuel() < neededFuel then
     output("Currently taking fuel from slot "..currSlot,1,2)
     output("Current single fuel: "..tostring(oneFuel or 0),1,3)
     output("Current estimate of needed fuel: ",1,4)
-    output("Single Items: "..math.ceil(neededFuelItems or 0),4,5)
-    output("Stacks:       "..math.ceil((neededFuelItems or 0) / 64),4,6)
+    output("Single Items: "..math.ceil(neededFuelItems),4,5)
+    output("Stacks:       "..math.ceil(neededFuelItems / 64),4,6)
     output("Needed Fuel: "..tostring(neededFuel),1,12)
     output("Current Fuel: "..tostring(checkFuel()),1,13)
   end
   while checkFuel() <= neededFuel do
     currSlot = currSlot + 1
     select(currSlot)
-    if currSlot ~= 1 and not turtle.refuel(0) then --If its not the first slot, and not fuel, go back to start
+    if currSlot ~= 1 and not turtle.refuel(0) then --If it's not the first slot, and not fuel, go back to start
       currSlot = 1; select(currSlot)
     end
     updateScreen()
     while turtle.getItemCount(currSlot) == 0 do
       sleep(1.5)
     end
-    repeat
+    repeat --TODO: Probably unnecessary loop, remove later
       local previous = checkFuel()
       turtle.refuel(1)
       oneFuel = checkFuel() - previous
       updateScreen()
     until (oneFuel or 0) > 0 --Not an if to prevent errors if fuel taken out prematurely.
-    neededFuelItems = (neededFuel - checkFuel()) / oneFuel
-    turtle.refuel(math.ceil(roundTo(neededFuelItems, 64))) --Change because can only think about 64 at once.
+    neededFuelItems = math.ceil((neededFuel - checkFuel()) / oneFuel)
+    turtle.refuel(roundTo(neededFuelItems, 64)) --Change because can only think about 64 at once.
     if turtle.getItemCount(roundTo(currSlot + 1, 16)) == 0 then --Resets if no more fuel
       currSlot = 0
     end
-    neededFuelItems = (neededFuel - checkFuel()) / oneFuel
+    neededFuelItems = math.ceil((neededFuel - checkFuel()) / oneFuel) --This line is not repeated uselessly, it's for the display function
   end
 end
 --Ender Chest Obtaining
