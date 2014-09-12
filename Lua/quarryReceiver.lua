@@ -3,6 +3,27 @@
 --[[
 Ideas:
 For session persistence, you probably only need to save what monitor and what turtle to connect with.
+Command sender will just be passed key or char events since it is only 1 line. That makes printing and re-printing easy
+Planned layout:
+  Options, General Functions and sich
+  Arguments checking
+  Monitor Class
+    new object
+    setColors
+    updateScreen
+    screenObject (mon.clear etc.)
+    
+  updateDisplay
+    waits for a screen update event, then updates the respective screen.
+  eventHandler
+    waits for all events, queues screen events. Also queues screenChanged events for display to adjust accordingly
+  commandSender
+    waits for key events, prints only in caps to make life easy.
+    
+  Maybe just have the event handler as the only real part of the program, then have it call updateDisplay on whichever object needs to be updated with a table of values. It will also take the
+    place of command sender by keeping track of characters on the home screen.
+  
+    
 ]]
 --[[
 Recent Changes:
