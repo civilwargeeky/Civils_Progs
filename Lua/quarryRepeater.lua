@@ -11,3 +11,24 @@
   Then it will send the message along on the requested send channel.
   If it gets a char event instead of a message, it will prompt the user to add more channels to open.
   ]]
+--expected message format: {message, id, distance}
+
+local arbitraryNumber = 100 --How many messages to keep between deletions
+local sentMessages = {} --Table of received message ids
+local idMap = {} --List of random ids
+
+local function newID()
+  return math.random(1,2000000) --1 through 2 billion; close enough 
+end
+
+while true do
+  local event, key, receivedFreq, replyFreq, received, dist = os.pullEvent()
+  if event == "modem_message" then
+    if not type(received) == "table" then
+      received = { message = received, id = newID(), distance = dist}
+    end
+    sentMessages[id] = true
+    table.insert(idMap, id)
+    
+  end
+end
