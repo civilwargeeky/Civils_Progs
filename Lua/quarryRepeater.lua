@@ -1,3 +1,4 @@
+--Version 1.0.0
 --This program will act as a repeater between a turtle and a receiver computer
 --[[ How it works
   First, it will startup, taking a list of channels to open in the argument
@@ -37,7 +38,7 @@ local function addID(id)
     idMap[#idMap+1] =  id
     counter = counter + 1
 end
-local function saveFile()
+local function save()
   local file = fs.open(saveFile, "w")
   file.write(textutils.unpack(channels))
   file.write(counter)
@@ -83,7 +84,7 @@ while true do
       debug(a,"   ",b)
     end
     
-    if received.fingerprint == expectedFingerprint --Normal, expected message
+    if received.fingerprint == expectedFingerprint then --Normal, expected message
       received.distance = received.distance + dist --Add on to repeater how far message had to go
       debug("Sending Return Message")
       modem.transmit(receivedFreq, replyFreq, received) --Send back exactly what we got
@@ -134,7 +135,7 @@ while true do
         end
       end
     end
-    saveFile()
+    save()
     openChannels()
     
   end
