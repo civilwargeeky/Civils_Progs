@@ -39,6 +39,7 @@ local function addID(id)
     counter = counter + 1
 end
 local function save()
+  debug("Saving File")
   local file = fs.open(saveFile, "w")
   file.write(textutils.unpack(channels))
   file.write(counter)
@@ -46,7 +47,9 @@ local function save()
 end
 local function openChannels(modem)
   for a,b in pairs(channels) do
+    debug("Checking channel ",b)
     if not modem.isOpen(b) then
+      debug("Opening channel ",b)
       modem.open(b)
     end
   end

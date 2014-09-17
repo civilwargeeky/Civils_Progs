@@ -13,6 +13,15 @@
   If turtle runs low on fuel, comes back and errors.
   Fixed turtle asking rednet enabled when there is no modem
   Removed invCheckFreq parameter. I doubt anyone used it. It now just checks every 1
+
+----Quarry Receiver----
+--Version 3.5.4 (first recorded)
+  //Modified redent receive/send to allow for new repeater system
+  //--Note: New system may break compatibility with pre-1.6 minecraft.
+
+----Quarry Repeater----
+--Version 1.0 (first release)
+  Everything is new :)
   
 ----MenuAPI----
 --Version 1.0.1

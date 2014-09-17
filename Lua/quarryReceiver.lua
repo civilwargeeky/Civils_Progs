@@ -1,4 +1,4 @@
---Quarry Receiver Version 3.5.2
+--Quarry Receiver Version 3.5.4
 --Made by Civilwargeeky
 --[[
 Ideas:
@@ -314,16 +314,17 @@ local function tryAdd(text, color, ...) --This will try to add text if Y dimensi
   if not added then return true end --This is so I won't remove elements that haven't been added.
   if #text > dim[1] then return false else return true end
 end
-local function align(text, number)
+local function align(text, xDim)
   text = tostring(text) or ""
-  if #text >= number then return text end
-  for i=1, number-#text do
+  if #text >= xDim then return text end
+  for i=1, xDim-#text do
     text = " "..text
   end
   return text
 end
-local function center(text)
-  local a = (dim[1]-#text)/2
+local function center(text, xDim)
+  xDim = xDim or dim[1] --Temp fix
+  local a = (xDim-#text)/2
   for i=1, a do
     text = " "..text.." "
   end
