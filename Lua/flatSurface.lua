@@ -1,34 +1,40 @@
---Note: Made in-game, not yet up to scratch
+--flat surface
 
 local slot = 1
-local turnRight = true
+local turnFunc = turtle.turnRight
 
-local function placeDo(func)
-  while turtle.getItemCount(slot) == 0 do
-    if slot < 16 then
-      turtle.select(slot+1)
-      slot = slot + 1
-    else
-      error("Out of stuff")
-    end
-  end
-  local toRet = func()
-  turtle.place()
-  return toRet
+
+if ({...})[1]:lower() == "left" then
+  turnFunc = turtle.turnLeft
 end
-  
+
+local function placeDo(moveFunc, placeFunc)
+  while turtle.getItemCount(slot) == 0 do
+    slot = slot + 1
+    if slot > 16 then error("Out of stuff") end
+    turtle.select(slot)
+  end
+  return moveFunc(), placeFunc()
+end
 
 turtle.select(1)
+local switch = false --Whether or not it is above the layer
 while true do
-  while placeDo(turtle.back) do
+  while placeDo(turtle.back) do end --Will keep going back until the end of the row
+  turnFunc()
+  if not placeDo(turtle.back, turtle.place) then --If can't turn will end
+    switch = true
+    if not (placeDo(turtle.up, turtle.placeDown) and turtle.back()) then error("Program Stuck") end --Goes up, back, then errors if either fails, and stops the second from going if the first fails
   end
-  local func
-  if turnRight then
-    func = turtle.turnRight
-  else func = turtle.turnLeft
+  turnFunc()
+  if switch then
+    if not (turtle.back() and turtle.down()) then error("Program Over") end --Goes back into the regular
+    switch = false
   end
-  func()
-  if not placeDo(turtle.back) then break end
-  func()
-  turnRight = not turnRight
+  
+  if turnFunc == turtle.turnRight then --Switch the turn function for next row
+    turnFunc = turtle.turnLeft
+  else
+    turnFunc = turtle.turnRight
+  end
 end
