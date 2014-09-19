@@ -82,13 +82,37 @@ end
 
 
 local screenClass = {} --This is the class for all monitor/screen objects
-screenClass.screens = {} --A numbered list of screens in the order they were defined
-screenClass.channels = {} --A list of receiving channels that have screens attached. Used for the receiver part
+screenClass.screens = {} --A simply numbered list of screens
+screenClass.sides = {} --A mapping of screens by their side attached
+screenClass.channels = {} --A mapping of receiving channels that have screens attached. Used for the receiver part
+screenClass.sizes = {{7,18,29,39,50}, (5,12,19} , computer = {51, 19}, turtle = {39,13}, pocket = {26,20}}
 
-screenClass.new = function()
+screenClass.setSize = function(self)
+  if not self.term.setCursorPos() then --If peripheral is having problems/not there
+    self.updateScreen = function() end --Do nothing on screen update, overrides class
+  else
+    self.updateScreen = nil --Remove function in case it exists
+  end
+  local tab = screenClass.sizes
+  for a=1, 2 do --Want x and y dim
+    for b=1, #tab[a] do --Go through all normal sizes, x and y individually
+      if tab[a][b] <= self.dim[a] then --This will set size higher until false
+        self.size[a] = b
+      end
+    end
+  end
+  local function isThing(toCheck, thing) --E.G. isThing(self.dim,"computer")
+    return toCheck[1] == tab[thing][1] and toCheck[2] == tab[thing][2]
+  end
+  self.isComputer = isThing(self.dim, "computer")
+  self.isTurtle = isThing(self.dim, "turtle")
+  self.isPocket = isThing(self.dim, "pocket")
+  self.acceptsInput = self.isComputer or self.isTurtle or self.isPocket
+end
+screenClass.new = function(side, receive, send)
   local self = {}
   setmetatable(obj, {__index = screenClass}) --Establish Hierarchy
-  self.peripheralSide = side
+  self.side = side
   self.term = peripheral.wrap(side)
   if not (self.term and peripheral.getType(side) == "monitor") then
     error("No monitor on side "..tostring(side))
@@ -99,15 +123,49 @@ screenClass.new = function()
   self.backColor = colors.black
   self.isDone = false --Flag for when the turtle is done transmitting
   self.id = #screenClass.screens+1
+  self.dim = {self.term.getSize()} --Raw dimensions
+  self.size = {} --Screen Size, assigned in setSize
+  self.isColor = self.term.isColor() --Just for convenience
+  self.isComputer = false
+  self.isTurtle = false
+  self.isPocket = false
+  self.acceptsInput = false
+  self.rec = { --Initial values for all displayed numbers
+    label = "Quarry Bot",
+    id = 1, 
+    percent = 0,
+    relxPos = 0,
+    zPos = 0,
+    layersDone = 0,
+    x = 0,
+    z = 0,
+    layers = 0,
+    openSlots = 0,
+    mined = 0,
+    moved = 0,
+    chestFull = false,
+    isAtChest = false,
+    isGoingToNextLayer = false,
+    foundBedrock = false,
+    fuel = 0,
+    volume = 0,
+    distance = 0,
+    yPos = 0
+    --Maybe add in some things like if going to then add a field
+  }
   
-  screenClass.screens[id] = self
-  screenClass.channels = self --If anyone ever asked, you could have multiple screens per channel, but its silly if no one ever needs it
+  screenClass.screens[self.id] = self
+  screenClass.sides[self.side] = self
+  screenClass.channels[self.receive] = self --If anyone ever asked, you could have multiple screens per channel, but its silly if no one ever needs it
   return self
 end
-screenClass.removeEntry = function(id) --Cleanup function
-  local channel = screenClass.screens[id].receive
-  screenClass.screens[id] = "REMOVED"
-  screenClass.channels[channel] = nil
+screenClass.removeEntry = function(tab) --Cleanup function
+  if type(id) == "number" then --Expects table, can take id
+    tab = screenClass.screens[id]
+  end
+  screenClass.screens[tab.id] = "REMOVED" --Not nil because screw up len()
+  screenClass.sides[tab.side] = nil
+  screenClass.channels[tab.receive] = nil
 end
 
 
@@ -272,26 +330,26 @@ until sendChannel --This will be assigned when message is received
 --This is for testing purposes. Rec will be "receivedMessage"
 --Nevermind, I actually need a default thing with keys in it.
 local rec = {
-label = "Quarry Bot",
-id = 1, 
-percent = 0,
-relxPos = 0,
-zPos = 0,
-layersDone = 0,
-x = 0,
-z = 0,
-layers = 0,
-openSlots = 0,
-mined = 0,
-moved = 0,
-chestFull = false,
-isAtChest = false,
-isGoingToNextLayer = false,
-foundBedrock = false,
-fuel = 0,
-volume = 0,
-distance = 0,
-yPos = 0
+  label = "Quarry Bot",
+  id = 1, 
+  percent = 0,
+  relxPos = 0,
+  zPos = 0,
+  layersDone = 0,
+  x = 0,
+  z = 0,
+  layers = 0,
+  openSlots = 0,
+  mined = 0,
+  moved = 0,
+  chestFull = false,
+  isAtChest = false,
+  isGoingToNextLayer = false,
+  foundBedrock = false,
+  fuel = 0,
+  volume = 0,
+  distance = 0,
+  yPos = 0
 --Maybe add in some things like if going to then add a field
 }
 
