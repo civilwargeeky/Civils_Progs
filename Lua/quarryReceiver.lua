@@ -43,9 +43,9 @@ local debug = false
 local sloppyHandshake = true --If receiver can pick back up in the middle w/o handshake
 local defaultCheckScreen = false --If this is true, it will automatically check for a screen around it.
 
-local mon, modem, sendChannel, receiveChannel, isDone
-local currBackgroundColor = colors.black
-local currTextColor = colors.white
+
+
+--Generic Functions--
 local function setTextColor(color, obj)
   obj = obj or mon
   if color and obj.isColor() then
@@ -79,6 +79,39 @@ local function checkChannel(num)
     return num
   end
 end
+
+
+local screenClass = {} --This is the class for all monitor/screen objects
+screenClass.screens = {} --A numbered list of screens in the order they were defined
+screenClass.channels = {} --A list of receiving channels that have screens attached. Used for the receiver part
+
+screenClass.new = function()
+  local self = {}
+  setmetatable(obj, {__index = screenClass}) --Establish Hierarchy
+  self.peripheralSide = side
+  self.term = peripheral.wrap(side)
+  if not (self.term and peripheral.getType(side) == "monitor") then
+    error("No monitor on side "..tostring(side))
+  end
+  self.receive = receive --Receive Channel
+  self.send = send --Reply Channel
+  self.textColor = colors.white
+  self.backColor = colors.black
+  self.isDone = false --Flag for when the turtle is done transmitting
+  self.id = #screenClass.screens+1
+  
+  screenClass.screens[id] = self
+  screenClass.channels = self --If anyone ever asked, you could have multiple screens per channel, but its silly if no one ever needs it
+  return self
+end
+screenClass.removeEntry = function(id) --Cleanup function
+  local channel = screenClass.screens[id].receive
+  screenClass.screens[id] = "REMOVED"
+  screenClass.channels[channel] = nil
+end
+
+
+
 
 --Initializing Variables
 local sendChannel, receiveChannel
