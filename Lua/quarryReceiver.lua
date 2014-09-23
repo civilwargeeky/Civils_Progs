@@ -43,6 +43,9 @@ local debug = false
 local sloppyHandshake = true --If receiver can pick back up in the middle w/o handshake
 local defaultCheckScreen = false --If this is true, it will automatically check for a screen around it.
 
+--Config
+local doDebug = true --For testing purposes
+local 
 
 
 --Generic Functions--
@@ -90,7 +93,7 @@ screenClass.sizes = {{7,18,29,39,50}, (5,12,19} , computer = {51, 19}, turtle = 
 screenClass.setSize = function(self)
   if not self.term.setCursorPos() then --If peripheral is having problems/not there
     self.updateScreen = function() end --Do nothing on screen update, overrides class
-  else
+  else --This just allows for class inheritance
     self.updateScreen = nil --Remove function in case it exists
   end
   local tab = screenClass.sizes
@@ -117,15 +120,19 @@ screenClass.new = function(side, receive, send)
   if not (self.term and peripheral.getType(side) == "monitor") then
     error("No monitor on side "..tostring(side))
   end
+  --Channels and ids
   self.receive = receive --Receive Channel
   self.send = send --Reply Channel
+  self.id = #screenClass.screens+1
+  --Colors
   self.textColor = colors.white
   self.backColor = colors.black
-  self.isDone = false --Flag for when the turtle is done transmitting
-  self.id = #screenClass.screens+1
-  self.dim = {self.term.getSize()} --Raw dimensions
-  self.size = {} --Screen Size, assigned in setSize
   self.isColor = self.term.isColor() --Just for convenience
+  --Other Screen Properties
+  self.dim = {self.term.getSize()} --Raw dimensions
+  --Initializations
+  self.isDone = false --Flag for when the turtle is done transmitting
+  self.size = {} --Screen Size, assigned in setSize
   self.isComputer = false
   self.isTurtle = false
   self.isPocket = false
@@ -157,6 +164,7 @@ screenClass.new = function(side, receive, send)
   screenClass.screens[self.id] = self
   screenClass.sides[self.side] = self
   screenClass.channels[self.receive] = self --If anyone ever asked, you could have multiple screens per channel, but its silly if no one ever needs it
+  self.setSize() --Finish Initialization
   return self
 end
 screenClass.removeEntry = function(tab) --Cleanup function
