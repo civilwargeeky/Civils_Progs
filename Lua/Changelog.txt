@@ -13,6 +13,9 @@
   If turtle runs low on fuel, comes back and errors.
   Fixed turtle asking rednet enabled when there is no modem
   Removed invCheckFreq parameter. I doubt anyone used it. It now just checks every 1
+--Version 3.5.3 Ore Quarry
+  Changed oreQuarry for current implementation
+  Users can specify their own comma-delineated blacklist
   
 ----MenuAPI----
 --Version 1.0.1
