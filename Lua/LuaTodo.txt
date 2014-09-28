@@ -6,6 +6,7 @@ Maybe have a "master" and "slave" function on the quarry shell so that you could
 Quarry Receiver x.x.x (matches current quarry):
   Add in "usage" parameter, because not even I can remember it. So like "usage", "help", "-help", "?" and "-?" bring up parameters.
   Add in a "themes" system accessible by the command line
+  Make sure its backwards compatible (e.g. backup for peripheral.find)
   Ideas:
   1. All themes are in files in a "themes" folder.
   2. Some themes are included in the program code, and can be selected.
