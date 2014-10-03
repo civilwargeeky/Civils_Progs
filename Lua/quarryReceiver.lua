@@ -39,16 +39,16 @@ Resume: Resumes paused turtles
 Help: This :D
 ]]
 
-local debug = false
-local sloppyHandshake = true --If receiver can pick back up in the middle w/o handshake
-local defaultCheckScreen = false --If this is true, it will automatically check for a screen around it.
 
 --Config
 local doDebug = true --For testing purposes
-local 
+
 
 
 --Generic Functions--
+local function debug(...)
+  if doDebug then return print(...) end
+end
 local function setTextColor(color, obj)
   obj = obj or mon
   if color and obj.isColor() then
@@ -82,6 +82,22 @@ local function checkChannel(num)
     return num
   end
 end
+local function align(text, xDim)
+  text = tostring(text) or ""
+  if #text >= xDim then return text end
+  for i=1, xDim-#text do
+    text = " "..text
+  end
+  return text
+end
+local function center(text, xDim)
+  xDim = xDim or dim[1] --Temp fix
+  local a = (xDim-#text)/2
+  for i=1, a do
+    text = " "..text.." "
+  end
+  return text  
+end
 
 
 local screenClass = {} --This is the class for all monitor/screen objects
@@ -90,28 +106,6 @@ screenClass.sides = {} --A mapping of screens by their side attached
 screenClass.channels = {} --A mapping of receiving channels that have screens attached. Used for the receiver part
 screenClass.sizes = {{7,18,29,39,50}, (5,12,19} , computer = {51, 19}, turtle = {39,13}, pocket = {26,20}}
 
-screenClass.setSize = function(self)
-  if not self.term.setCursorPos() then --If peripheral is having problems/not there
-    self.updateScreen = function() end --Do nothing on screen update, overrides class
-  else --This just allows for class inheritance
-    self.updateScreen = nil --Remove function in case it exists
-  end
-  local tab = screenClass.sizes
-  for a=1, 2 do --Want x and y dim
-    for b=1, #tab[a] do --Go through all normal sizes, x and y individually
-      if tab[a][b] <= self.dim[a] then --This will set size higher until false
-        self.size[a] = b
-      end
-    end
-  end
-  local function isThing(toCheck, thing) --E.G. isThing(self.dim,"computer")
-    return toCheck[1] == tab[thing][1] and toCheck[2] == tab[thing][2]
-  end
-  self.isComputer = isThing(self.dim, "computer")
-  self.isTurtle = isThing(self.dim, "turtle")
-  self.isPocket = isThing(self.dim, "pocket")
-  self.acceptsInput = self.isComputer or self.isTurtle or self.isPocket
-end
 screenClass.new = function(side, receive, send)
   local self = {}
   setmetatable(obj, {__index = screenClass}) --Establish Hierarchy
@@ -167,6 +161,7 @@ screenClass.new = function(side, receive, send)
   self.setSize() --Finish Initialization
   return self
 end
+
 screenClass.removeEntry = function(tab) --Cleanup function
   if type(id) == "number" then --Expects table, can take id
     tab = screenClass.screens[id]
@@ -176,230 +171,31 @@ screenClass.removeEntry = function(tab) --Cleanup function
   screenClass.channels[tab.receive] = nil
 end
 
-
-
-
---Initializing Variables
-local sendChannel, receiveChannel
-local periphSides = {monitor = nil, modem = nil}
-local expectedMessage = "Civil's Quarry" --Expected initial message
-local respondMessage = "Turtle Quarry Receiver" --Message to respond to  handshake with
-local stopMessage = "stop"
-local sides = swapKeyValue({"top","bottom","right","left","front","back"}) --This allows sides[1] and sides.front
---tArgs and peripheral list init
-local tArgs = {...}
-local tArgsWithUpper = swapKeyValue(copyTable(tArgs))
-for a, b in pairs(tArgs) do --Lower arguments
-  tArgs[a] = string.lower(b)
-end
-tArgs = swapKeyValue(tArgs)
-local foundSides = {}
-for a, b in pairs(sides) do
-  if type(a) == "string" then
-    foundSides[a] = peripheral.getType(a)
+screenClass.setSize = function(self)
+  if not self.term.setCursorPos() then --If peripheral is having problems/not there
+    self.updateScreen = function() end --Do nothing on screen update, overrides class
+  else --This just allows for class inheritance
+    self.updateScreen = nil --Remove function in case it exists, defaults to super
   end
-end
-foundSides = swapKeyValue(foundSides)
-
---Size functions
-local sizes = {{7, 5}, {18, 12}, {29, 19}, 39, 50, computer = {51, 19}, turtle = {39,13}, pocket = {26,20}} --Monitor dimensions
-local sizesEnum = {small = 1, medium = 2, large = 3, computer = 4, turtle = 5} --For reference
-local dim, screenSize
-local function setSize()
-  if mon == term or not mon.getCursorPos() then --You should be able to swap out screens
-    local a = peripheral.wrap(periphSides.monitor or "")
-    if a then --If a is a valid monitor then
-      mon = a --Monitor variable is a
-    else
-      mon = term --Monitor variable is just the screen variable
-    end
-  end
-  screenSize = {}
-  dim = {mon.getSize()} --Just pretend its large if it doesn't exist
-  local function isX(dim, what)
-    return dim[1] == sizes[what][1] and dim[2] == sizes[what][2]
-  end
-  screenSize.isComputer = isX(dim, "computer")
-  screenSize.isTurtle = isX(dim, "turtle")
-  screenSize.isPocket = isX(dim, "pocket")
-
-  for a=1, 2 do --X and Y
-    for i=3, 1, -1 do --Different sizes 1 - 3
-      if dim[a] >= sizes[i][a] then --This will get decrementing screen sizes. Can even be adjusted later!
-        screenSize[a] = i
-        break
+  local tab = screenClass.sizes
+  for a=1, 2 do --Want x and y dim
+    for b=1, #tab[a] do --Go through all normal sizes, x and y individually
+      if tab[a][b] <= self.dim[a] then --This will set size higher until false
+        self.size[a] = b
       end
     end
   end
-  if not (screenSize[1] and screenSize[2]) then error("Screen Size was not set properly") end
-  if debug then
-    print("Screen Size Reset:")
-    print("Size X: ",screenSize[1]," Size Y: ",screenSize[2])
-    print("Dim X: ",dim[1]," Dim Y: ",dim[2])
+  local function isThing(toCheck, thing) --E.G. isThing(self.dim,"computer")
+    return toCheck[1] == tab[thing][1] and toCheck[2] == tab[thing][2]
   end
-  if screenSize.isComputer or screenSize.isTurtle or screenSize.isPocket then
-    screenSize.acceptsInput = true
-  else
-    screenSize.acceptsInput = false
-  end
+  self.isComputer = isThing(self.dim, "computer")
+  self.isTurtle = isThing(self.dim, "turtle")
+  self.isPocket = isThing(self.dim, "pocket")
+  self.acceptsInput = self.isComputer or self.isTurtle or self.isPocket
 end
 
---Arguments and such
-local function getNext(str)
-  return tArgs[tArgs[str]+1]
-end
-
-
-if tArgs["-modem"] then
-  if sides[getNext("-modem")] then
-    periphSides["modem"] = getNext("-modem")
-  end
-else --This will check for a modem only if argument isn't specified
-  periphSides["modem"] = foundSides["modem"]
-end
-for _, a in pairs({"-monitor","-screen"}) do
-  if tArgs[a] then
-    if sides[getNext(a)] then --Checks if the argument following monitor is a valid side
-      periphSides.monitor = getNext(a)
-    else
-      periphSides.monitor = foundSides.monitor --This differs from above so if no argument, will default to screen.
-    end
-  elseif defaultCheckScreen then
-    periphSides.monitor = foundSides.monitor
-  end
-end
-
-if tArgs["-channel"] then
-  receiveChannel = checkChannel(getNext("-channel")) --This will be nil if it doesn't exist
-end
-
-if debug then
-  print(textutils.serialize(foundSides))
-  print("Screen Side: ",periphSides.monitor)
-  print("Modem Side: ",periphSides.modem)
-  os.pullEvent("char")
-end
-
-
---All UI, handshaking, and monitor finding go here.
-term.clear()
-term.setCursorPos(1,1)
-print("Welcome to Quarry Receiver!")
-while peripheral.getType(periphSides["modem"]) ~= "modem" do
-  write("Which side is the modem on? " )
-  local temp = read()
-  if peripheral.getType(temp:lower()) == "modem" then --If the input side is a modem
-    periphSides.modem = temp
-  else print("That side does not have a modem on it \n") end
-end
-while not receiveChannel do
-  write("What channel? (Check turtle) ")
-  local temp = tonumber(read()) or 0
-  if checkChannel(temp) then
-    receiveChannel = temp
-  end
-end
-
---Init
-local a = peripheral.wrap(periphSides.monitor or "")
-if a then --If a is a valid monitor then
-  mon = a --Monitor variable is a
-else
-  mon = term --Monitor variable is just the screen variable
-end
-setSize()
-modem = peripheral.wrap(periphSides.modem)
-
-if debug then
-  print("Accepts Input: ",screenSize.acceptsInput)
-  os.pullEvent("char")
-end
-
-
---Handshake
-print("Opening channel ",receiveChannel)
-modem.open(receiveChannel)
-print("Waiting for turtle message")
-repeat
-  local event, modemSide, recCheck, sendCheck, message, distance = os.pullEvent("modem_message")
-  if debug then print("Message Received") end
-  if (message == expectedMessage or (sloppyHandshake and textutils.unserialize(message))) and recCheck == receiveChannel and modemSide == periphSides.modem then
-    sendChannel = sendCheck
-    sleep(0.5) --Give it a second to catch up?
-    modem.transmit(sendChannel, receiveChannel, respondMessage)
-    print("Successfully paired, sending back on channel ",sendChannel)
-  else
-    if debug then print("Invalid message received: ",message) end
-  end
-  
-until sendChannel --This will be assigned when message is received
-
-
---This is for testing purposes. Rec will be "receivedMessage"
---Nevermind, I actually need a default thing with keys in it.
-local rec = {
-  label = "Quarry Bot",
-  id = 1, 
-  percent = 0,
-  relxPos = 0,
-  zPos = 0,
-  layersDone = 0,
-  x = 0,
-  z = 0,
-  layers = 0,
-  openSlots = 0,
-  mined = 0,
-  moved = 0,
-  chestFull = false,
-  isAtChest = false,
-  isGoingToNextLayer = false,
-  foundBedrock = false,
-  fuel = 0,
-  volume = 0,
-  distance = 0,
-  yPos = 0
---Maybe add in some things like if going to then add a field
-}
-
-local typeColors = {}
-local function addColor(name, text, back) --Background is optional. Will not change if nil
-  typeColors[name] = {text = text, background = back}
-end
-
-addColor("title", colors.green, colors.gray)
-addColor("subtitle", colors.white)
-addColor("pos", colors.green)
-addColor("dim", colors.lightBlue)
-addColor("extra", colors.lightGray)
-addColor("error", colors.red, colors.white)
-addColor("info", colors.blue, colors.lightGray)
-addColor("inverse", colors.yellow, colors.lightGray)
-addColor("command", colors.lightBlue)
-addColor("help", colors.red, colors.white)
-
-
-local function reset(color)
-  setBackgroundColor(color)
-  mon.clear()
-  mon.setCursorPos(1,1)
-end
-local function say(text, color, obj)
-  local currColor = currBackgroundColor
-  obj, color = obj or mon, color or {}
-  setTextColor(color.text, obj)
-  if debug and #text > dim[1] then error("Tried printing: "..text..", but was too big") end
-  setBackgroundColor(color.background, obj)
-  for i=1, dim[1]-#text do --This is so the whole line's background gets filled.
-    text = text.." "
-  end
-  obj.write(text)
-  setBackgroundColor(currColor, obj)
-  local pos = ({obj.getCursorPos()})[2] or setSize() or 1
-  obj.setCursorPos(1, pos+1)
-end
-
-local toPrint = {}
-local function tryAdd(text, color, ...) --This will try to add text if Y dimension is a certain size
+--Copied from below, revise
+screenClass.tryAdd = function(text, color, ...) --This will try to add text if Y dimension is a certain size
   local doAdd = {...} --booleans for small, medium, and large
   local added = false
   text = text or "-"
@@ -413,28 +209,12 @@ local function tryAdd(text, color, ...) --This will try to add text if Y dimensi
   if not added then return true end --This is so I won't remove elements that haven't been added.
   if #text > dim[1] then return false else return true end
 end
-local function align(text, xDim)
-  text = tostring(text) or ""
-  if #text >= xDim then return text end
-  for i=1, xDim-#text do
-    text = " "..text
-  end
-  return text
-end
-local function center(text, xDim)
-  xDim = xDim or dim[1] --Temp fix
-  local a = (xDim-#text)/2
-  for i=1, a do
-    text = " "..text.." "
-  end
-  return text  
-end
 
-local extraLine --This is used in display and set in commandSender
-function display() while true do sleep(0)
+screenClass.updateScreen = function(self)
+  
   local str = tostring
-  local pos = {mon.getCursorPos()}--Record pos so it can be reset
-  toPrint = {} --Reset table
+  local pos = {self.term.getCursorPos()}--Record pos so it can be reset
+  local toPrint = {} --Reset table
   if not isDone then --Normally
     if screenSize[1] == sizesEnum.small then
       if not tryAdd(rec.label, typeColors.title, false, false, true) then --This will be a title, basically
@@ -575,25 +355,233 @@ function display() while true do sleep(0)
     say(b.text, b.color)
   end
   if extraLine then
-    mon.setCursorPos(1,dim[2])
+    self.term.setCursorPos(1,dim[2])
     say(extraLine[1],extraLine[2])
   end
-  mon.setCursorPos(pos[1], pos[2]) --Reset pos for command sender
   
-  if isDone then --Is done :D
-    return true
+end
+
+
+--Initializing Variables
+local sendChannel, receiveChannel
+local periphSides = {monitor = nil, modem = nil}
+local expectedMessage = "Civil's Quarry" --Expected initial message
+local respondMessage = "Turtle Quarry Receiver" --Message to respond to  handshake with
+local stopMessage = "stop"
+local sides = swapKeyValue({"top","bottom","right","left","front","back"}) --This allows sides[1] and sides.front
+--tArgs and peripheral list init
+local tArgs = {...}
+local tArgsWithUpper = swapKeyValue(copyTable(tArgs))
+for a, b in pairs(tArgs) do --Lower arguments
+  tArgs[a] = string.lower(b)
+end
+tArgs = swapKeyValue(tArgs)
+local foundSides = {}
+for a, b in pairs(sides) do
+  if type(a) == "string" then
+    foundSides[a] = peripheral.getType(a)
   end
-  
-  while true do --I want specific events
-    event = os.pullEvent() --This should wait for any event to update. Function rednet queues an event once info is set
-    if event == "monitor_resize" or event == "peripheral" or event == "peripheral_detach" then
-      setSize(); extraLine = nil; break
-    elseif event == "updateScreen" or (debug and event == "char") then
-      break
+end
+foundSides = swapKeyValue(foundSides)
+
+--Size functions
+local sizes = {{7, 5}, {18, 12}, {29, 19}, 39, 50, computer = {51, 19}, turtle = {39,13}, pocket = {26,20}} --Monitor dimensions
+local sizesEnum = {small = 1, medium = 2, large = 3, computer = 4, turtle = 5} --For reference
+local dim, screenSize
+local function setSize()
+  if mon == term or not mon.getCursorPos() then --You should be able to swap out screens
+    local a = peripheral.wrap(periphSides.monitor or "")
+    if a then --If a is a valid monitor then
+      mon = a --Monitor variable is a
+    else
+      mon = term --Monitor variable is just the screen variable
     end
   end
+  screenSize = {}
+  dim = {mon.getSize()} --Just pretend its large if it doesn't exist
+  local function isX(dim, what)
+    return dim[1] == sizes[what][1] and dim[2] == sizes[what][2]
+  end
+  screenSize.isComputer = isX(dim, "computer")
+  screenSize.isTurtle = isX(dim, "turtle")
+  screenSize.isPocket = isX(dim, "pocket")
 
-end end
+  for a=1, 2 do --X and Y
+    for i=3, 1, -1 do --Different sizes 1 - 3
+      if dim[a] >= sizes[i][a] then --This will get decrementing screen sizes. Can even be adjusted later!
+        screenSize[a] = i
+        break
+      end
+    end
+  end
+  if not (screenSize[1] and screenSize[2]) then error("Screen Size was not set properly") end
+  if debug then
+    print("Screen Size Reset:")
+    print("Size X: ",screenSize[1]," Size Y: ",screenSize[2])
+    print("Dim X: ",dim[1]," Dim Y: ",dim[2])
+  end
+  if screenSize.isComputer or screenSize.isTurtle or screenSize.isPocket then
+    screenSize.acceptsInput = true
+  else
+    screenSize.acceptsInput = false
+  end
+end
+
+--Arguments and such
+local function getNext(str)
+  return tArgs[tArgs[str]+1]
+end
+
+
+if tArgs["-modem"] then
+  if sides[getNext("-modem")] then
+    periphSides["modem"] = getNext("-modem")
+  end
+else --This will check for a modem only if argument isn't specified
+  periphSides["modem"] = foundSides["modem"]
+end
+for _, a in pairs({"-monitor","-screen"}) do
+  if tArgs[a] then
+    if sides[getNext(a)] then --Checks if the argument following monitor is a valid side
+      periphSides.monitor = getNext(a)
+    else
+      periphSides.monitor = foundSides.monitor --This differs from above so if no argument, will default to screen.
+    end
+  elseif defaultCheckScreen then
+    periphSides.monitor = foundSides.monitor
+  end
+end
+
+if tArgs["-channel"] then
+  receiveChannel = checkChannel(getNext("-channel")) --This will be nil if it doesn't exist
+end
+
+if doDebug then
+  print(textutils.serialize(foundSides))
+  print("Screen Side: ",periphSides.monitor)
+  print("Modem Side: ",periphSides.modem)
+  os.pullEvent("char")
+end
+
+
+--All UI, handshaking, and monitor finding go here.
+term.clear()
+term.setCursorPos(1,1)
+print("Welcome to Quarry Receiver!")
+while peripheral.getType(periphSides["modem"]) ~= "modem" do
+  write("Which side is the modem on? " )
+  local temp = read()
+  if peripheral.getType(temp:lower()) == "modem" then --If the input side is a modem
+    periphSides.modem = temp
+  else print("That side does not have a modem on it \n") end
+end
+while not receiveChannel do
+  write("What channel? (Check turtle) ")
+  local temp = tonumber(read()) or 0
+  if checkChannel(temp) then
+    receiveChannel = temp
+  end
+end
+
+--Init
+local a = peripheral.wrap(periphSides.monitor or "")
+if a then --If a is a valid monitor then
+  mon = a --Monitor variable is a
+else
+  mon = term --Monitor variable is just the screen variable
+end
+setSize()
+modem = peripheral.wrap(periphSides.modem)
+
+if debug then
+  print("Accepts Input: ",screenSize.acceptsInput)
+  os.pullEvent("char")
+end
+
+
+--Handshake
+print("Opening channel ",receiveChannel)
+modem.open(receiveChannel)
+print("Waiting for turtle message")
+repeat
+  local event, modemSide, recCheck, sendCheck, message, distance = os.pullEvent("modem_message")
+  if debug then print("Message Received") end
+  if (message == expectedMessage or (sloppyHandshake and textutils.unserialize(message))) and recCheck == receiveChannel and modemSide == periphSides.modem then
+    sendChannel = sendCheck
+    sleep(0.5) --Give it a second to catch up?
+    modem.transmit(sendChannel, receiveChannel, respondMessage)
+    print("Successfully paired, sending back on channel ",sendChannel)
+  else
+    if debug then print("Invalid message received: ",message) end
+  end
+  
+until sendChannel --This will be assigned when message is received
+
+
+--This is for testing purposes. Rec will be "receivedMessage"
+--Nevermind, I actually need a default thing with keys in it.
+local rec = {
+  label = "Quarry Bot",
+  id = 1, 
+  percent = 0,
+  relxPos = 0,
+  zPos = 0,
+  layersDone = 0,
+  x = 0,
+  z = 0,
+  layers = 0,
+  openSlots = 0,
+  mined = 0,
+  moved = 0,
+  chestFull = false,
+  isAtChest = false,
+  isGoingToNextLayer = false,
+  foundBedrock = false,
+  fuel = 0,
+  volume = 0,
+  distance = 0,
+  yPos = 0
+--Maybe add in some things like if going to then add a field
+}
+
+--####MORE REVISIONS STARTING HERE, ABOVE IS DEAD####
+
+local typeColors = {}
+local function addColor(name, text, back) --Background is optional. Will not change if nil
+  typeColors[name] = {text = text, background = back}
+end
+
+addColor("title", colors.green, colors.gray)
+addColor("subtitle", colors.white)
+addColor("pos", colors.green)
+addColor("dim", colors.lightBlue)
+addColor("extra", colors.lightGray)
+addColor("error", colors.red, colors.white)
+addColor("info", colors.blue, colors.lightGray)
+addColor("inverse", colors.yellow, colors.lightGray)
+addColor("command", colors.lightBlue)
+addColor("help", colors.red, colors.white)
+
+
+local function reset(color)
+  setBackgroundColor(color)
+  mon.clear()
+  mon.setCursorPos(1,1)
+end
+local function say(text, color, obj)
+  local currColor = currBackgroundColor
+  obj, color = obj or mon, color or {}
+  setTextColor(color.text, obj)
+  if debug and #text > dim[1] then error("Tried printing: "..text..", but was too big") end
+  setBackgroundColor(color.background, obj)
+  for i=1, dim[1]-#text do --This is so the whole line's background gets filled.
+    text = text.." "
+  end
+  obj.write(text)
+  setBackgroundColor(currColor, obj)
+  local pos = ({obj.getCursorPos()})[2] or setSize() or 1
+  obj.setCursorPos(1, pos+1)
+end
 
 local messageToSend --This will be a command string sent to turtle
 
