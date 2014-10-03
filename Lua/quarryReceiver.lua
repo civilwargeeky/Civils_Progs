@@ -105,6 +105,25 @@ screenClass.screens = {} --A simply numbered list of screens
 screenClass.sides = {} --A mapping of screens by their side attached
 screenClass.channels = {} --A mapping of receiving channels that have screens attached. Used for the receiver part
 screenClass.sizes = {{7,18,29,39,50}, (5,12,19} , computer = {51, 19}, turtle = {39,13}, pocket = {26,20}}
+screenClass.themeColors = { 
+  addColor = function(self, name, text, back) --Background is optional. Will not change if nil
+    self[name] = {text = text, background = back}
+  end
+}
+
+do --This is how adding colors will work
+  local tab = screenClass.themeColors
+  tab:addColor("title", colors.green, colors.gray)
+  tab:addColor("subtitle", colors.white)
+  tab:addColor("pos", colors.green)
+  tab:addColor("dim", colors.lightBlue)
+  tab:addColor("extra", colors.lightGray)
+  tab:addColor("error", colors.red, colors.white)
+  tab:addColor("info", colors.blue, colors.lightGray)
+  tab:addColor("inverse", colors.yellow, colors.lightGray)
+  tab:addColor("command", colors.lightBlue)
+  tab:addColor("help", colors.red, colors.white)
+end
 
 screenClass.new = function(side, receive, send)
   local self = {}
@@ -127,6 +146,7 @@ screenClass.new = function(side, receive, send)
   --Initializations
   self.isDone = false --Flag for when the turtle is done transmitting
   self.size = {} --Screen Size, assigned in setSize
+  self.toPrint = {}
   self.isComputer = false
   self.isTurtle = false
   self.isPocket = false
@@ -158,7 +178,7 @@ screenClass.new = function(side, receive, send)
   screenClass.screens[self.id] = self
   screenClass.sides[self.side] = self
   screenClass.channels[self.receive] = self --If anyone ever asked, you could have multiple screens per channel, but its silly if no one ever needs it
-  self.setSize() --Finish Initialization
+  self:setSize() --Finish Initialization
   return self
 end
 
@@ -195,158 +215,154 @@ screenClass.setSize = function(self)
 end
 
 --Copied from below, revise
-screenClass.tryAdd = function(text, color, ...) --This will try to add text if Y dimension is a certain size
+screenClass.tryAdd = function(self, text, color, ...) --This will try to add text if Y dimension is a certain size
   local doAdd = {...} --booleans for small, medium, and large
-  local added = false
   text = text or "-"
   color = color or {text = colors.white}
   for i=1, 3 do
     if doAdd[i] and screenSize[2] == i then --If should add this text for this screen size and the monitor is this size
-      table.insert(toPrint, {text = text, color = color})
-      added = true
+      if #text <= self.dim[1] then
+        table.insert(toPrint, {text = text, color = color})
+        return true
+      else
+        debug("Tryed adding ",text," on line ",#self.toPrint+1," but was too long")
+      end
     end
   end
-  if not added then return true end --This is so I won't remove elements that haven't been added.
-  if #text > dim[1] then return false else return true end
+  return false
 end
 
-screenClass.updateScreen = function(self)
-  
+--Copied from below, revise
+screenClass.updateScreen = function(self, isDone)
   local str = tostring
-  local pos = {self.term.getCursorPos()}--Record pos so it can be reset
-  local toPrint = {} --Reset table
+  self.toPrint = {} --Reset table
+  
   if not isDone then --Normally
-    if screenSize[1] == sizesEnum.small then
-      if not tryAdd(rec.label, typeColors.title, false, false, true) then --This will be a title, basically
-        toPrint[#toPrint] = nil
-        tryAdd("Quarry!", typeColors.title, false, false, true)
+    if self.size[1] == 1 then --Small Monitor
+      if not self:tryAdd(rec.label, typeColors.title, false, false, true) then --This will be a title, basically
+        self:tryAdd("Quarry!", typeColors.title, false, false, true)
       end
       
-      tryAdd("-Fuel-", typeColors.subtitle , false, true, true)
-      if not tryAdd(str(rec.fuel), nil, false, true, true) then --The fuel number may be bigger than the screen
-        toPrint[#toPrint] = nil
-        tryAdd("A lot", nil, false, true, true)
+      self:tryAdd("-Fuel-", typeColors.subtitle , false, true, true)
+      if not self:tryAdd(str(rec.fuel), nil, false, true, true) then --The fuel number may be bigger than the screen
+        self:tryAdd("A lot", nil, false, true, true)
       end
       
-      tryAdd("--%%%--", typeColors.subtitle, false, true, true)
-      tryAdd(align(str(rec.percent).."%", 7), typeColors.pos , false, true, true) --This can be an example. Print (receivedMessage).percent in blue on all different screen sizes
-      tryAdd(center(str(rec.percent).."%"), typeColors.pos, true) --I want it to be centered on 1x1
+      self:tryAdd("--%%%--", typeColors.subtitle, false, true, true)
+      self:tryAdd(align(str(rec.percent).."%", 7), typeColors.pos , false, true, true) --This can be an example. Print (receivedMessage).percent in blue on all different screen sizes
+      self:tryAdd(center(str(rec.percent).."%"), typeColors.pos, true) --I want it to be centered on 1x1
       
-      tryAdd("--Pos--", typeColors.subtitle, false, true, true)
-      tryAdd("X:"..align(str(rec.relxPos), 5), typeColors.pos, true, true, true)
-      tryAdd("Z:"..align(str(rec.zPos), 5), typeColors.pos , true, true, true)
-      tryAdd("Y:"..align(str(rec.layersDone), 5), typeColors.pos , true, true, true)
+      self:tryAdd("--Pos--", typeColors.subtitle, false, true, true)
+      self:tryAdd("X:"..align(str(rec.relxPos), 5), typeColors.pos, true, true, true)
+      self:tryAdd("Z:"..align(str(rec.zPos), 5), typeColors.pos , true, true, true)
+      self:tryAdd("Y:"..align(str(rec.layersDone), 5), typeColors.pos , true, true, true)
       
-      if not tryAdd(str(rec.x).."x"..str(rec.z).."x"..str(rec.layers), typeColors.dim , true) then --If you can't display the y, then don't
-        toPrint[#toPrint] = nil --Remove element
-        tryAdd(str(rec.x).."x"..str(rec.z), typeColors.dim , true)
+      if not self:tryAdd(str(rec.x).."x"..str(rec.z).."x"..str(rec.layers), typeColors.dim , true) then --If you can't display the y, then don't
+        self:tryAdd(str(rec.x).."x"..str(rec.z), typeColors.dim , true)
       end
-      tryAdd("--Dim--", typeColors.subtitle, false, true, true)
-      tryAdd("X:"..align(str(rec.x), 5), typeColors.dim, false, true, true)
-      tryAdd("Z:"..align(str(rec.z), 5), typeColors.dim, false, true, true)
-      tryAdd("Y:"..align(str(rec.layers), 5), typeColors.dim, false, true, true)
+      self:tryAdd("--Dim--", typeColors.subtitle, false, true, true)
+      self:tryAdd("X:"..align(str(rec.x), 5), typeColors.dim, false, true, true)
+      self:tryAdd("Z:"..align(str(rec.z), 5), typeColors.dim, false, true, true)
+      self:tryAdd("Y:"..align(str(rec.layers), 5), typeColors.dim, false, true, true)
       
-      tryAdd("-Extra-", typeColors.subtitle, false, false, true)
-      tryAdd(align(textutils.formatTime(os.time()):gsub(" ","").."", 7), typeColors.extra, false, false, true) --Adds the current time, formatted, without spaces.
-      tryAdd("Open:"..align(str(rec.openSlots),2), typeColors.extra, false, false, true)
-      tryAdd("Dug"..align(str(rec.mined), 4), typeColors.extra, false, false, true)
-      tryAdd("Mvd"..align(str(rec.moved), 4), typeColors.extra, false, false, true)
+      self:tryAdd("-Extra-", typeColors.subtitle, false, false, true)
+      self:tryAdd(align(textutils.formatTime(os.time()):gsub(" ","").."", 7), typeColors.extra, false, false, true) --Adds the current time, formatted, without spaces.
+      self:tryAdd("Open:"..align(str(rec.openSlots),2), typeColors.extra, false, false, true)
+      self:tryAdd("Dug"..align(str(rec.mined), 4), typeColors.extra, false, false, true)
+      self:tryAdd("Mvd"..align(str(rec.moved), 4), typeColors.extra, false, false, true)
       if rec.chestFull then
-        tryAdd("ChstFll", typeColors.error, false, false, true)
+        self:tryAdd("ChstFll", typeColors.error, false, false, true)
       end
       
     end
-    if screenSize[1] == sizesEnum.medium then
-      if not tryAdd(rec.label, typeColors.title, false, false, true) then --This will be a title, basically
+    if self.size[1] == 2 then --Medium Monitor
+      if not self:tryAdd(rec.label, typeColors.title, false, false, true) then --This will be a title, basically
+        self:tryAdd("Quarry!", typeColors.title, false, false, true)
+      end
+      
+      self:tryAdd("-------Fuel-------", typeColors.subtitle , false, true, true)
+      if not self:tryAdd(str(rec.fuel), nil, false, true, true) then --The fuel number may be bigger than the screen
         toPrint[#toPrint] = nil
-        tryAdd("Quarry!", typeColors.title, false, false, true)
+        self:tryAdd("A lot", nil, false, true, true)
       end
       
-      tryAdd("-------Fuel-------", typeColors.subtitle , false, true, true)
-      if not tryAdd(str(rec.fuel), nil, false, true, true) then --The fuel number may be bigger than the screen
-        toPrint[#toPrint] = nil
-        tryAdd("A lot", nil, false, true, true)
+      self:tryAdd(str(rec.percent).."% Complete", typeColors.pos , true, true, true) --This can be an example. Print (receivedMessage).percent in blue on all different screen sizes
+      
+      self:tryAdd("-------Pos--------", typeColors.subtitle, false, true, true)
+      self:tryAdd("X Coordinate:"..align(str(rec.relxPos), 5), typeColors.pos, true, true, true)
+      self:tryAdd("Z Coordinate:"..align(str(rec.zPos), 5), typeColors.pos , true, true, true)
+      self:tryAdd("On Layer:"..align(str(rec.layersDone), 9), typeColors.pos , true, true, true)
+      
+      if not self:tryAdd("Size: "..str(rec.x).."x"..str(rec.z).."x"..str(rec.layers), typeColors.dim , true) then --This is already here... I may as well give an alternative for those people with 1000^3quarries
+        self:tryAdd(str(rec.x).."x"..str(rec.z).."x"..str(rec.layers), typeColors.dim , true)
       end
+      self:tryAdd("-------Dim--------", typeColors.subtitle, false, true, true)
+      self:tryAdd("Total X:"..align(str(rec.x), 10), typeColors.dim, false, true, true)
+      self:tryAdd("Total Z:"..align(str(rec.z), 10), typeColors.dim, false, true, true)
+      self:tryAdd("Total Layers:"..align(str(rec.layers), 5), typeColors.dim, false, true, true)
+      self:tryAdd("Volume"..align(str(rec.volume),12), typeColors.dim, false, false, true)
       
-      tryAdd(str(rec.percent).."% Complete", typeColors.pos , true, true, true) --This can be an example. Print (receivedMessage).percent in blue on all different screen sizes
-      
-      tryAdd("-------Pos--------", typeColors.subtitle, false, true, true)
-      tryAdd("X Coordinate:"..align(str(rec.relxPos), 5), typeColors.pos, true, true, true)
-      tryAdd("Z Coordinate:"..align(str(rec.zPos), 5), typeColors.pos , true, true, true)
-      tryAdd("On Layer:"..align(str(rec.layersDone), 9), typeColors.pos , true, true, true)
-      
-      if not tryAdd("Size: "..str(rec.x).."x"..str(rec.z).."x"..str(rec.layers), typeColors.dim , true) then --This is already here... I may as well give an alternative for those people with 1000^3quarries
-        toPrint[#toPrint] = nil --Remove element
-        tryAdd(str(rec.x).."x"..str(rec.z).."x"..str(rec.layers), typeColors.dim , true)
-      end
-      tryAdd("-------Dim--------", typeColors.subtitle, false, true, true)
-      tryAdd("Total X:"..align(str(rec.x), 10), typeColors.dim, false, true, true)
-      tryAdd("Total Z:"..align(str(rec.z), 10), typeColors.dim, false, true, true)
-      tryAdd("Total Layers:"..align(str(rec.layers), 5), typeColors.dim, false, true, true)
-      tryAdd("Volume"..align(str(rec.volume),12), typeColors.dim, false, false, true)
-      
-      tryAdd("------Extras------", typeColors.subtitle, false, false, true)
-      tryAdd("Time: "..align(textutils.formatTime(os.time()):gsub(" ","").."", 12), typeColors.extra, false, false, true) --Adds the current time, formatted, without spaces.
-      tryAdd("Used Slots:"..align(str(16-rec.openSlots),7), typeColors.extra, false, false, true)
-      tryAdd("Blocks Mined:"..align(str(rec.mined), 5), typeColors.extra, false, false, true)
-      tryAdd("Spaces Moved:"..align(str(rec.moved), 5), typeColors.extra, false, false, true)
+      self:tryAdd("------Extras------", typeColors.subtitle, false, false, true)
+      self:tryAdd("Time: "..align(textutils.formatTime(os.time()):gsub(" ","").."", 12), typeColors.extra, false, false, true) --Adds the current time, formatted, without spaces.
+      self:tryAdd("Used Slots:"..align(str(16-rec.openSlots),7), typeColors.extra, false, false, true)
+      self:tryAdd("Blocks Mined:"..align(str(rec.mined), 5), typeColors.extra, false, false, true)
+      self:tryAdd("Spaces Moved:"..align(str(rec.moved), 5), typeColors.extra, false, false, true)
       if rec.chestFull then
-        tryAdd("Chest Full, Fix It", typeColors.error, false, true, true)
+        self:tryAdd("Chest Full, Fix It", typeColors.error, false, true, true)
       end
     end
-    if screenSize[1] == sizesEnum.large then
-      if not tryAdd(rec.label..align(" Turtle #"..str(rec.id),dim[1]-#rec.label), typeColors.title, true, true, true) then
-        toPrint[#toPrint] = nil
-        tryAdd("Your turtle's name is long...", typeColors.title, true, true, true)
+    if self.size[1] >= 3 then --Large or larger screens
+      if not self:tryAdd(rec.label..align(" Turtle #"..str(rec.id),dim[1]-#rec.label), typeColors.title, true, true, true) then
+        self:tryAdd("Your turtle's name is long...", typeColors.title, true, true, true)
       end
-      tryAdd("Fuel: "..align(str(rec.fuel),dim[1]-6), nil, true, true, true)
+      self:tryAdd("Fuel: "..align(str(rec.fuel),dim[1]-6), nil, true, true, true)
       
-      tryAdd("Percentage Done: "..align(str(rec.percent).."%",dim[1]-17), typeColors.pos, true, true, true)
+      self:tryAdd("Percentage Done: "..align(str(rec.percent).."%",dim[1]-17), typeColors.pos, true, true, true)
       
       local var1 = math.max(#str(rec.x), #str(rec.z), #str(rec.layers))
       local var2 = (dim[1]-5-var1+3)/3
-      tryAdd("Pos: "..align(" X:"..align(str(rec.relxPos),var1),var2)..align(" Z:"..align(str(rec.zPos),var1),var2)..align(" Y:"..align(str(rec.layersDone),var1),var2), typeColors.pos, true, true, true)
-      tryAdd("Size:"..align(" X:"..align(str(rec.x),var1),var2)..align(" Z:"..align(str(rec.z),var1),var2)..align(" Y:"..align(str(rec.layers),var1),var2), typeColors.dim, true, true, true)
-      tryAdd("Volume: "..str(rec.volume), typeColors.dim, false, true, true)
-      tryAdd("",nil, false, false, true)
-      tryAdd(center("____---- EXTRAS ----____"), typeColors.subtitle, false, false, true)
-      tryAdd(center("Time:"..align(textutils.formatTime(os.time()),8)), typeColors.extra, false, true, true)
-      tryAdd(center("Current Day: "..str(os.day())), typeColors.extra, false, false, true)
-      tryAdd("Used Inventory Slots: "..align(str(16-rec.openSlots),dim[1]-22), typeColors.extra, false, true, true)
-      tryAdd("Blocks Mined: "..align(str(rec.mined),dim[1]-14), typeColors.extra, false, true, true)
-      tryAdd("Blocks Moved: "..align(str(rec.moved),dim[1]-14), typeColors.extra, false, true, true)
-      tryAdd("Distance to Turtle: "..align(str(rec.distance), dim[1]-20), typeColors.extra, false, false, true)
-      tryAdd("Actual Y Pos (Not Layer): "..align(str(rec.yPos), dim[1]-26), typeColors.extra, false, false, true)
+      self:tryAdd("Pos: "..align(" X:"..align(str(rec.relxPos),var1),var2)..align(" Z:"..align(str(rec.zPos),var1),var2)..align(" Y:"..align(str(rec.layersDone),var1),var2), typeColors.pos, true, true, true)
+      self:tryAdd("Size:"..align(" X:"..align(str(rec.x),var1),var2)..align(" Z:"..align(str(rec.z),var1),var2)..align(" Y:"..align(str(rec.layers),var1),var2), typeColors.dim, true, true, true)
+      self:tryAdd("Volume: "..str(rec.volume), typeColors.dim, false, true, true)
+      self:tryAdd("",nil, false, false, true)
+      self:tryAdd(center("____---- EXTRAS ----____"), typeColors.subtitle, false, false, true)
+      self:tryAdd(center("Time:"..align(textutils.formatTime(os.time()),8)), typeColors.extra, false, true, true)
+      self:tryAdd(center("Current Day: "..str(os.day())), typeColors.extra, false, false, true)
+      self:tryAdd("Used Inventory Slots: "..align(str(16-rec.openSlots),dim[1]-22), typeColors.extra, false, true, true)
+      self:tryAdd("Blocks Mined: "..align(str(rec.mined),dim[1]-14), typeColors.extra, false, true, true)
+      self:tryAdd("Blocks Moved: "..align(str(rec.moved),dim[1]-14), typeColors.extra, false, true, true)
+      self:tryAdd("Distance to Turtle: "..align(str(rec.distance), dim[1]-20), typeColors.extra, false, false, true)
+      self:tryAdd("Actual Y Pos (Not Layer): "..align(str(rec.yPos), dim[1]-26), typeColors.extra, false, false, true)
       
       if rec.chestFull then
-        tryAdd("Dropoff is Full, Please Fix", typeColors.error, false, true, true)
+        self:tryAdd("Dropoff is Full, Please Fix", typeColors.error, false, true, true)
       end
       if rec.foundBedrock then
-        tryAdd("Found Bedrock! Please Check!!", typeColors.error, false, true, true)
+        self:tryAdd("Found Bedrock! Please Check!!", typeColors.error, false, true, true)
       end
       if rec.isAtChest then
-        tryAdd("Turtle is at home chest", typeColors.info, false, true, true)
+        self:tryAdd("Turtle is at home chest", typeColors.info, false, true, true)
       end
       if rec.isGoingToNextLayer then
-        tryAdd("Turtle is going to next layer", typeColors.info, false, true, true)
+        self:tryAdd("Turtle is going to next layer", typeColors.info, false, true, true)
       end
     end
   else --If is done
     if screenSize[1] == sizesEnum.small then --Special case for small monitors
-      tryAdd("Done", typeColors.title, true, true, true)
-      tryAdd("Dug"..align(str(rec.mined),4), typeColors.pos, true, true, true)
-      tryAdd("Fuel"..align(str(rec.fuel),3), typeColors.pos, true, true, true)
-      tryAdd("-------", typeColors.subtitle, false,true,true)
-      tryAdd("Turtle", typeColors.subtitle, false, true, true)
-      tryAdd(center("is"), typeColors.subtitle, false, true, true)
-      tryAdd(center("Done!"), typeColors.subtitle, false, true, true)
+      self:tryAdd("Done", typeColors.title, true, true, true)
+      self:tryAdd("Dug"..align(str(rec.mined),4), typeColors.pos, true, true, true)
+      self:tryAdd("Fuel"..align(str(rec.fuel),3), typeColors.pos, true, true, true)
+      self:tryAdd("-------", typeColors.subtitle, false,true,true)
+      self:tryAdd("Turtle", typeColors.subtitle, false, true, true)
+      self:tryAdd(center("is"), typeColors.subtitle, false, true, true)
+      self:tryAdd(center("Done!"), typeColors.subtitle, false, true, true)
     else
-      tryAdd("Done!", typeColors.title, true, true, true)
-      tryAdd("Blocks Dug: "..str(rec.mined), typeColors.inverse, true, true, true)
-      tryAdd("Cobble Dug: "..str(rec.cobble), typeColors.pos, false, true, true)
-      tryAdd("Fuel Dug: "..str(rec.fuelblocks), typeColors.pos, false, true, true)
-      tryAdd("Others Dug: "..str(rec.other), typeColors.pos, false, true, true)
-      tryAdd("Curr Fuel: "..str(rec.fuel), typeColors.inverse, true, true, true)
+      self:tryAdd("Done!", typeColors.title, true, true, true)
+      self:tryAdd("Blocks Dug: "..str(rec.mined), typeColors.inverse, true, true, true)
+      self:tryAdd("Cobble Dug: "..str(rec.cobble), typeColors.pos, false, true, true)
+      self:tryAdd("Fuel Dug: "..str(rec.fuelblocks), typeColors.pos, false, true, true)
+      self:tryAdd("Others Dug: "..str(rec.other), typeColors.pos, false, true, true)
+      self:tryAdd("Curr Fuel: "..str(rec.fuel), typeColors.inverse, true, true, true)
     end
   end
 
@@ -546,21 +562,7 @@ local rec = {
 
 --####MORE REVISIONS STARTING HERE, ABOVE IS DEAD####
 
-local typeColors = {}
-local function addColor(name, text, back) --Background is optional. Will not change if nil
-  typeColors[name] = {text = text, background = back}
-end
 
-addColor("title", colors.green, colors.gray)
-addColor("subtitle", colors.white)
-addColor("pos", colors.green)
-addColor("dim", colors.lightBlue)
-addColor("extra", colors.lightGray)
-addColor("error", colors.red, colors.white)
-addColor("info", colors.blue, colors.lightGray)
-addColor("inverse", colors.yellow, colors.lightGray)
-addColor("command", colors.lightBlue)
-addColor("help", colors.red, colors.white)
 
 
 local function reset(color)
