@@ -239,130 +239,130 @@ screenClass.updateScreen = function(self, isDone)
   
   if not isDone then --Normally
     if self.size[1] == 1 then --Small Monitor
-      if not self:tryAdd(rec.label, typeColors.title, false, false, true) then --This will be a title, basically
-        self:tryAdd("Quarry!", typeColors.title, false, false, true)
+      if not self:tryAdd(self.rec.label, self.themeColors.title, false, false, true) then --This will be a title, basically
+        self:tryAdd("Quarry!", self.themeColors.title, false, false, true)
       end
       
-      self:tryAdd("-Fuel-", typeColors.subtitle , false, true, true)
-      if not self:tryAdd(str(rec.fuel), nil, false, true, true) then --The fuel number may be bigger than the screen
+      self:tryAdd("-Fuel-", self.themeColors.subtitle , false, true, true)
+      if not self:tryAdd(str(self.rec.fuel), nil, false, true, true) then --The fuel number may be bigger than the screen
         self:tryAdd("A lot", nil, false, true, true)
       end
       
-      self:tryAdd("--%%%--", typeColors.subtitle, false, true, true)
-      self:tryAdd(align(str(rec.percent).."%", 7), typeColors.pos , false, true, true) --This can be an example. Print (receivedMessage).percent in blue on all different screen sizes
-      self:tryAdd(center(str(rec.percent).."%"), typeColors.pos, true) --I want it to be centered on 1x1
+      self:tryAdd("--%%%--", self.themeColors.subtitle, false, true, true)
+      self:tryAdd(align(str(self.rec.percent).."%", 7), self.themeColors.pos , false, true, true) --This can be an example. Print (receivedMessage).percent in blue on all different screen sizes
+      self:tryAdd(center(str(self.rec.percent).."%"), self.themeColors.pos, true) --I want it to be centered on 1x1
       
-      self:tryAdd("--Pos--", typeColors.subtitle, false, true, true)
-      self:tryAdd("X:"..align(str(rec.relxPos), 5), typeColors.pos, true, true, true)
-      self:tryAdd("Z:"..align(str(rec.zPos), 5), typeColors.pos , true, true, true)
-      self:tryAdd("Y:"..align(str(rec.layersDone), 5), typeColors.pos , true, true, true)
+      self:tryAdd("--Pos--", self.themeColors.subtitle, false, true, true)
+      self:tryAdd("X:"..align(str(self.rec.relxPos), 5), self.themeColors.pos, true, true, true)
+      self:tryAdd("Z:"..align(str(self.rec.zPos), 5), self.themeColors.pos , true, true, true)
+      self:tryAdd("Y:"..align(str(self.rec.layersDone), 5), self.themeColors.pos , true, true, true)
       
-      if not self:tryAdd(str(rec.x).."x"..str(rec.z).."x"..str(rec.layers), typeColors.dim , true) then --If you can't display the y, then don't
-        self:tryAdd(str(rec.x).."x"..str(rec.z), typeColors.dim , true)
+      if not self:tryAdd(str(self.rec.x).."x"..str(self.rec.z).."x"..str(self.rec.layers), self.themeColors.dim , true) then --If you can't display the y, then don't
+        self:tryAdd(str(self.rec.x).."x"..str(self.rec.z), self.themeColors.dim , true)
       end
-      self:tryAdd("--Dim--", typeColors.subtitle, false, true, true)
-      self:tryAdd("X:"..align(str(rec.x), 5), typeColors.dim, false, true, true)
-      self:tryAdd("Z:"..align(str(rec.z), 5), typeColors.dim, false, true, true)
-      self:tryAdd("Y:"..align(str(rec.layers), 5), typeColors.dim, false, true, true)
+      self:tryAdd("--Dim--", self.themeColors.subtitle, false, true, true)
+      self:tryAdd("X:"..align(str(self.rec.x), 5), self.themeColors.dim, false, true, true)
+      self:tryAdd("Z:"..align(str(self.rec.z), 5), self.themeColors.dim, false, true, true)
+      self:tryAdd("Y:"..align(str(self.rec.layers), 5), self.themeColors.dim, false, true, true)
       
-      self:tryAdd("-Extra-", typeColors.subtitle, false, false, true)
-      self:tryAdd(align(textutils.formatTime(os.time()):gsub(" ","").."", 7), typeColors.extra, false, false, true) --Adds the current time, formatted, without spaces.
-      self:tryAdd("Open:"..align(str(rec.openSlots),2), typeColors.extra, false, false, true)
-      self:tryAdd("Dug"..align(str(rec.mined), 4), typeColors.extra, false, false, true)
-      self:tryAdd("Mvd"..align(str(rec.moved), 4), typeColors.extra, false, false, true)
-      if rec.chestFull then
-        self:tryAdd("ChstFll", typeColors.error, false, false, true)
+      self:tryAdd("-Extra-", self.themeColors.subtitle, false, false, true)
+      self:tryAdd(align(textutils.formatTime(os.time()):gsub(" ","").."", 7), self.themeColors.extra, false, false, true) --Adds the current time, formatted, without spaces.
+      self:tryAdd("Open:"..align(str(self.rec.openSlots),2), self.themeColors.extra, false, false, true)
+      self:tryAdd("Dug"..align(str(self.rec.mined), 4), self.themeColors.extra, false, false, true)
+      self:tryAdd("Mvd"..align(str(self.rec.moved), 4), self.themeColors.extra, false, false, true)
+      if self.rec.chestFull then
+        self:tryAdd("ChstFll", self.themeColors.error, false, false, true)
       end
       
     end
     if self.size[1] == 2 then --Medium Monitor
-      if not self:tryAdd(rec.label, typeColors.title, false, false, true) then --This will be a title, basically
-        self:tryAdd("Quarry!", typeColors.title, false, false, true)
+      if not self:tryAdd(self.rec.label, self.themeColors.title, false, false, true) then --This will be a title, basically
+        self:tryAdd("Quarry!", self.themeColors.title, false, false, true)
       end
       
-      self:tryAdd("-------Fuel-------", typeColors.subtitle , false, true, true)
-      if not self:tryAdd(str(rec.fuel), nil, false, true, true) then --The fuel number may be bigger than the screen
+      self:tryAdd("-------Fuel-------", self.themeColors.subtitle , false, true, true)
+      if not self:tryAdd(str(self.rec.fuel), nil, false, true, true) then --The fuel number may be bigger than the screen
         toPrint[#toPrint] = nil
         self:tryAdd("A lot", nil, false, true, true)
       end
       
-      self:tryAdd(str(rec.percent).."% Complete", typeColors.pos , true, true, true) --This can be an example. Print (receivedMessage).percent in blue on all different screen sizes
+      self:tryAdd(str(self.rec.percent).."% Complete", self.themeColors.pos , true, true, true) --This can be an example. Print (receivedMessage).percent in blue on all different screen sizes
       
-      self:tryAdd("-------Pos--------", typeColors.subtitle, false, true, true)
-      self:tryAdd("X Coordinate:"..align(str(rec.relxPos), 5), typeColors.pos, true, true, true)
-      self:tryAdd("Z Coordinate:"..align(str(rec.zPos), 5), typeColors.pos , true, true, true)
-      self:tryAdd("On Layer:"..align(str(rec.layersDone), 9), typeColors.pos , true, true, true)
+      self:tryAdd("-------Pos--------", self.themeColors.subtitle, false, true, true)
+      self:tryAdd("X Coordinate:"..align(str(self.rec.relxPos), 5), self.themeColors.pos, true, true, true)
+      self:tryAdd("Z Coordinate:"..align(str(self.rec.zPos), 5), self.themeColors.pos , true, true, true)
+      self:tryAdd("On Layer:"..align(str(self.rec.layersDone), 9), self.themeColors.pos , true, true, true)
       
-      if not self:tryAdd("Size: "..str(rec.x).."x"..str(rec.z).."x"..str(rec.layers), typeColors.dim , true) then --This is already here... I may as well give an alternative for those people with 1000^3quarries
-        self:tryAdd(str(rec.x).."x"..str(rec.z).."x"..str(rec.layers), typeColors.dim , true)
+      if not self:tryAdd("Size: "..str(self.rec.x).."x"..str(self.rec.z).."x"..str(self.rec.layers), self.themeColors.dim , true) then --This is already here... I may as well give an alternative for those people with 1000^3quarries
+        self:tryAdd(str(self.rec.x).."x"..str(self.rec.z).."x"..str(self.rec.layers), self.themeColors.dim , true)
       end
-      self:tryAdd("-------Dim--------", typeColors.subtitle, false, true, true)
-      self:tryAdd("Total X:"..align(str(rec.x), 10), typeColors.dim, false, true, true)
-      self:tryAdd("Total Z:"..align(str(rec.z), 10), typeColors.dim, false, true, true)
-      self:tryAdd("Total Layers:"..align(str(rec.layers), 5), typeColors.dim, false, true, true)
-      self:tryAdd("Volume"..align(str(rec.volume),12), typeColors.dim, false, false, true)
+      self:tryAdd("-------Dim--------", self.themeColors.subtitle, false, true, true)
+      self:tryAdd("Total X:"..align(str(self.rec.x), 10), self.themeColors.dim, false, true, true)
+      self:tryAdd("Total Z:"..align(str(self.rec.z), 10), self.themeColors.dim, false, true, true)
+      self:tryAdd("Total Layers:"..align(str(self.rec.layers), 5), self.themeColors.dim, false, true, true)
+      self:tryAdd("Volume"..align(str(self.rec.volume),12), self.themeColors.dim, false, false, true)
       
-      self:tryAdd("------Extras------", typeColors.subtitle, false, false, true)
-      self:tryAdd("Time: "..align(textutils.formatTime(os.time()):gsub(" ","").."", 12), typeColors.extra, false, false, true) --Adds the current time, formatted, without spaces.
-      self:tryAdd("Used Slots:"..align(str(16-rec.openSlots),7), typeColors.extra, false, false, true)
-      self:tryAdd("Blocks Mined:"..align(str(rec.mined), 5), typeColors.extra, false, false, true)
-      self:tryAdd("Spaces Moved:"..align(str(rec.moved), 5), typeColors.extra, false, false, true)
-      if rec.chestFull then
-        self:tryAdd("Chest Full, Fix It", typeColors.error, false, true, true)
+      self:tryAdd("------Extras------", self.themeColors.subtitle, false, false, true)
+      self:tryAdd("Time: "..align(textutils.formatTime(os.time()):gsub(" ","").."", 12), self.themeColors.extra, false, false, true) --Adds the current time, formatted, without spaces.
+      self:tryAdd("Used Slots:"..align(str(16-self.rec.openSlots),7), self.themeColors.extra, false, false, true)
+      self:tryAdd("Blocks Mined:"..align(str(self.rec.mined), 5), self.themeColors.extra, false, false, true)
+      self:tryAdd("Spaces Moved:"..align(str(self.rec.moved), 5), self.themeColors.extra, false, false, true)
+      if self.rec.chestFull then
+        self:tryAdd("Chest Full, Fix It", self.themeColors.error, false, true, true)
       end
     end
     if self.size[1] >= 3 then --Large or larger screens
-      if not self:tryAdd(rec.label..align(" Turtle #"..str(rec.id),dim[1]-#rec.label), typeColors.title, true, true, true) then
-        self:tryAdd("Your turtle's name is long...", typeColors.title, true, true, true)
+      if not self:tryAdd(self.rec.label..align(" Turtle #"..str(self.rec.id),dim[1]-#self.rec.label), self.themeColors.title, true, true, true) then
+        self:tryAdd("Your turtle's name is long...", self.themeColors.title, true, true, true)
       end
-      self:tryAdd("Fuel: "..align(str(rec.fuel),dim[1]-6), nil, true, true, true)
+      self:tryAdd("Fuel: "..align(str(self.rec.fuel),dim[1]-6), nil, true, true, true)
       
-      self:tryAdd("Percentage Done: "..align(str(rec.percent).."%",dim[1]-17), typeColors.pos, true, true, true)
+      self:tryAdd("Percentage Done: "..align(str(self.rec.percent).."%",dim[1]-17), self.themeColors.pos, true, true, true)
       
-      local var1 = math.max(#str(rec.x), #str(rec.z), #str(rec.layers))
+      local var1 = math.max(#str(self.rec.x), #str(self.rec.z), #str(self.rec.layers))
       local var2 = (dim[1]-5-var1+3)/3
-      self:tryAdd("Pos: "..align(" X:"..align(str(rec.relxPos),var1),var2)..align(" Z:"..align(str(rec.zPos),var1),var2)..align(" Y:"..align(str(rec.layersDone),var1),var2), typeColors.pos, true, true, true)
-      self:tryAdd("Size:"..align(" X:"..align(str(rec.x),var1),var2)..align(" Z:"..align(str(rec.z),var1),var2)..align(" Y:"..align(str(rec.layers),var1),var2), typeColors.dim, true, true, true)
-      self:tryAdd("Volume: "..str(rec.volume), typeColors.dim, false, true, true)
+      self:tryAdd("Pos: "..align(" X:"..align(str(self.rec.relxPos),var1),var2)..align(" Z:"..align(str(self.rec.zPos),var1),var2)..align(" Y:"..align(str(self.rec.layersDone),var1),var2), self.themeColors.pos, true, true, true)
+      self:tryAdd("Size:"..align(" X:"..align(str(self.rec.x),var1),var2)..align(" Z:"..align(str(self.rec.z),var1),var2)..align(" Y:"..align(str(self.rec.layers),var1),var2), self.themeColors.dim, true, true, true)
+      self:tryAdd("Volume: "..str(self.rec.volume), self.themeColors.dim, false, true, true)
       self:tryAdd("",nil, false, false, true)
-      self:tryAdd(center("____---- EXTRAS ----____"), typeColors.subtitle, false, false, true)
-      self:tryAdd(center("Time:"..align(textutils.formatTime(os.time()),8)), typeColors.extra, false, true, true)
-      self:tryAdd(center("Current Day: "..str(os.day())), typeColors.extra, false, false, true)
-      self:tryAdd("Used Inventory Slots: "..align(str(16-rec.openSlots),dim[1]-22), typeColors.extra, false, true, true)
-      self:tryAdd("Blocks Mined: "..align(str(rec.mined),dim[1]-14), typeColors.extra, false, true, true)
-      self:tryAdd("Blocks Moved: "..align(str(rec.moved),dim[1]-14), typeColors.extra, false, true, true)
-      self:tryAdd("Distance to Turtle: "..align(str(rec.distance), dim[1]-20), typeColors.extra, false, false, true)
-      self:tryAdd("Actual Y Pos (Not Layer): "..align(str(rec.yPos), dim[1]-26), typeColors.extra, false, false, true)
+      self:tryAdd(center("____---- EXTRAS ----____"), self.themeColors.subtitle, false, false, true)
+      self:tryAdd(center("Time:"..align(textutils.formatTime(os.time()),8)), self.themeColors.extra, false, true, true)
+      self:tryAdd(center("Current Day: "..str(os.day())), self.themeColors.extra, false, false, true)
+      self:tryAdd("Used Inventory Slots: "..align(str(16-self.rec.openSlots),dim[1]-22), self.themeColors.extra, false, true, true)
+      self:tryAdd("Blocks Mined: "..align(str(self.rec.mined),dim[1]-14), self.themeColors.extra, false, true, true)
+      self:tryAdd("Blocks Moved: "..align(str(self.rec.moved),dim[1]-14), self.themeColors.extra, false, true, true)
+      self:tryAdd("Distance to Turtle: "..align(str(self.rec.distance), dim[1]-20), self.themeColors.extra, false, false, true)
+      self:tryAdd("Actual Y Pos (Not Layer): "..align(str(self.rec.yPos), dim[1]-26), self.themeColors.extra, false, false, true)
       
-      if rec.chestFull then
-        self:tryAdd("Dropoff is Full, Please Fix", typeColors.error, false, true, true)
+      if self.rec.chestFull then
+        self:tryAdd("Dropoff is Full, Please Fix", self.themeColors.error, false, true, true)
       end
-      if rec.foundBedrock then
-        self:tryAdd("Found Bedrock! Please Check!!", typeColors.error, false, true, true)
+      if self.rec.foundBedrock then
+        self:tryAdd("Found Bedrock! Please Check!!", self.themeColors.error, false, true, true)
       end
-      if rec.isAtChest then
-        self:tryAdd("Turtle is at home chest", typeColors.info, false, true, true)
+      if self.rec.isAtChest then
+        self:tryAdd("Turtle is at home chest", self.themeColors.info, false, true, true)
       end
-      if rec.isGoingToNextLayer then
-        self:tryAdd("Turtle is going to next layer", typeColors.info, false, true, true)
+      if self.rec.isGoingToNextLayer then
+        self:tryAdd("Turtle is going to next layer", self.themeColors.info, false, true, true)
       end
     end
   else --If is done
     if screenSize[1] == sizesEnum.small then --Special case for small monitors
-      self:tryAdd("Done", typeColors.title, true, true, true)
-      self:tryAdd("Dug"..align(str(rec.mined),4), typeColors.pos, true, true, true)
-      self:tryAdd("Fuel"..align(str(rec.fuel),3), typeColors.pos, true, true, true)
-      self:tryAdd("-------", typeColors.subtitle, false,true,true)
-      self:tryAdd("Turtle", typeColors.subtitle, false, true, true)
-      self:tryAdd(center("is"), typeColors.subtitle, false, true, true)
-      self:tryAdd(center("Done!"), typeColors.subtitle, false, true, true)
+      self:tryAdd("Done", self.themeColors.title, true, true, true)
+      self:tryAdd("Dug"..align(str(self.rec.mined),4), self.themeColors.pos, true, true, true)
+      self:tryAdd("Fuel"..align(str(self.rec.fuel),3), self.themeColors.pos, true, true, true)
+      self:tryAdd("-------", self.themeColors.subtitle, false,true,true)
+      self:tryAdd("Turtle", self.themeColors.subtitle, false, true, true)
+      self:tryAdd(center("is"), self.themeColors.subtitle, false, true, true)
+      self:tryAdd(center("Done!"), self.themeColors.subtitle, false, true, true)
     else
-      self:tryAdd("Done!", typeColors.title, true, true, true)
-      self:tryAdd("Blocks Dug: "..str(rec.mined), typeColors.inverse, true, true, true)
-      self:tryAdd("Cobble Dug: "..str(rec.cobble), typeColors.pos, false, true, true)
-      self:tryAdd("Fuel Dug: "..str(rec.fuelblocks), typeColors.pos, false, true, true)
-      self:tryAdd("Others Dug: "..str(rec.other), typeColors.pos, false, true, true)
-      self:tryAdd("Curr Fuel: "..str(rec.fuel), typeColors.inverse, true, true, true)
+      self:tryAdd("Done!", self.themeColors.title, true, true, true)
+      self:tryAdd("Blocks Dug: "..str(self.rec.mined), self.themeColors.inverse, true, true, true)
+      self:tryAdd("Cobble Dug: "..str(self.rec.cobble), self.themeColors.pos, false, true, true)
+      self:tryAdd("Fuel Dug: "..str(self.rec.fuelblocks), self.themeColors.pos, false, true, true)
+      self:tryAdd("Others Dug: "..str(self.rec.other), self.themeColors.pos, false, true, true)
+      self:tryAdd("Curr Fuel: "..str(self.rec.fuel), self.themeColors.inverse, true, true, true)
     end
   end
 
