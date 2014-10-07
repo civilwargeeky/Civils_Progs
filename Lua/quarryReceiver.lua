@@ -42,26 +42,13 @@ Help: This :D
 
 --Config
 local doDebug = true --For testing purposes
+local ySizes = 3 --There are 3 different Y Screen Sizes right now
 
 
 
 --Generic Functions--
 local function debug(...)
   if doDebug then return print(...) end
-end
-local function setTextColor(color, obj)
-  obj = obj or mon
-  if color and obj.isColor() then
-    currTextColor = color
-    return obj.setTextColor(color)
-  end
-end
-local function setBackgroundColor(color, obj)
-  obj = obj or mon
-  if color and obj.isColor() then
-    currBackgroundColor = color
-    return obj.setBackgroundColor(color)
-  end
 end
 local function swapKeyValue(tab)
   for a,b in pairs(tab) do
@@ -105,47 +92,79 @@ screenClass.screens = {} --A simply numbered list of screens
 screenClass.sides = {} --A mapping of screens by their side attached
 screenClass.channels = {} --A mapping of receiving channels that have screens attached. Used for the receiver part
 screenClass.sizes = {{7,18,29,39,50}, (5,12,19} , computer = {51, 19}, turtle = {39,13}, pocket = {26,20}}
-screenClass.themeColors = { 
-  addColor = function(self, name, text, back) --Background is optional. Will not change if nil
-    self[name] = {text = text, background = back}
-  end
-}
 
-do --This is how adding colors will work
-  local tab = screenClass.themeColors
-  tab:addColor("title", colors.green, colors.gray)
-  tab:addColor("subtitle", colors.white)
-  tab:addColor("pos", colors.green)
-  tab:addColor("dim", colors.lightBlue)
-  tab:addColor("extra", colors.lightGray)
-  tab:addColor("error", colors.red, colors.white)
-  tab:addColor("info", colors.blue, colors.lightGray)
-  tab:addColor("inverse", colors.yellow, colors.lightGray)
-  tab:addColor("command", colors.lightBlue)
-  tab:addColor("help", colors.red, colors.white)
+--COLOR/THEME RELATED
+local themes = {} --Loaded themes, gives each one a names
+local function newTheme(name)
+  local self = {name = name}
+  self.addColor = function(self, name, text, back) --Background is optional. Will not change if nil
+    self[name] = {text = text, background = back}
+    return self --Allows for chaining :)
+  end
+  themes[name] = self
+  return self
+end
+  
+--This is how adding colors will work
+screenClass.themeColors=newTheme("default")
+  :addColor("title", colors.green, colors.gray)
+  :addColor("subtitle", colors.white)
+  :addColor("pos", colors.green)
+  :addColor("dim", colors.lightBlue)
+  :addColor("extra", colors.lightGray)
+  :addColor("error", colors.red, colors.white)
+  :addColor("info", colors.blue, colors.lightGray)
+  :addColor("inverse", colors.yellow, colors.lightGray)
+  :addColor("command", colors.lightBlue)
+  :addColor("help", colors.red, colors.white)
+  :addColor("background", colors.white, colors.black)
+
+
+screenClass.setTextColor = function(self, color) --Accepts raw color
+  if color and self.term.isColor() then
+    self.textColor = color
+    return self.term.setTextColor(color)
+  end
+end
+screenClass.setBackgroundColor = function(self, color) --Accepts raw color
+  if color and obj.isColor() then
+    currBackgroundColor = color
+    return obj.setBackgroundColor(color)
+  end
+end
+screenClass.setColor = function(self, color) --Wrapper, accepts themecolor objects
+  return self.setTextColor(color.text) and self.setBackgroundColor(color.background)
 end
 
-screenClass.new = function(side, receive, send)
+--GENERAL CLASS FUNCTIONS
+screenClass.new = function(side, receive, send, themeFile)
   local self = {}
   setmetatable(obj, {__index = screenClass}) --Establish Hierarchy
   self.side = side
-  self.term = peripheral.wrap(side)
-  if not (self.term and peripheral.getType(side) == "monitor") then
-    error("No monitor on side "..tostring(side))
+  if side == "computer" then
+    self.term = term
+  else
+    self.term = peripheral.wrap(side)
+    if not (self.term and peripheral.getType(side) == "monitor") then
+      error("No monitor on side "..tostring(side))
+    end
   end
+  
   --Channels and ids
   self.receive = receive --Receive Channel
   self.send = send --Reply Channel
   self.id = #screenClass.screens+1
   --Colors
-  self.textColor = colors.white
-  self.backColor = colors.black
+  self.theme = themeFile
+
   self.isColor = self.term.isColor() --Just for convenience
   --Other Screen Properties
   self.dim = {self.term.getSize()} --Raw dimensions
   --Initializations
   self.isDone = false --Flag for when the turtle is done transmitting
   self.size = {} --Screen Size, assigned in setSize
+  self.textColor = colors.white --Just placeholders until theme is loaded and run
+  self.backColor = colors.black
   self.toPrint = {}
   self.isComputer = false
   self.isTurtle = false
@@ -179,6 +198,7 @@ screenClass.new = function(side, receive, send)
   screenClass.sides[self.side] = self
   screenClass.channels[self.receive] = self --If anyone ever asked, you could have multiple screens per channel, but its silly if no one ever needs it
   self:setSize() --Finish Initialization
+  self:setTheme
   return self
 end
 
@@ -191,11 +211,13 @@ screenClass.removeEntry = function(tab) --Cleanup function
   screenClass.channels[tab.receive] = nil
 end
 
-screenClass.setSize = function(self)
-  if not self.term.setCursorPos() then --If peripheral is having problems/not there
-    self.updateScreen = function() end --Do nothing on screen update, overrides class
-  else --This just allows for class inheritance
-    self.updateScreen = nil --Remove function in case it exists, defaults to super
+--SCREEN FUNCTIONS
+screenClass.setSize = function(self) --Sets screen size
+  if self.side ~= "computer" and not self.term then self.term = peripheral.wrap(self.side) end
+  if not self.term then --If peripheral is having problems/not there. Don't go further than term, otherwise index nil (maybe?)
+    self.updateDisplayTable = function() end --Do nothing on screen update, overrides class
+  else --This allows for class inheritance
+    self.updateDisplay = nil --Remove function in case it exists, defaults to super
   end
   local tab = screenClass.sizes
   for a=1, 2 do --Want x and y dim
@@ -212,14 +234,15 @@ screenClass.setSize = function(self)
   self.isTurtle = isThing(self.dim, "turtle")
   self.isPocket = isThing(self.dim, "pocket")
   self.acceptsInput = self.isComputer or self.isTurtle or self.isPocket
+  return self
 end
 
 --Copied from below, revise
 screenClass.tryAdd = function(self, text, color, ...) --This will try to add text if Y dimension is a certain size
   local doAdd = {...} --booleans for small, medium, and large
-  text = text or "-"
+  text = text or "NIL"
   color = color or {text = colors.white}
-  for i=1, 3 do
+  for i=1, ySizes do --As of now there are 3 Y sizes
     if doAdd[i] and screenSize[2] == i then --If should add this text for this screen size and the monitor is this size
       if #text <= self.dim[1] then
         table.insert(toPrint, {text = text, color = color})
@@ -232,222 +255,198 @@ screenClass.tryAdd = function(self, text, color, ...) --This will try to add tex
   return false
 end
 
---Copied from below, revise
-screenClass.updateScreen = function(self, isDone)
+screenClass.reset = function(self,color)
+  self.setColor(color)
+  self.term.clear()
+  self.term.setCursorPos(1,1)
+end
+screenClass.say = function(self, text, color)
+  local currColor = self.backgroundColor
+  color = color or {}
+  self.setColor(color)
+  if doDebug and #text > dim[1] then error("Tried printing: '"..text.."', but was too big") end
+  for i=1, self.dim[1]-#text do --This is so the whole line's background gets filled.
+    text = text.." "
+  end
+  self.term.write(text)
+  local pos = ({obj.getCursorPos()})[2] or setSize() or 1 --If current yPos not found, sets screen size and moves cursor to 1
+  self.term.setCursorPos(1, pos+1)
+end
+
+screenClass.updateDisplayTable = function(self, isDone)
   local str = tostring
   self.toPrint = {} --Reset table
+  local message, theme = self.rec, self.themeColors
   
   if not isDone then --Normally
     if self.size[1] == 1 then --Small Monitor
-      if not self:tryAdd(self.rec.label, self.themeColors.title, false, false, true) then --This will be a title, basically
-        self:tryAdd("Quarry!", self.themeColors.title, false, false, true)
+      if not self:tryAdd(message.label, theme.title, false, false, true) then --This will be a title, basically
+        self:tryAdd("Quarry!", theme.title, false, false, true)
       end
       
-      self:tryAdd("-Fuel-", self.themeColors.subtitle , false, true, true)
-      if not self:tryAdd(str(self.rec.fuel), nil, false, true, true) then --The fuel number may be bigger than the screen
+      self:tryAdd("-Fuel-", theme.subtitle , false, true, true)
+      if not self:tryAdd(str(message.fuel), nil, false, true, true) then --The fuel number may be bigger than the screen
         self:tryAdd("A lot", nil, false, true, true)
       end
       
-      self:tryAdd("--%%%--", self.themeColors.subtitle, false, true, true)
-      self:tryAdd(align(str(self.rec.percent).."%", 7), self.themeColors.pos , false, true, true) --This can be an example. Print (receivedMessage).percent in blue on all different screen sizes
-      self:tryAdd(center(str(self.rec.percent).."%"), self.themeColors.pos, true) --I want it to be centered on 1x1
+      self:tryAdd("--%%%--", theme.subtitle, false, true, true)
+      self:tryAdd(align(str(message.percent).."%", 7), theme.pos , false, true, true) --This can be an example. Print (receivedMessage).percent in blue on all different screen sizes
+      self:tryAdd(center(str(message.percent).."%"), theme.pos, true) --I want it to be centered on 1x1
       
-      self:tryAdd("--Pos--", self.themeColors.subtitle, false, true, true)
-      self:tryAdd("X:"..align(str(self.rec.relxPos), 5), self.themeColors.pos, true, true, true)
-      self:tryAdd("Z:"..align(str(self.rec.zPos), 5), self.themeColors.pos , true, true, true)
-      self:tryAdd("Y:"..align(str(self.rec.layersDone), 5), self.themeColors.pos , true, true, true)
+      self:tryAdd("--Pos--", theme.subtitle, false, true, true)
+      self:tryAdd("X:"..align(str(message.relxPos), 5), theme.pos, true, true, true)
+      self:tryAdd("Z:"..align(str(message.zPos), 5), theme.pos , true, true, true)
+      self:tryAdd("Y:"..align(str(message.layersDone), 5), theme.pos , true, true, true)
       
-      if not self:tryAdd(str(self.rec.x).."x"..str(self.rec.z).."x"..str(self.rec.layers), self.themeColors.dim , true) then --If you can't display the y, then don't
-        self:tryAdd(str(self.rec.x).."x"..str(self.rec.z), self.themeColors.dim , true)
+      if not self:tryAdd(str(message.x).."x"..str(message.z).."x"..str(message.layers), theme.dim , true) then --If you can't display the y, then don't
+        self:tryAdd(str(message.x).."x"..str(message.z), theme.dim , true)
       end
-      self:tryAdd("--Dim--", self.themeColors.subtitle, false, true, true)
-      self:tryAdd("X:"..align(str(self.rec.x), 5), self.themeColors.dim, false, true, true)
-      self:tryAdd("Z:"..align(str(self.rec.z), 5), self.themeColors.dim, false, true, true)
-      self:tryAdd("Y:"..align(str(self.rec.layers), 5), self.themeColors.dim, false, true, true)
+      self:tryAdd("--Dim--", theme.subtitle, false, true, true)
+      self:tryAdd("X:"..align(str(message.x), 5), theme.dim, false, true, true)
+      self:tryAdd("Z:"..align(str(message.z), 5), theme.dim, false, true, true)
+      self:tryAdd("Y:"..align(str(message.layers), 5), theme.dim, false, true, true)
       
-      self:tryAdd("-Extra-", self.themeColors.subtitle, false, false, true)
-      self:tryAdd(align(textutils.formatTime(os.time()):gsub(" ","").."", 7), self.themeColors.extra, false, false, true) --Adds the current time, formatted, without spaces.
-      self:tryAdd("Open:"..align(str(self.rec.openSlots),2), self.themeColors.extra, false, false, true)
-      self:tryAdd("Dug"..align(str(self.rec.mined), 4), self.themeColors.extra, false, false, true)
-      self:tryAdd("Mvd"..align(str(self.rec.moved), 4), self.themeColors.extra, false, false, true)
-      if self.rec.chestFull then
-        self:tryAdd("ChstFll", self.themeColors.error, false, false, true)
+      self:tryAdd("-Extra-", theme.subtitle, false, false, true)
+      self:tryAdd(align(textutils.formatTime(os.time()):gsub(" ","").."", 7), theme.extra, false, false, true) --Adds the current time, formatted, without spaces.
+      self:tryAdd("Open:"..align(str(message.openSlots),2), theme.extra, false, false, true)
+      self:tryAdd("Dug"..align(str(message.mined), 4), theme.extra, false, false, true)
+      self:tryAdd("Mvd"..align(str(message.moved), 4), theme.extra, false, false, true)
+      if message.chestFull then
+        self:tryAdd("ChstFll", theme.error, false, false, true)
       end
       
     end
     if self.size[1] == 2 then --Medium Monitor
-      if not self:tryAdd(self.rec.label, self.themeColors.title, false, false, true) then --This will be a title, basically
-        self:tryAdd("Quarry!", self.themeColors.title, false, false, true)
+      if not self:tryAdd(message.label, theme.title, false, false, true) then --This will be a title, basically
+        self:tryAdd("Quarry!", theme.title, false, false, true)
       end
       
-      self:tryAdd("-------Fuel-------", self.themeColors.subtitle , false, true, true)
-      if not self:tryAdd(str(self.rec.fuel), nil, false, true, true) then --The fuel number may be bigger than the screen
+      self:tryAdd("-------Fuel-------", theme.subtitle , false, true, true)
+      if not self:tryAdd(str(message.fuel), nil, false, true, true) then --The fuel number may be bigger than the screen
         toPrint[#toPrint] = nil
         self:tryAdd("A lot", nil, false, true, true)
       end
       
-      self:tryAdd(str(self.rec.percent).."% Complete", self.themeColors.pos , true, true, true) --This can be an example. Print (receivedMessage).percent in blue on all different screen sizes
+      self:tryAdd(str(message.percent).."% Complete", theme.pos , true, true, true) --This can be an example. Print (receivedMessage).percent in blue on all different screen sizes
       
-      self:tryAdd("-------Pos--------", self.themeColors.subtitle, false, true, true)
-      self:tryAdd("X Coordinate:"..align(str(self.rec.relxPos), 5), self.themeColors.pos, true, true, true)
-      self:tryAdd("Z Coordinate:"..align(str(self.rec.zPos), 5), self.themeColors.pos , true, true, true)
-      self:tryAdd("On Layer:"..align(str(self.rec.layersDone), 9), self.themeColors.pos , true, true, true)
+      self:tryAdd("-------Pos--------", theme.subtitle, false, true, true)
+      self:tryAdd("X Coordinate:"..align(str(message.relxPos), 5), theme.pos, true, true, true)
+      self:tryAdd("Z Coordinate:"..align(str(message.zPos), 5), theme.pos , true, true, true)
+      self:tryAdd("On Layer:"..align(str(message.layersDone), 9), theme.pos , true, true, true)
       
-      if not self:tryAdd("Size: "..str(self.rec.x).."x"..str(self.rec.z).."x"..str(self.rec.layers), self.themeColors.dim , true) then --This is already here... I may as well give an alternative for those people with 1000^3quarries
-        self:tryAdd(str(self.rec.x).."x"..str(self.rec.z).."x"..str(self.rec.layers), self.themeColors.dim , true)
+      if not self:tryAdd("Size: "..str(message.x).."x"..str(message.z).."x"..str(message.layers), theme.dim , true) then --This is already here... I may as well give an alternative for those people with 1000^3quarries
+        self:tryAdd(str(message.x).."x"..str(message.z).."x"..str(message.layers), theme.dim , true)
       end
-      self:tryAdd("-------Dim--------", self.themeColors.subtitle, false, true, true)
-      self:tryAdd("Total X:"..align(str(self.rec.x), 10), self.themeColors.dim, false, true, true)
-      self:tryAdd("Total Z:"..align(str(self.rec.z), 10), self.themeColors.dim, false, true, true)
-      self:tryAdd("Total Layers:"..align(str(self.rec.layers), 5), self.themeColors.dim, false, true, true)
-      self:tryAdd("Volume"..align(str(self.rec.volume),12), self.themeColors.dim, false, false, true)
+      self:tryAdd("-------Dim--------", theme.subtitle, false, true, true)
+      self:tryAdd("Total X:"..align(str(message.x), 10), theme.dim, false, true, true)
+      self:tryAdd("Total Z:"..align(str(message.z), 10), theme.dim, false, true, true)
+      self:tryAdd("Total Layers:"..align(str(message.layers), 5), theme.dim, false, true, true)
+      self:tryAdd("Volume"..align(str(message.volume),12), theme.dim, false, false, true)
       
-      self:tryAdd("------Extras------", self.themeColors.subtitle, false, false, true)
-      self:tryAdd("Time: "..align(textutils.formatTime(os.time()):gsub(" ","").."", 12), self.themeColors.extra, false, false, true) --Adds the current time, formatted, without spaces.
-      self:tryAdd("Used Slots:"..align(str(16-self.rec.openSlots),7), self.themeColors.extra, false, false, true)
-      self:tryAdd("Blocks Mined:"..align(str(self.rec.mined), 5), self.themeColors.extra, false, false, true)
-      self:tryAdd("Spaces Moved:"..align(str(self.rec.moved), 5), self.themeColors.extra, false, false, true)
-      if self.rec.chestFull then
-        self:tryAdd("Chest Full, Fix It", self.themeColors.error, false, true, true)
+      self:tryAdd("------Extras------", theme.subtitle, false, false, true)
+      self:tryAdd("Time: "..align(textutils.formatTime(os.time()):gsub(" ","").."", 12), theme.extra, false, false, true) --Adds the current time, formatted, without spaces.
+      self:tryAdd("Used Slots:"..align(str(16-message.openSlots),7), theme.extra, false, false, true)
+      self:tryAdd("Blocks Mined:"..align(str(message.mined), 5), theme.extra, false, false, true)
+      self:tryAdd("Spaces Moved:"..align(str(message.moved), 5), theme.extra, false, false, true)
+      if message.chestFull then
+        self:tryAdd("Chest Full, Fix It", theme.error, false, true, true)
       end
     end
     if self.size[1] >= 3 then --Large or larger screens
-      if not self:tryAdd(self.rec.label..align(" Turtle #"..str(self.rec.id),dim[1]-#self.rec.label), self.themeColors.title, true, true, true) then
-        self:tryAdd("Your turtle's name is long...", self.themeColors.title, true, true, true)
+      if not self:tryAdd(message.label..align(" Turtle #"..str(message.id),dim[1]-#message.label), theme.title, true, true, true) then
+        self:tryAdd("Your turtle's name is long...", theme.title, true, true, true)
       end
-      self:tryAdd("Fuel: "..align(str(self.rec.fuel),dim[1]-6), nil, true, true, true)
+      self:tryAdd("Fuel: "..align(str(message.fuel),dim[1]-6), nil, true, true, true)
       
-      self:tryAdd("Percentage Done: "..align(str(self.rec.percent).."%",dim[1]-17), self.themeColors.pos, true, true, true)
+      self:tryAdd("Percentage Done: "..align(str(message.percent).."%",dim[1]-17), theme.pos, true, true, true)
       
-      local var1 = math.max(#str(self.rec.x), #str(self.rec.z), #str(self.rec.layers))
+      local var1 = math.max(#str(message.x), #str(message.z), #str(message.layers))
       local var2 = (dim[1]-5-var1+3)/3
-      self:tryAdd("Pos: "..align(" X:"..align(str(self.rec.relxPos),var1),var2)..align(" Z:"..align(str(self.rec.zPos),var1),var2)..align(" Y:"..align(str(self.rec.layersDone),var1),var2), self.themeColors.pos, true, true, true)
-      self:tryAdd("Size:"..align(" X:"..align(str(self.rec.x),var1),var2)..align(" Z:"..align(str(self.rec.z),var1),var2)..align(" Y:"..align(str(self.rec.layers),var1),var2), self.themeColors.dim, true, true, true)
-      self:tryAdd("Volume: "..str(self.rec.volume), self.themeColors.dim, false, true, true)
+      self:tryAdd("Pos: "..align(" X:"..align(str(message.relxPos),var1),var2)..align(" Z:"..align(str(message.zPos),var1),var2)..align(" Y:"..align(str(message.layersDone),var1),var2), theme.pos, true, true, true)
+      self:tryAdd("Size:"..align(" X:"..align(str(message.x),var1),var2)..align(" Z:"..align(str(message.z),var1),var2)..align(" Y:"..align(str(message.layers),var1),var2), theme.dim, true, true, true)
+      self:tryAdd("Volume: "..str(message.volume), theme.dim, false, true, true)
       self:tryAdd("",nil, false, false, true)
-      self:tryAdd(center("____---- EXTRAS ----____"), self.themeColors.subtitle, false, false, true)
-      self:tryAdd(center("Time:"..align(textutils.formatTime(os.time()),8)), self.themeColors.extra, false, true, true)
-      self:tryAdd(center("Current Day: "..str(os.day())), self.themeColors.extra, false, false, true)
-      self:tryAdd("Used Inventory Slots: "..align(str(16-self.rec.openSlots),dim[1]-22), self.themeColors.extra, false, true, true)
-      self:tryAdd("Blocks Mined: "..align(str(self.rec.mined),dim[1]-14), self.themeColors.extra, false, true, true)
-      self:tryAdd("Blocks Moved: "..align(str(self.rec.moved),dim[1]-14), self.themeColors.extra, false, true, true)
-      self:tryAdd("Distance to Turtle: "..align(str(self.rec.distance), dim[1]-20), self.themeColors.extra, false, false, true)
-      self:tryAdd("Actual Y Pos (Not Layer): "..align(str(self.rec.yPos), dim[1]-26), self.themeColors.extra, false, false, true)
+      self:tryAdd(center("____---- EXTRAS ----____"), theme.subtitle, false, false, true)
+      self:tryAdd(center("Time:"..align(textutils.formatTime(os.time()),8)), theme.extra, false, true, true)
+      self:tryAdd(center("Current Day: "..str(os.day())), theme.extra, false, false, true)
+      self:tryAdd("Used Inventory Slots: "..align(str(16-message.openSlots),dim[1]-22), theme.extra, false, true, true)
+      self:tryAdd("Blocks Mined: "..align(str(message.mined),dim[1]-14), theme.extra, false, true, true)
+      self:tryAdd("Blocks Moved: "..align(str(message.moved),dim[1]-14), theme.extra, false, true, true)
+      self:tryAdd("Distance to Turtle: "..align(str(message.distance), dim[1]-20), theme.extra, false, false, true)
+      self:tryAdd("Actual Y Pos (Not Layer): "..align(str(message.yPos), dim[1]-26), theme.extra, false, false, true)
       
-      if self.rec.chestFull then
-        self:tryAdd("Dropoff is Full, Please Fix", self.themeColors.error, false, true, true)
+      if message.chestFull then
+        self:tryAdd("Dropoff is Full, Please Fix", theme.error, false, true, true)
       end
-      if self.rec.foundBedrock then
-        self:tryAdd("Found Bedrock! Please Check!!", self.themeColors.error, false, true, true)
+      if message.foundBedrock then
+        self:tryAdd("Found Bedrock! Please Check!!", theme.error, false, true, true)
       end
-      if self.rec.isAtChest then
-        self:tryAdd("Turtle is at home chest", self.themeColors.info, false, true, true)
+      if message.isAtChest then
+        self:tryAdd("Turtle is at home chest", theme.info, false, true, true)
       end
-      if self.rec.isGoingToNextLayer then
-        self:tryAdd("Turtle is going to next layer", self.themeColors.info, false, true, true)
+      if message.isGoingToNextLayer then
+        self:tryAdd("Turtle is going to next layer", theme.info, false, true, true)
       end
     end
   else --If is done
     if screenSize[1] == sizesEnum.small then --Special case for small monitors
-      self:tryAdd("Done", self.themeColors.title, true, true, true)
-      self:tryAdd("Dug"..align(str(self.rec.mined),4), self.themeColors.pos, true, true, true)
-      self:tryAdd("Fuel"..align(str(self.rec.fuel),3), self.themeColors.pos, true, true, true)
-      self:tryAdd("-------", self.themeColors.subtitle, false,true,true)
-      self:tryAdd("Turtle", self.themeColors.subtitle, false, true, true)
-      self:tryAdd(center("is"), self.themeColors.subtitle, false, true, true)
-      self:tryAdd(center("Done!"), self.themeColors.subtitle, false, true, true)
+      self:tryAdd("Done", theme.title, true, true, true)
+      self:tryAdd("Dug"..align(str(message.mined),4), theme.pos, true, true, true)
+      self:tryAdd("Fuel"..align(str(message.fuel),3), theme.pos, true, true, true)
+      self:tryAdd("-------", theme.subtitle, false,true,true)
+      self:tryAdd("Turtle", theme.subtitle, false, true, true)
+      self:tryAdd(center("is"), theme.subtitle, false, true, true)
+      self:tryAdd(center("Done!"), theme.subtitle, false, true, true)
     else
-      self:tryAdd("Done!", self.themeColors.title, true, true, true)
-      self:tryAdd("Blocks Dug: "..str(self.rec.mined), self.themeColors.inverse, true, true, true)
-      self:tryAdd("Cobble Dug: "..str(self.rec.cobble), self.themeColors.pos, false, true, true)
-      self:tryAdd("Fuel Dug: "..str(self.rec.fuelblocks), self.themeColors.pos, false, true, true)
-      self:tryAdd("Others Dug: "..str(self.rec.other), self.themeColors.pos, false, true, true)
-      self:tryAdd("Curr Fuel: "..str(self.rec.fuel), self.themeColors.inverse, true, true, true)
+      self:tryAdd("Done!", theme.title, true, true, true)
+      self:tryAdd("Blocks Dug: "..str(message.mined), theme.inverse, true, true, true)
+      self:tryAdd("Cobble Dug: "..str(message.cobble), theme.pos, false, true, true)
+      self:tryAdd("Fuel Dug: "..str(message.fuelblocks), theme.pos, false, true, true)
+      self:tryAdd("Others Dug: "..str(message.other), theme.pos, false, true, true)
+      self:tryAdd("Curr Fuel: "..str(message.fuel), theme.inverse, true, true, true)
     end
   end
-
-  reset(colors.black)
-  for a, b in ipairs(toPrint) do
-    say(b.text, b.color)
-  end
-  if extraLine then
-    self.term.setCursorPos(1,dim[2])
-    say(extraLine[1],extraLine[2])
-  end
-  
 end
 
-
---Initializing Variables
-local sendChannel, receiveChannel
+--Initializing Program-Wide Variables
 local periphSides = {monitor = nil, modem = nil}
 local expectedMessage = "Civil's Quarry" --Expected initial message
 local respondMessage = "Turtle Quarry Receiver" --Message to respond to  handshake with
 local stopMessage = "stop"
-local sides = swapKeyValue({"top","bottom","right","left","front","back"}) --This allows sides[1] and sides.front
 --tArgs and peripheral list init
 local tArgs = {...}
-local tArgsWithUpper = swapKeyValue(copyTable(tArgs))
-for a, b in pairs(tArgs) do --Lower arguments
-  tArgs[a] = string.lower(b)
-end
-tArgs = swapKeyValue(tArgs)
-local foundSides = {}
-for a, b in pairs(sides) do
-  if type(a) == "string" then
-    foundSides[a] = peripheral.getType(a)
+local parameters = {} --Each command is stored with arguments
+local parameterIndex = 0 --So we can add new commands to the right table
+for a,b in ipairs(tArgs) do
+  val = b:lower()
+  if val == "help" or val == "-help" or val == "?" or val == "-?" then
+    displayHelp() --To make
+    error("The End of Help",0)
+  end
+  if val:match("^%-") then
+    parameterIndex = parameterIndex + 1
+    parameters[parameterIndex] = {val:sub(2)} --Starts a chain with the command. Can be unpacked later
+  elseif parameterIndex ~= 0 then
+    table.insert(parameters[parameterIndex], b) --b because arguments should be case sensitive for filenames
   end
 end
-foundSides = swapKeyValue(foundSides)
+for a,b in pairs(tArgs) do
+  tArgs[b:lower()] = a
+end
+
+
+
+
+local function decipherParameter(com, ...)
+  params = {...}
+  if com == "receivechannel" then
+    screenClass.sides.computer = params[1]
+  elseif com == "sendChannel" then
+    sendChannel = params
+    
+
 
 --Size functions
-local sizes = {{7, 5}, {18, 12}, {29, 19}, 39, 50, computer = {51, 19}, turtle = {39,13}, pocket = {26,20}} --Monitor dimensions
-local sizesEnum = {small = 1, medium = 2, large = 3, computer = 4, turtle = 5} --For reference
-local dim, screenSize
-local function setSize()
-  if mon == term or not mon.getCursorPos() then --You should be able to swap out screens
-    local a = peripheral.wrap(periphSides.monitor or "")
-    if a then --If a is a valid monitor then
-      mon = a --Monitor variable is a
-    else
-      mon = term --Monitor variable is just the screen variable
-    end
-  end
-  screenSize = {}
-  dim = {mon.getSize()} --Just pretend its large if it doesn't exist
-  local function isX(dim, what)
-    return dim[1] == sizes[what][1] and dim[2] == sizes[what][2]
-  end
-  screenSize.isComputer = isX(dim, "computer")
-  screenSize.isTurtle = isX(dim, "turtle")
-  screenSize.isPocket = isX(dim, "pocket")
-
-  for a=1, 2 do --X and Y
-    for i=3, 1, -1 do --Different sizes 1 - 3
-      if dim[a] >= sizes[i][a] then --This will get decrementing screen sizes. Can even be adjusted later!
-        screenSize[a] = i
-        break
-      end
-    end
-  end
-  if not (screenSize[1] and screenSize[2]) then error("Screen Size was not set properly") end
-  if debug then
-    print("Screen Size Reset:")
-    print("Size X: ",screenSize[1]," Size Y: ",screenSize[2])
-    print("Dim X: ",dim[1]," Dim Y: ",dim[2])
-  end
-  if screenSize.isComputer or screenSize.isTurtle or screenSize.isPocket then
-    screenSize.acceptsInput = true
-  else
-    screenSize.acceptsInput = false
-  end
-end
-
---Arguments and such
-local function getNext(str)
-  return tArgs[tArgs[str]+1]
-end
-
 
 if tArgs["-modem"] then
   if sides[getNext("-modem")] then
@@ -565,25 +564,7 @@ local rec = {
 
 
 
-local function reset(color)
-  setBackgroundColor(color)
-  mon.clear()
-  mon.setCursorPos(1,1)
-end
-local function say(text, color, obj)
-  local currColor = currBackgroundColor
-  obj, color = obj or mon, color or {}
-  setTextColor(color.text, obj)
-  if debug and #text > dim[1] then error("Tried printing: "..text..", but was too big") end
-  setBackgroundColor(color.background, obj)
-  for i=1, dim[1]-#text do --This is so the whole line's background gets filled.
-    text = text.." "
-  end
-  obj.write(text)
-  setBackgroundColor(currColor, obj)
-  local pos = ({obj.getCursorPos()})[2] or setSize() or 1
-  obj.setCursorPos(1, pos+1)
-end
+
 
 local messageToSend --This will be a command string sent to turtle
 

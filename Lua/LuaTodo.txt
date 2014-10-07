@@ -10,10 +10,8 @@ Quarry Receiver x.x.x (matches current quarry):
   Ideas:
   1. All themes are in files in a "themes" folder.
   2. Some themes are included in the program code, and can be selected.
-  3. Command line argument could just be a file name, then will search included themes.
   4. Layout for a "theme" file would just be "addColor(parameters)" for all the different styles. Maybe to be fancy you could have overrides on all different things, like give them an id and stuff
   5. Integration with shell: Interactive menu to design/choose theme. Maybe have a default themes-set to download.
-  6. Maybe prepend a random number to the sent string so a relay can differentiate messages.
   7. Instead of above, process: Using the fact that modem.transmit can send tables of strings natively. Turtle sends handshake. First repeater gets message, the message has no
        protocol, so the repeater assigns itself id 1. It will only receive messages that have no protocol. It resends the message on the same channel with the protocol "1". The next receiver
        identifies itself as 2, will receive "1" and send with "3". Since I'm using the modem API, there could also be a "distance" field that gets added to every repeat or made at receiver.
@@ -21,7 +19,8 @@ Quarry Receiver x.x.x (matches current quarry):
        parameters change in real time. Then you could save it to pastebin or your themes folder.
   9. Idea for implementing themes: use addColor above, and have a table of possible display items. Each display item would have a foreground color, background
        color, and centering that would be defined by a theme. You could even have 1 be small, 2 be medium, 3 be large, and 0 be default.
-  10. During reorganization, make each running instance of receiver a "class" so the main part controls different screens being changed and messages sent.
+  
+  1. When program running, you could have a command "theme screenSide fileName" which would set a certain theme for a certain computer
 
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 
