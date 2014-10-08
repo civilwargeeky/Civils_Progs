@@ -27,7 +27,7 @@ Planned layout:
 ]]
 --[[
 Recent Changes:
-  Made from scratch!
+  Completely Remade!
 ]]
 
 local commandHelpParagraph = [[
@@ -44,7 +44,11 @@ Help: This :D
 local doDebug = true --For testing purposes
 local ySizes = 3 --There are 3 different Y Screen Sizes right now
 
-
+--Initializing Program-Wide Variables
+local expectedMessage = "Civil's Quarry" --Expected initial message
+local respondMessage = "Turtle Quarry Receiver" --Message to respond to  handshake with
+local stopMessage = "stop"
+local expectedFingerprint = "quarry"
 
 --Generic Functions--
 local function debug(...)
@@ -145,8 +149,12 @@ screenClass.new = function(side, receive, send, themeFile)
     self.term = term
   else
     self.term = peripheral.wrap(side)
-    if not (self.term and peripheral.getType(side) == "monitor") then
-      error("No monitor on side "..tostring(side))
+    if not (self.term and peripheral.getType(side) == "monitor") then --Don't create an object if it doesn't exist
+      if doDebug then
+        error("No monitor on side "..tostring(side))
+      end
+      self = nil --Save memory?
+      return false
     end
   end
   
@@ -408,11 +416,7 @@ screenClass.updateDisplayTable = function(self, isDone)
   end
 end
 
---Initializing Program-Wide Variables
-local periphSides = {monitor = nil, modem = nil}
-local expectedMessage = "Civil's Quarry" --Expected initial message
-local respondMessage = "Turtle Quarry Receiver" --Message to respond to  handshake with
-local stopMessage = "stop"
+
 --tArgs and peripheral list init
 local tArgs = {...}
 local parameters = {} --Each command is stored with arguments
@@ -426,24 +430,33 @@ for a,b in ipairs(tArgs) do
   if val:match("^%-") then
     parameterIndex = parameterIndex + 1
     parameters[parameterIndex] = {val:sub(2)} --Starts a chain with the command. Can be unpacked later
+    parameters[val:sub(2)] = {}
   elseif parameterIndex ~= 0 then
     table.insert(parameters[parameterIndex], b) --b because arguments should be case sensitive for filenames
+    table.insert(parameters[parameters[parameterIndex][1]], b)
   end
 end
 for a,b in pairs(tArgs) do
   tArgs[b:lower()] = a
 end
 
+local singleScreen = false
+if parameters.singlescreen then
+  if screenClass.new(unpack(parameters.singlescreen)) then
+    singleScreen = true
+  end
+end
 
 
+if screenClass.sides.computer or singleScreen --Check for parameters on a single screen like channel
 
-local function decipherParameter(com, ...)
-  params = {...}
-  if com == "receivechannel" then
-    screenClass.sides.computer = params[1]
-  elseif com == "sendChannel" then
-    sendChannel = params
-    
+end
+
+local function decipherParameter(com, ...) --Used for params that can be used multiple times
+  params = {...} --All the arguments
+  if #params == 0 then return false end
+  
+end
 
 
 --Size functions
