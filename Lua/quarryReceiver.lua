@@ -206,7 +206,7 @@ screenClass.new = function(side, receive, send, themeFile)
   screenClass.sides[self.side] = self
   screenClass.channels[self.receive] = self --If anyone ever asked, you could have multiple screens per channel, but its silly if no one ever needs it
   self:setSize() --Finish Initialization
-  self:setTheme
+  self:setTheme()
   return self
 end
 
@@ -416,6 +416,15 @@ screenClass.updateDisplayTable = function(self, isDone)
   end
 end
 
+--[[
+Parameters:
+  -help/-?/help/?
+  -receiveChannel [channel] --For only the main screen
+  -theme --Sets a default theme
+  -screen [side] [channel] [theme]
+  -station
+  -auto --Prompts for all sides
+]]
 
 --tArgs and peripheral list init
 local tArgs = {...}
@@ -429,32 +438,21 @@ for a,b in ipairs(tArgs) do
   end
   if val:match("^%-") then
     parameterIndex = parameterIndex + 1
-    parameters[parameterIndex] = {val:sub(2)} --Starts a chain with the command. Can be unpacked later
-    parameters[val:sub(2)] = {}
+    parameters[parameterIndex] = {param = val:sub(2)} --Starts a chain with the command. Can be unpacked later
   elseif parameterIndex ~= 0 then
     table.insert(parameters[parameterIndex], b) --b because arguments should be case sensitive for filenames
-    table.insert(parameters[parameters[parameterIndex][1]], b)
-  end
-end
-for a,b in pairs(tArgs) do
-  tArgs[b:lower()] = a
-end
-
-local singleScreen = false
-if parameters.singlescreen then
-  if screenClass.new(unpack(parameters.singlescreen)) then
-    singleScreen = true
   end
 end
 
-
-if screenClass.sides.computer or singleScreen --Check for parameters on a single screen like channel
-
-end
-
-local function decipherParameter(com, ...) --Used for params that can be used multiple times
-  params = {...} --All the arguments
-  if #params == 0 then return false end
+for i=1, #parameters do --Do actions for all parameters but help
+  local command, args = parameters[i].param, parameters[i] --For ease
+  
+  if command == "theme" then --Sets default theme (computer screen inherits this)
+    screenClass:setTheme(args[i] or "")
+  elseif true then
+  
+  end
+  
   
 end
 
