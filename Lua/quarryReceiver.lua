@@ -49,6 +49,7 @@ local expectedMessage = "Civil's Quarry" --Expected initial message
 local respondMessage = "Turtle Quarry Receiver" --Message to respond to  handshake with
 local stopMessage = "stop"
 local expectedFingerprint = "quarry"
+local themeFolder = "quarryResources/receiverThemes/"
 
 --Generic Functions--
 local function debug(...)
@@ -141,7 +142,7 @@ screenClass.setColor = function(self, color) --Wrapper, accepts themecolor objec
 end
 
 --GENERAL CLASS FUNCTIONS
-screenClass.new = function(side, receive, send, themeFile)
+screenClass.new = function(side, receive, themeFile)
   local self = {}
   setmetatable(obj, {__index = screenClass}) --Establish Hierarchy
   self.side = side
@@ -160,10 +161,11 @@ screenClass.new = function(side, receive, send, themeFile)
   
   --Channels and ids
   self.receive = receive --Receive Channel
-  self.send = send --Reply Channel
+  self.send = nil --Reply Channel, obtained in handshake
   self.id = #screenClass.screens+1
   --Colors
-  self.theme = themeFile
+  self.themeName = themeFile
+  self.theme = nil --Will be set by setTheme
 
   self.isColor = self.term.isColor() --Just for convenience
   --Other Screen Properties
@@ -219,7 +221,7 @@ screenClass.removeEntry = function(tab) --Cleanup function
   screenClass.channels[tab.receive] = nil
 end
 
---SCREEN FUNCTIONS
+--Init Functions
 screenClass.setSize = function(self) --Sets screen size
   if self.side ~= "computer" and not self.term then self.term = peripheral.wrap(self.side) end
   if not self.term then --If peripheral is having problems/not there. Don't go further than term, otherwise index nil (maybe?)
@@ -243,6 +245,25 @@ screenClass.setSize = function(self) --Sets screen size
   self.isPocket = isThing(self.dim, "pocket")
   self.acceptsInput = self.isComputer or self.isTurtle or self.isPocket
   return self
+end
+
+screenClass.setTheme = function(self)
+  if not themes[self.themeName] then --If we don't have it already, try to load it
+    local fileName = self.themeName
+    local newTheme --Init for placement later
+    if fs.exists(themeFolder) then fileName = themeFolder..fileName end
+    if fs.exists(fileName) then
+      local file = fs.open(fileName, "r")
+      --Loop through all the lines, adding colors
+      file.close()
+    else
+      self.theme = themes.default
+      return false
+    end
+    
+   end
+      
+    
 end
 
 --Copied from below, revise
@@ -423,7 +444,7 @@ Parameters:
   -theme --Sets a default theme
   -screen [side] [channel] [theme]
   -station
-  -auto --Prompts for all sides
+  -auto --Prompts for all sides, or you can supply a list of receive channels for random assignment!
 ]]
 
 --tArgs and peripheral list init
@@ -439,21 +460,52 @@ for a,b in ipairs(tArgs) do
   if val:match("^%-") then
     parameterIndex = parameterIndex + 1
     parameters[parameterIndex] = {param = val:sub(2)} --Starts a chain with the command. Can be unpacked later
+    parameters[val:sub(2)] = {} --Needed for force/before/after parameters
   elseif parameterIndex ~= 0 then
     table.insert(parameters[parameterIndex], b) --b because arguments should be case sensitive for filenames
+    table.insert(parameters[parameters[parameterIndex][1]], b) --Needed for force/after parameters
   end
 end
 
-for i=1, #parameters do --Do actions for all parameters but help
+--Options before screen loads
+if parameters.theme then
+  screenClass:setTheme(parameters.theme[1] or "")
+end
+
+--Init Computer Screen Object
+local tempChannel
+if parameters.receivechannel then tempChannel = parameters.receivechannel[1] end --This sets channel
+screenClass.new("computer", tempChannel)
+
+--Technically, you could have any screen be the station, but oh well.
+if parameters.station then --This will set the screen update to display stats on all other monitors. For now it does little
+  local obj = screenClass.sides.computer
+  screenClass.receiveChannels[obj.receive] = nil --Because it doesn't have a channel
+  obj.receive = -1 --So it doesn't receive messages
+  screenClass.sides.computer.updateScreen = function(self)
+    for a, b in pairs(screenClass.sides) do
+      tryAdd("Side: ", a," ",b.id," ",b.receive, theme.pos, false, true, true) --Prints info about all screens
+    end
+  end
+end
+
+
+for i=1, #parameters do --Do actions for parameters that can be used multiple times
   local command, args = parameters[i].param, parameters[i] --For ease
   
-  if command == "theme" then --Sets default theme (computer screen inherits this)
-    screenClass:setTheme(args[i] or "")
-  elseif true then
-  
+  if command == "screen" then
+    screenClass.new(args[1], args[2], args[3])
   end
   
-  
+end
+
+if parameters.auto then
+  local tab = peripheral.getNames()
+  for i=1, #tab do
+    if peripheral.getType(tab[i]) == "modem" then
+      screenClass.new(tab[i], parameters.auto[i]) --You can specify a list of channels in "auto" parameter
+    end
+  end
 end
 
 
