@@ -50,11 +50,19 @@ local respondMessage = "Turtle Quarry Receiver" --Message to respond to  handsha
 local stopMessage = "stop"
 local expectedFingerprint = "quarry"
 local themeFolder = "quarryResources/receiverThemes/"
+local modemSide --User can specify a modem side, but it is not necessary
+local modem --This will be the table for the modem
 
 --Generic Functions--
 local function debug(...)
   if doDebug then return print(...) end
 end
+local function clearScreen(x,y, periph)
+  periph, x, y = periph or term, x or 1, y or 1
+  periph.clear()
+  periph.setCursorPos(x,y)
+end
+  
 local function swapKeyValue(tab)
   for a,b in pairs(tab) do
     tab[b] = a
@@ -69,10 +77,12 @@ local function copyTable(tab)
   return toRet
 end
 local function checkChannel(num)
-  num = tonumber(num)
+  num = tonumber(num) 
+  if not num then return false end
   if 1 <= num and num <= 65535 then
     return num
   end
+  return false
 end
 local function align(text, xDim)
   text = tostring(text) or ""
@@ -92,11 +102,26 @@ local function center(text, xDim)
 end
 
 
-local screenClass = {} --This is the class for all monitor/screen objects
-screenClass.screens = {} --A simply numbered list of screens
-screenClass.sides = {} --A mapping of screens by their side attached
-screenClass.channels = {} --A mapping of receiving channels that have screens attached. Used for the receiver part
-screenClass.sizes = {{7,18,29,39,50}, (5,12,19} , computer = {51, 19}, turtle = {39,13}, pocket = {26,20}}
+local function testPeripheral(periph, periphFunc)
+  if not periph or type(periph) ~= "table" then return false end
+  if periph[periphFunc]() == nil then --Expects string because the function could access nil
+    periph.isDisconnected = true --My current solution
+    return false
+  end
+  return true
+end
+
+local function initModem() --Sets up modem, returns true if modem exists
+  if not testPeripheral(modem, "isWireless") then
+    if peripheral.getType(modemSide or "") == "modem" then
+      modem = peripheral.wrap(modemSide)
+      return true
+    end
+    modem = peripheral.find("modem")
+    return modem and true or false
+  end
+  return true
+end
 
 --COLOR/THEME RELATED
 local themes = {} --Loaded themes, gives each one a names
@@ -124,6 +149,13 @@ screenClass.themeColors=newTheme("default")
   :addColor("help", colors.red, colors.white)
   :addColor("background", colors.white, colors.black)
 
+  
+--==SCREEN CLASS FUNCTIONS==
+local screenClass = {} --This is the class for all monitor/screen objects
+screenClass.screens = {} --A simply numbered list of screens
+screenClass.sides = {} --A mapping of screens by their side attached
+screenClass.channels = {} --A mapping of receiving channels that have screens attached. Used for the receiver part
+screenClass.sizes = {{7,18,29,39,50}, (5,12,19} , computer = {51, 19}, turtle = {39,13}, pocket = {26,20}}
 
 screenClass.setTextColor = function(self, color) --Accepts raw color
   if color and self.term.isColor() then
@@ -141,7 +173,10 @@ screenClass.setColor = function(self, color) --Wrapper, accepts themecolor objec
   return self.setTextColor(color.text) and self.setBackgroundColor(color.background)
 end
 
---GENERAL CLASS FUNCTIONS
+screenClass.themeFile = "default" --Setting super for fallback
+screenClass.theme = themes.default
+
+
 screenClass.new = function(side, receive, themeFile)
   local self = {}
   setmetatable(obj, {__index = screenClass}) --Establish Hierarchy
@@ -206,7 +241,9 @@ screenClass.new = function(side, receive, themeFile)
   
   screenClass.screens[self.id] = self
   screenClass.sides[self.side] = self
-  screenClass.channels[self.receive] = self --If anyone ever asked, you could have multiple screens per channel, but its silly if no one ever needs it
+  if self.receive then
+    screenClass.channels[self.receive] = self --If anyone ever asked, you could have multiple screens per channel, but its silly if no one ever needs it
+  end
   self:setSize() --Finish Initialization
   self:setTheme()
   return self
@@ -257,16 +294,14 @@ screenClass.setTheme = function(self)
       --Loop through all the lines, adding colors
       file.close()
     else
-      self.theme = themes.default
+      --Does not set so falls back to super
       return false
     end
     
    end
-      
-    
 end
 
---Copied from below, revise
+--Adds text to the screen buffer
 screenClass.tryAdd = function(self, text, color, ...) --This will try to add text if Y dimension is a certain size
   local doAdd = {...} --booleans for small, medium, and large
   text = text or "NIL"
@@ -288,6 +323,7 @@ screenClass.reset = function(self,color)
   self.setColor(color)
   self.term.clear()
   self.term.setCursorPos(1,1)
+  self.toPrint = {} --Resets print table
 end
 screenClass.say = function(self, text, color)
   local currColor = self.backgroundColor
@@ -437,6 +473,8 @@ screenClass.updateDisplayTable = function(self, isDone)
   end
 end
 
+--==ARGUMENTS==
+
 --[[
 Parameters:
   -help/-?/help/?
@@ -509,123 +547,40 @@ if parameters.auto then
 end
 
 
---Size functions
-
-if tArgs["-modem"] then
-  if sides[getNext("-modem")] then
-    periphSides["modem"] = getNext("-modem")
-  end
-else --This will check for a modem only if argument isn't specified
-  periphSides["modem"] = foundSides["modem"]
-end
-for _, a in pairs({"-monitor","-screen"}) do
-  if tArgs[a] then
-    if sides[getNext(a)] then --Checks if the argument following monitor is a valid side
-      periphSides.monitor = getNext(a)
-    else
-      periphSides.monitor = foundSides.monitor --This differs from above so if no argument, will default to screen.
-    end
-  elseif defaultCheckScreen then
-    periphSides.monitor = foundSides.monitor
-  end
-end
-
-if tArgs["-channel"] then
-  receiveChannel = checkChannel(getNext("-channel")) --This will be nil if it doesn't exist
-end
-
-if doDebug then
-  print(textutils.serialize(foundSides))
-  print("Screen Side: ",periphSides.monitor)
-  print("Modem Side: ",periphSides.modem)
-  os.pullEvent("char")
-end
-
-
---All UI, handshaking, and monitor finding go here.
-term.clear()
-term.setCursorPos(1,1)
+--==SET UP AND HANDSHAKES==
+clearScreen()
 print("Welcome to Quarry Receiver!")
-while peripheral.getType(periphSides["modem"]) ~= "modem" do
-  write("Which side is the modem on? " )
-  local temp = read()
-  if peripheral.getType(temp:lower()) == "modem" then --If the input side is a modem
-    periphSides.modem = temp
-  else print("That side does not have a modem on it \n") end
+sleep(2)
+
+while not initModem() do
+  clearScreen()
+  print("No modem is connected, please attach one")
+  os.pullEvent("peripheral")
 end
-while not receiveChannel do
-  write("What channel? (Check turtle) ")
-  local temp = tonumber(read()) or 0
-  if checkChannel(temp) then
-    receiveChannel = temp
+debug("Modem successfully connected!")
+
+--Making sure all screens have a channel
+for a, b in pairs(screenClass.sides) do
+  while not b.receive do
+    clearScreen()
+    print("Screen ",a," has no channel")
+    print("Enter the channel from the turtle!")
+    local input = tonumber(read())
+    if checkChannel(input) then
+      if not screenClass.channels[input] then
+        b.receive = input
+        screenClass.channels[input] = b
+      else
+        print("That channel has already been taken")
+      end
+    else
+      print("That is not a valid number")
+    end
+    sleep(1)
   end
 end
 
---Init
-local a = peripheral.wrap(periphSides.monitor or "")
-if a then --If a is a valid monitor then
-  mon = a --Monitor variable is a
-else
-  mon = term --Monitor variable is just the screen variable
-end
-setSize()
-modem = peripheral.wrap(periphSides.modem)
-
-if debug then
-  print("Accepts Input: ",screenSize.acceptsInput)
-  os.pullEvent("char")
-end
-
-
---Handshake
-print("Opening channel ",receiveChannel)
-modem.open(receiveChannel)
-print("Waiting for turtle message")
-repeat
-  local event, modemSide, recCheck, sendCheck, message, distance = os.pullEvent("modem_message")
-  if debug then print("Message Received") end
-  if (message == expectedMessage or (sloppyHandshake and textutils.unserialize(message))) and recCheck == receiveChannel and modemSide == periphSides.modem then
-    sendChannel = sendCheck
-    sleep(0.5) --Give it a second to catch up?
-    modem.transmit(sendChannel, receiveChannel, respondMessage)
-    print("Successfully paired, sending back on channel ",sendChannel)
-  else
-    if debug then print("Invalid message received: ",message) end
-  end
-  
-until sendChannel --This will be assigned when message is received
-
-
---This is for testing purposes. Rec will be "receivedMessage"
---Nevermind, I actually need a default thing with keys in it.
-local rec = {
-  label = "Quarry Bot",
-  id = 1, 
-  percent = 0,
-  relxPos = 0,
-  zPos = 0,
-  layersDone = 0,
-  x = 0,
-  z = 0,
-  layers = 0,
-  openSlots = 0,
-  mined = 0,
-  moved = 0,
-  chestFull = false,
-  isAtChest = false,
-  isGoingToNextLayer = false,
-  foundBedrock = false,
-  fuel = 0,
-  volume = 0,
-  distance = 0,
-  yPos = 0
---Maybe add in some things like if going to then add a field
-}
-
---####MORE REVISIONS STARTING HERE, ABOVE IS DEAD####
-
-
-
+--Handshake will be handled in main loop
 
 
 
