@@ -253,9 +253,13 @@ screenClass.removeEntry = function(tab) --Cleanup function
   if type(id) == "number" then --Expects table, can take id
     tab = screenClass.screens[id]
   end
+  if tab == "REMOVED" then return end
   screenClass.screens[tab.id] = "REMOVED" --Not nil because screw up len()
   screenClass.sides[tab.side] = nil
   screenClass.channels[tab.receive] = nil
+  if modem and modem.isOpen(tab.receive) then
+    modem.close(tab.receive)
+  end
 end
 
 --Init Functions
@@ -547,7 +551,7 @@ if parameters.auto then
 end
 
 
---==SET UP AND HANDSHAKES==
+--==SET UP==
 clearScreen()
 print("Welcome to Quarry Receiver!")
 sleep(2)
@@ -580,91 +584,25 @@ for a, b in pairs(screenClass.sides) do
   end
 end
 
+for a, b in pairs(screenClass.channels) do --Open up all the channels
+  if not modem.isOpen(a) then
+    modem.open(a)
+  end
+end
 --Handshake will be handled in main loop
 
 
+--[[Workflow
+  Wait for events
+  rednet message
+    if valid channel and valid message, update appropriate screen
+  char
+    if any letter, add to command string if room.
+    if enter key
+      if valid self command, execute command. Commands:
+        command [side] [command] --If only one screen, then don't need channel
+        
 
+]]
 local messageToSend --This will be a command string sent to turtle
 
-function rednetHandler() while true do sleep(0)--Super sneaky loop
---Will send rednet message to send if it exists, otherwise sends default message.
-  local event, sideCheck, receiveCheck, sendCheck, message, distance
-  repeat
-    event, sideCheck, receiveCheck, sendCheck, message, distance = os.pullEvent()
-  until (event == "modem_message" and periphSides.modem == sideCheck and receiveCheck == receiveChannel and sendCheck == sendChannel) or (event == "send_message")
-  if message == stopMessage then isDone = true end --Flag for other programs
-  if event == "modem_message" then
-    if not isDone then --Normally
-      rec = textutils.unserialize(message) or {}
-      rec.distance = math.floor(distance)
-      rec.label = rec.label or "Quarry!"
-      if rec then
-        os.queueEvent("updateScreen") --Tell display that there is new information
-      else
-        print("IMPROPER MESSAGE RECEIVED")
-        if debug then error("expected Table, got "..message) end
-      end
-      
-    elseif message ~= stopMessage then --If is done
-      if debug then print("Received final final message") end
-      modem.close(receiveChannel)
-      rec = textutils.unserialize(message)
-      extraLine = nil
-      if rec then
-        os.queueEvent("updateScreen")
-      else
-        error("Finished with program, but received bad message", 0)
-      end
-      
-      print("\nDone with program")
-    else --If is done, before final message
-      if debug then print("Received final: ", message) end
-    end
-  elseif event == "send_message" then
-    --pass
-  end
-  if not isDone then --Return message sending
-    local toSend
-    if messageToSend then
-      toSend = messageToSend
-      messageToSend = nil
-    else
-      toSend = respondMessage
-    end
-    modem.transmit(sendChannel, receiveChannel, toSend)
-  end
-  
-end end
-
-
-
-function commandSender() 
-  local text = "Command: "
-  while true do sleep(0)
-    if screenSize.acceptsInput then
-      extraLine = {text, typeColors.command}
-      mon.setCursorPos(#extraLine[1]+1, dim[2])
-    else
-      extraLine = nil
-      local mainDim = {term.getSize()} --Of computer
-      term.setCursorPos(1, mainDim[2])
-      say(text, typeColors.command, term)
-      term.setCursorPos(#text+1,mainDim[2])
-    end    
-    messageToSend = read():lower()
-    if messageToSend == "help" then
-      setTextColor(typeColors.help[1], term)
-      setBackgroundColor(typeColors.help[2], term)
-      write(commandHelpParagraph)
-      os.pullEvent("key")
-    elseif messageToSend == "resume" then
-     os.queueEvent("send_message")
-    else  
-      os.queueEvent("updateScreen")
-    end
-  end 
-end
-
-------------------------------------------
-sleep(0.5)
-parallel.waitForAny( commandSender, display, rednetHandler)
