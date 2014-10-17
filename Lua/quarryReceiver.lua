@@ -594,14 +594,20 @@ end
 
 --[[Workflow
   Wait for events
-  rednet message
+  modem_message
     if valid channel and valid message, update appropriate screen
   char
     if any letter, add to command string if room.
     if enter key
       if valid self command, execute command. Commands:
-        command [side] [command] --If only one screen, then don't need channel
-        
+        command [side] [command] --If only one screen, then don't need channel. Send a command to a turtle
+        screen [side] [channel] [theme] --Links a new screen to use.
+        remove [side] --Removes a screen
+  peripheral_detach
+    check what was lost, if modem, set to nil.
+  peripheral
+    check if need modem, then set modem
+    prompt link screen?
 
 ]]
 local messageToSend --This will be a command string sent to turtle
