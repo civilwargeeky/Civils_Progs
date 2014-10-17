@@ -1,6 +1,7 @@
 Random idea:
 Maybe have a "master" and "slave" function on the quarry shell so that you could just slave multiple turtles to be controlled by a computer. So you could push quarry configurations
  to individual turtles and view their progress through the quarry receiver.
+To use keyboard shortcuts, set var = os.startTimer(num), then in event loop, check if timer is removed. Functions checking for a key will check if the var exists
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 
 Quarry Receiver x.x.x (matches current quarry):
