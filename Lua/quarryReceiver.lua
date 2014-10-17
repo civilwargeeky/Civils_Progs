@@ -46,6 +46,7 @@ local ySizes = 3 --There are 3 different Y Screen Sizes right now
 
 --Initializing Program-Wide Variables
 local expectedMessage = "Civil's Quarry" --Expected initial message
+local expectedFingerprint = "quarry"
 local respondMessage = "Turtle Quarry Receiver" --Message to respond to  handshake with
 local stopMessage = "stop"
 local expectedFingerprint = "quarry"
@@ -215,6 +216,7 @@ screenClass.new = function(side, receive, themeFile)
   self.isTurtle = false
   self.isPocket = false
   self.acceptsInput = false
+  self.legacy = false --Whether it expects tables or strings
   self.rec = { --Initial values for all displayed numbers
     label = "Quarry Bot",
     id = 1, 
@@ -347,7 +349,7 @@ screenClass.updateDisplayTable = function(self, isDone)
   self.toPrint = {} --Reset table
   local message, theme = self.rec, self.themeColors
   
-  if not isDone then --Normally
+  if not message.isDone then --Normally
     if self.size[1] == 1 then --Small Monitor
       if not self:tryAdd(message.label, theme.title, false, false, true) then --This will be a title, basically
         self:tryAdd("Quarry!", theme.title, false, false, true)
@@ -604,11 +606,73 @@ end
         screen [side] [channel] [theme] --Links a new screen to use.
         remove [side] --Removes a screen
   peripheral_detach
-    check what was lost, if modem, set to nil.
+    check what was lost, if modem, set to nil. If screen side, do screen:setSize()
   peripheral
     check if need modem, then set modem
     prompt link screen?
+  monitor_resize
+    resize proper screen
 
 ]]
 local messageToSend --This will be a command string sent to turtle
+local queuedMessage --If a command needs to be sent, this gets set
+while true do
+  local event, par1, par2, par3, par4, par5 = os.pullEvent()
+    if event == "modem_message" and screenClass.channels[par2] then --If we got a message for a screen that exists
+      local screen = screenClass.channels[par2] --For convenience
+      if not screen.send then --This is the handshake
+        debug("Checking handshake. Received: ",par4)
+        local flag = false
+        if par4 == expectedMessage then
+          screen.legacy = true --Accepts serialized tables
+          flag = true
+        elseif type(par4) == "table" and par4.message == expectedMessage and par4.fingerprint == expectedFingerprint then
+          screen.legacy = false
+          flag = true
+        end
+        
+        if flag then 
+          debug("Screen ",screen.side," received a handshake")
+          screen.send = par3
+          screen:setSize() --Resets update method to proper since channel is set
+          debug("Sending back on ",screen.send)
+          modem.transmit(screen.send,screen.receive, respondMessage)
+        end
+      
+      else
+      
+        local rec
+        if screen.legacy then --We expect strings here
+          if type(par4) == "string" then
+            rec = textutils.unserialize(par4)
+            rec.distance = par5
+          end
+        elseif type(par4) == "table" and par4.fingerprint == expectedFingerprint then --Otherwise, we check if it is valid message
+          rec = par4.message
+          if not par4.distance then --This is cool because it can add distances from the repeaters
+            rec.distance = par5
+          else
+            rec.distance = par4.distance + par5
+          end
+       end
+       
+       if rec then
+        rec.distance = math.floor(rec.distance)
+        rec.label = rec.label or "Quarry!"
+        screen.rec = rec --Set the table
+        screen:updateDisplayTable() --isDone is queried inside this
+        for a,b in pairs(screen.toPrint) do
+          --Display all the things. Remember there is screen:say
+        end
+        --Send response message if queued message
+       end
+      
+    end
+  end
+  
+  
+  
+  
+  
+end
 
