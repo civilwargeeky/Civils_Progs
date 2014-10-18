@@ -251,7 +251,8 @@ screenClass.setSize = function(self) --Sets screen size
   if not self.term then --If peripheral is having problems/not there. Don't go further than term, otherwise index nil (maybe?)
     self.updateDisplayTable = function() end --Do nothing on screen update, overrides class
   else --This allows for class inheritance
-    self.updateDisplay = nil --Remove function in case it exists, defaults to super
+    self.updateDisplayTable = nil --Remove function in case it exists, defaults to super
+    self:init() --In case objects have special updateDisplayTable methods
   end
   local tab = screenClass.sizes
   for a=1, 2 do --Want x and y dim
@@ -289,14 +290,14 @@ screenClass.setTheme = function(self)
 end
 
 --Adds text to the screen buffer
-screenClass.tryAdd = function(self, text, color, ...) --This will try to add text if Y dimension is a certain size
+screenClass.tryAddRaw = function(self, line, text, color, ...) --This will try to add text if Y dimension is a certain size
   local doAdd = {...} --booleans for small, medium, and large
   text = text or "NIL"
   color = color or {text = colors.white}
   for i=1, ySizes do --As of now there are 3 Y sizes
     if doAdd[i] and screenSize[2] == i then --If should add this text for this screen size and the monitor is this size
       if #text <= self.dim[1] then
-        table.insert(toPrint, {text = text, color = color})
+        self.toPrint[line] = {text = text, color = color}
         return true
       else
         debug("Tried adding ",text," on line ",#self.toPrint+1," but was too long")
@@ -304,6 +305,9 @@ screenClass.tryAdd = function(self, text, color, ...) --This will try to add tex
     end
   end
   return false
+end
+screenClass.tryAdd = function(self, text, color,...) --Just a wrapper
+  return self:tryAddRaw(#self.toPrint+1, text, color, ...)
 end
 
 screenClass.reset = function(self,color)
@@ -330,7 +334,7 @@ screenClass.updateDisplayTable = function(self, isDone)
   local message, theme = self.rec, self.themeColors
   
   if not message.isDone then --Normally
-    if self.size[1] == 1 then --Small Monitor
+    if self.size[1] == 1 then --Small Width Monitor
       if not self:tryAdd(message.label, theme.title, false, false, true) then --This will be a title, basically
         self:tryAdd("Quarry!", theme.title, false, false, true)
       end
@@ -458,6 +462,26 @@ screenClass.updateDisplayTable = function(self, isDone)
     end
   end
 end
+self.handshakeDisplay = function(self)
+  self.toPrint = {}
+  local half = math.floor(self.dim[2]/2)
+  if self.size[1] == 1 then
+    self:tryAddRaw("Waiting", half-2, self.theme.error, true, true, true)
+    self:tryAdd("For Msg", half-1, self.theme.error, true, true, true)
+    self:tryAdd("On Chnl", half, self.theme.error, true, true, true)
+    self:tryAdd(tostring(self.receive), half+1, self.theme.error, true, true, true)
+  elseif self.size[2] == 2 then
+    
+  else --Big size screen
+  end
+end
+
+
+--Misc
+screenClass.init = function() return true end --Currently used by computer screen to replace its original method
+screenClass.setHandshakeDisplay = function(self)
+  self.handshakeDisplay = nil --So it will default to screenClass
+end
 
 --==ARGUMENTS==
 
@@ -497,18 +521,17 @@ if parameters.theme then
 end
 
 --Init Computer Screen Object
-local tempChannel
-if parameters.receivechannel then tempChannel = parameters.receivechannel[1] end --This sets channel
-screenClass.new("computer", tempChannel)
+local computer = screenClass.new("computer", parameters.receivechannel and parameters.receivechannel[1])--This sets channel, checking if parameter exists
 
 --Technically, you could have any screen be the station, but oh well.
 if parameters.station then --This will set the screen update to display stats on all other monitors. For now it does little
-  local obj = screenClass.sides.computer
-  screenClass.receiveChannels[obj.receive] = nil --Because it doesn't have a channel
-  obj.receive = -1 --So it doesn't receive messages
-  screenClass.sides.computer.updateScreen = function(self)
-    for a, b in pairs(screenClass.sides) do
-      tryAdd("Side: ", a," ",b.id," ",b.receive, theme.pos, false, true, true) --Prints info about all screens
+  screenClass.receiveChannels[computer.receive] = nil --Because it doesn't have a channel
+  computer.receive = -1 --So it doesn't receive messages
+  computer.init = function(comp) --This gets by setSize
+    computer.updateDisplayTable = function(self)
+      for a, b in pairs(screenClass.sides) do
+        tryAdd("Side: ", a," ",b.id," ",b.receive, theme.pos, false, true, true) --Prints info about all screens
+      end
     end
   end
 end
