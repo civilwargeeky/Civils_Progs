@@ -22,6 +22,8 @@
 ----Quarry Repeater----
 --Version 1.0 (first release)
   Everything is new :)
+--Version 1.0.1
+  Added "quarryReceiver" to expected fingerprints
   
 ----MenuAPI----
 --Version 1.0.1

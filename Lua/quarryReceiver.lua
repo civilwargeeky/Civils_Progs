@@ -2,27 +2,7 @@
 --Made by Civilwargeeky
 --[[
 Ideas:
-For session persistence, you probably only need to save what monitor and what turtle to connect with.
-Command sender will just be passed key or char events since it is only 1 line. That makes printing and re-printing easy
-Planned layout:
-  Options, General Functions and sich
-  Arguments checking
-  Monitor Class
-    new object
-    setColors
-    updateScreen
-    screenObject (mon.clear etc.)
-    
-  updateDisplay
-    waits for a screen update event, then updates the respective screen.
-  eventHandler
-    waits for all events, queues screen events. Also queues screenChanged events for display to adjust accordingly
-  commandSender
-    waits for key events, prints only in caps to make life easy.
-    
-  Maybe just have the event handler as the only real part of the program, then have it call updateDisplay on whichever object needs to be updated with a table of values. It will also take the
-    place of command sender by keeping track of characters on the home screen.
-  
+
     
 ]]
 --[[
@@ -47,7 +27,8 @@ local ySizes = 3 --There are 3 different Y Screen Sizes right now
 --Initializing Program-Wide Variables
 local expectedMessage = "Civil's Quarry" --Expected initial message
 local expectedFingerprint = "quarry"
-local respondMessage = "Turtle Quarry Receiver" --Message to respond to  handshake with
+local replyMessage = "Turtle Quarry Receiver" --Message to respond to  handshake with
+local replyFingerprint = "quarryReceiver"
 local stopMessage = "stop"
 local expectedFingerprint = "quarry"
 local themeFolder = "quarryResources/receiverThemes/"
@@ -318,7 +299,7 @@ screenClass.tryAdd = function(self, text, color, ...) --This will try to add tex
         table.insert(toPrint, {text = text, color = color})
         return true
       else
-        debug("Tryed adding ",text," on line ",#self.toPrint+1," but was too long")
+        debug("Tried adding ",text," on line ",#self.toPrint+1," but was too long")
       end
     end
   end
@@ -329,7 +310,6 @@ screenClass.reset = function(self,color)
   self.setColor(color)
   self.term.clear()
   self.term.setCursorPos(1,1)
-  self.toPrint = {} --Resets print table
 end
 screenClass.say = function(self, text, color)
   local currColor = self.backgroundColor
@@ -636,10 +616,10 @@ while true do
           screen.send = par3
           screen:setSize() --Resets update method to proper since channel is set
           debug("Sending back on ",screen.send)
-          modem.transmit(screen.send,screen.receive, respondMessage)
+          modem.transmit(screen.send,screen.receive, replyMessage)
         end
       
-      else
+      else --Everything else is for regular messages
       
         local rec
         if screen.legacy then --We expect strings here
@@ -661,15 +641,30 @@ while true do
         rec.label = rec.label or "Quarry!"
         screen.rec = rec --Set the table
         screen:updateDisplayTable() --isDone is queried inside this
-        for a,b in pairs(screen.toPrint) do
-          --Display all the things. Remember there is screen:say
+        screen:reset(screen.theme.background)
+        for i=1, screen.dim[2] do
+          local tab = screen.toPrint[i]
+          if tab then
+            screen:say(tab.text, tab.color)
+          else
+            screen:say("",screen.color.background) --Advance lines and all that
+          end
         end
-        --Send response message if queued message
-       end
-      
+        local toSend
+        if queuedMessage then
+          toSend = queuedMessage
+          queuedMessage = nil
+        else
+          toSend = replyMessage
+        end
+        if screen.legacy then
+          modem.transmit(screen.send,screen.receive, toSend) --For older versions of minecraft
+        else
+          modem.transmit(screen.send,screen.receive, {fingerprint = replyFingerprint, message = toSend}) --For newer versions of minecraft. This gives more control.
+        end
+      end
     end
   end
-  
   
   
   

@@ -13,7 +13,7 @@ Quarry Receiver x.x.x (matches current quarry):
     In setSize, replace updateScreen with a placeholder method if there is no send channel for handshakes
     When a monitor receives final message, have an option for removing screen or restarting and waiting for another message
     All the other event options
-    Make "isDone" a part of the final message
+    Make "isDone" a part of the final message in turtle
   Ideas:
   1. All themes are in files in a "themes" folder.
   2. Some themes are included in the program code, and can be selected.

@@ -1,4 +1,4 @@
---Version 1.0.0
+--Version 1.0.1
 --This program will act as a repeater between a turtle and a receiver computer
 --important options are doAcceptPing and arbitraryNumber
 --expected message format: {message, id, distance, fingerprint}
@@ -7,7 +7,7 @@
 local doDebug = true --...
 local arbitraryNumber = 100 --How many messages to keep between deletions
 local saveFile = "QuarryRepeaterSave"
-local expectedFingerprint = "quarry"
+local expectedFingerprints = {quarry = true, quarryReceiver = true}
 local acceptLegacy = true --This will auto-format old messages that come along
 local doAcceptPing = true --Accept pings. Can be turned off for tight quarters
 local pingFingerprint = "ping"
@@ -83,7 +83,7 @@ while true do
       debug(a,"   ",b)
     end
     
-    if received.fingerprint == expectedFingerprint then --Normal, expected message
+    if expectedFingerprints[received.fingerprint] then --A regular expected message
       received.distance = received.distance + dist --Add on to repeater how far message had to go
       debug("Sending Return Message")
       modem.transmit(receivedFreq, replyFreq, received) --Send back exactly what we got
