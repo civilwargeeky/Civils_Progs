@@ -10,7 +10,7 @@ Quarry Receiver x.x.x (matches current quarry):
   Make sure its backwards compatible (e.g. backup for peripheral.find)
   ToDo:
     Save file to restart with
-    In setSize, replace updateScreen with a placeholder method if there is no send channel for handshakes --Implement handshakeUpdate
+    Add on command line thing to computer's methods
     When a monitor receives final message, have an option for removing screen or restarting and waiting for another message
     All the other event options
     Make "isDone" a part of the final message in turtle

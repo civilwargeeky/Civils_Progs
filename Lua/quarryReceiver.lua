@@ -249,10 +249,9 @@ end
 screenClass.setSize = function(self) --Sets screen size
   if self.side ~= "computer" and not self.term then self.term = peripheral.wrap(self.side) end
   if not self.term then --If peripheral is having problems/not there. Don't go further than term, otherwise index nil (maybe?)
-    self.updateDisplayTable = function() end --Do nothing on screen update, overrides class
+    self.updateDisplay = function() end --Do nothing on screen update, overrides class
   else --This allows for class inheritance
-    self.updateDisplayTable = nil --Remove function in case it exists, defaults to super
-    self:init() --In case objects have special updateDisplayTable methods
+    self:init() --In case objects have special updateDisplay methods --Remove function in case it exists, defaults to super
   end
   local tab = screenClass.sizes
   for a=1, 2 do --Want x and y dim
@@ -328,7 +327,7 @@ screenClass.say = function(self, text, color)
   self.term.setCursorPos(1, pos+1)
 end
 
-screenClass.updateDisplayTable = function(self, isDone)
+screenClass.updateDisplay = function(self, isDone)
   local str = tostring
   self.toPrint = {} --Reset table
   local message, theme = self.rec, self.themeColors
@@ -478,7 +477,9 @@ end
 
 
 --Misc
-screenClass.init = function() return true end --Currently used by computer screen to replace its original method
+screenClass.init = function() --Currently used by computer screen to replace its original method
+  self.updateDisplay = nil
+end 
 screenClass.setHandshakeDisplay = function(self)
   self.handshakeDisplay = nil --So it will default to screenClass
 end
@@ -528,12 +529,14 @@ if parameters.station then --This will set the screen update to display stats on
   screenClass.receiveChannels[computer.receive] = nil --Because it doesn't have a channel
   computer.receive = -1 --So it doesn't receive messages
   computer.init = function(comp) --This gets by setSize
-    computer.updateDisplayTable = function(self)
+    computer.updateDisplay = function(self)
       for a, b in pairs(screenClass.sides) do
         tryAdd("Side: ", a," ",b.id," ",b.receive, theme.pos, false, true, true) --Prints info about all screens
       end
     end
   end
+else --If computer is a regular screen
+  
 end
 
 
@@ -663,7 +666,7 @@ while true do
         rec.distance = math.floor(rec.distance)
         rec.label = rec.label or "Quarry!"
         screen.rec = rec --Set the table
-        screen:updateDisplayTable() --isDone is queried inside this
+        screen:updateDisplay() --isDone is queried inside this
         screen:reset(screen.theme.background)
         for i=1, screen.dim[2] do
           local tab = screen.toPrint[i]
