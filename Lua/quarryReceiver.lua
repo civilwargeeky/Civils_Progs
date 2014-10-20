@@ -35,6 +35,16 @@ local themeFolder = "quarryResources/receiverThemes/"
 local modemSide --User can specify a modem side, but it is not necessary
 local modem --This will be the table for the modem
 
+local keyMap = {[57] = " ", [11] = "0", [12] = "-"} --This is for command string
+for i=2,10 do keyMap[i] = tostring(i-1) end --Add numbers
+for a,b in pairs(keys) do --Add all letters from keys api
+  if #a == 1 then
+    keyMap[b] == a.upper()
+  end
+end
+keyMap[keys.enter] = "enter"
+keyMap[keys.backspace] = "backspace"
+
 --Generic Functions--
 local function debug(...)
   if doDebug then return print(...) end
@@ -477,12 +487,13 @@ end
 
 
 --Misc
-screenClass.init = function() --Currently used by computer screen to replace its original method
+screenClass.init = function(self) --Currently used by computer screen to replace its original method
   self.updateDisplay = nil
 end 
 screenClass.setHandshakeDisplay = function(self)
   self.handshakeDisplay = nil --So it will default to screenClass
 end
+    
 
 --==ARGUMENTS==
 
@@ -528,6 +539,7 @@ local computer = screenClass.new("computer", parameters.receivechannel and param
 if parameters.station then --This will set the screen update to display stats on all other monitors. For now it does little
   screenClass.receiveChannels[computer.receive] = nil --Because it doesn't have a channel
   computer.receive = -1 --So it doesn't receive messages
+  computer.send = nil
   computer.init = function(comp) --This gets by setSize
     computer.updateDisplay = function(self)
       for a, b in pairs(screenClass.sides) do
@@ -604,7 +616,7 @@ end
   Wait for events
   modem_message
     if valid channel and valid message, update appropriate screen
-  char
+  key
     if any letter, add to command string if room.
     if enter key
       if valid self command, execute command. Commands:
@@ -620,49 +632,50 @@ end
     resize proper screen
 
 ]]
-local messageToSend --This will be a command string sent to turtle
+local commandString --This will be a command string sent to turtle
 local queuedMessage --If a command needs to be sent, this gets set
+local validCommands = {command = "sided", screen = "sided", remove = "sided"}
 while true do
   local event, par1, par2, par3, par4, par5 = os.pullEvent()
-    if event == "modem_message" and screenClass.channels[par2] then --If we got a message for a screen that exists
-      local screen = screenClass.channels[par2] --For convenience
-      if not screen.send then --This is the handshake
-        debug("Checking handshake. Received: ",par4)
-        local flag = false
-        if par4 == expectedMessage then
-          screen.legacy = true --Accepts serialized tables
-          flag = true
-        elseif type(par4) == "table" and par4.message == expectedMessage and par4.fingerprint == expectedFingerprint then
-          screen.legacy = false
-          flag = true
-        end
-        
-        if flag then 
-          debug("Screen ",screen.side," received a handshake")
-          screen.send = par3
-          screen:setSize() --Resets update method to proper since channel is set
-          debug("Sending back on ",screen.send)
-          modem.transmit(screen.send,screen.receive, replyMessage)
-        end
+  if event == "modem_message" and screenClass.channels[par2] then --If we got a message for a screen that exists
+    local screen = screenClass.channels[par2] --For convenience
+    if not screen.send then --This is the handshake
+      debug("Checking handshake. Received: ",par4)
+      local flag = false
+      if par4 == expectedMessage then
+        screen.legacy = true --Accepts serialized tables
+        flag = true
+      elseif type(par4) == "table" and par4.message == expectedMessage and par4.fingerprint == expectedFingerprint then
+        screen.legacy = false
+        flag = true
+      end
       
-      else --Everything else is for regular messages
+      if flag then 
+        debug("Screen ",screen.side," received a handshake")
+        screen.send = par3
+        screen:setSize() --Resets update method to proper since channel is set
+        debug("Sending back on ",screen.send)
+        modem.transmit(screen.send,screen.receive, replyMessage)
+      end
+    
+    else --Everything else is for regular messages
       
-        local rec
-        if screen.legacy then --We expect strings here
-          if type(par4) == "string" then
-            rec = textutils.unserialize(par4)
-            rec.distance = par5
-          end
-        elseif type(par4) == "table" and par4.fingerprint == expectedFingerprint then --Otherwise, we check if it is valid message
-          rec = par4.message
-          if not par4.distance then --This is cool because it can add distances from the repeaters
-            rec.distance = par5
-          else
-            rec.distance = par4.distance + par5
-          end
-       end
+      local rec
+      if screen.legacy then --We expect strings here
+        if type(par4) == "string" then
+          rec = textutils.unserialize(par4)
+          rec.distance = par5
+        end
+      elseif type(par4) == "table" and par4.fingerprint == expectedFingerprint then --Otherwise, we check if it is valid message
+        rec = par4.message
+        if not par4.distance then --This is cool because it can add distances from the repeaters
+          rec.distance = par5
+        else
+          rec.distance = par4.distance + par5
+        end
+      end
        
-       if rec then
+      if rec then
         rec.distance = math.floor(rec.distance)
         rec.label = rec.label or "Quarry!"
         screen.rec = rec --Set the table
@@ -689,6 +702,39 @@ while true do
           modem.transmit(screen.send,screen.receive, {fingerprint = replyFingerprint, message = toSend}) --For newer versions of minecraft. This gives more control.
         end
       end
+    end
+    
+  elseif event == "key" and keyMap[par1] then
+    local key = par1
+    if key ~= keys.enter then --If we aren't submitting a command
+      if key == keys.backspace and #commandString > 0 then
+        commandString = commandString:sub(1,-2)
+      else
+        commandString = commandString..keyMap[key]
+      end
+    else --If we are submitting a command
+      local args = {}
+      for a in commandString:gmatch("%S+") do
+        args[#args+1] = a.lower()
+      end
+      local command = args[1]
+      if validCommands[command] then --If it is a valid command...
+        if validCommands[command] == "sided" then
+          local screen = screenClass.sides[args[2]]
+          if screen and screen.send then --If the side exists
+            if command == "command" then --If sending command to the turtle
+              modem.transmit() -----------------------------Include legacy
+            end
+          end
+        end
+      end
+    end
+    
+    
+    if computer.send then --Update computer display
+      computer:updateDisplay()
+    else
+      computer:updateHandshake()
     end
   end
   
