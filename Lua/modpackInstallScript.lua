@@ -92,7 +92,7 @@ doReplace = compareVersions( splitVersion(version), splitVersion(existingVersion
 if doReplace then --If the current version is newer than installed
   status("Update check passed, updating mods")
   local rei = "rei_minimap"
-  local minimap = minecraft:add("mods"):add(rei)
+  local minimap = minecraft:add("config"):add(rei)
   if exists(minimap) then
     status("backing up minimap points")
     mkDir(temp)
