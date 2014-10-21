@@ -447,6 +447,11 @@ addParam("maxTries","Tries Before Bedrock", "number 1-9001")
 addParam("oreQuarry", "Ore Quarry", "boolean" )
 addParam("dumpCompareItems", "Dump Compare Items", "boolean", nil, oreQuarry) --Do not dump compare items if not oreQuarry
 
+if oreQuarry and not turtle.inspect then
+  print("You are not using the latest computercraft. You can not use 'Super Ore Quarry'.\nPlease get the other version of quarry from my forum thread until you update.")
+  error("You can still use regular quarry with no issues",0)
+end
+
 --Manual Position
 if tArgs["-manualpos"] then --Gives current coordinates in xPos,zPos,yPos, facing
   local a = tArgs["-manualpos"]
