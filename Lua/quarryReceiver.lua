@@ -493,7 +493,7 @@ screenClass.updateDisplay = function(self, isDone)
 end
 self.handshakeDisplay = function(self)
   self.toPrint = {}
-  local half = math.floor(self.dim[2]/2)
+  local half = math.ceil(self.dim[2]/2)
   if self.size[1] == 1 then
     self:tryAddRaw("Waiting", half-2, self.theme.error, true, true, true)
     self:tryAddRaw("For Msg", half-1, self.theme.error, true, true, true)
