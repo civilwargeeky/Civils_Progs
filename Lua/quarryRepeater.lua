@@ -25,7 +25,7 @@ local modem --The wireless modem
 local function debug(...) if doDebug then return print(...) end end --Debug print
 
 local function newID()
-  return math.random(1,2000000) --1 through 2 billion; close enough 
+  return math.random(1,2000000000) --1 through 2 billion; close enough 
 end
 local function addID(id)
     sentMessages[id] = true
