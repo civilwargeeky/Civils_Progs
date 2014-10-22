@@ -34,6 +34,9 @@ local expectedFingerprint = "quarry"
 local themeFolder = "quarryResources/receiverThemes/"
 local modemSide --User can specify a modem side, but it is not necessary
 local modem --This will be the table for the modem
+--These two are used by controller in main loop
+local commandString = "" --This will be a command string sent to turtle. This var is stored for display
+local queuedMessage --If a command needs to be sent, this gets set
 
 local keyMap = {[57] = " ", [11] = "0", [12] = "-"} --This is for command string
 for i=2,10 do keyMap[i] = tostring(i-1) end --Add numbers
@@ -91,6 +94,9 @@ local function center(text, xDim)
     text = " "..text.." "
   end
   return text  
+end
+local function roundNegative(num) --Rounds numbers up to 0
+  if num >= 0 then return num else return 0 end
 end
 
 
@@ -262,8 +268,10 @@ screenClass.setSize = function(self) --Sets screen size
   if self.side ~= "computer" and not self.term then self.term = peripheral.wrap(self.side) end
   if not self.term then --If peripheral is having problems/not there. Don't go further than term, otherwise index nil (maybe?)
     self.updateDisplay = function() end --Do nothing on screen update, overrides class
-  else --This allows for class inheritance
+  elseif self.send then --This allows for class inheritance
     self:init() --In case objects have special updateDisplay methods --Remove function in case it exists, defaults to super
+  else --If the screen needs to have a handshake display
+    self:setHandshakeDisplay()
   end
   local tab = screenClass.sizes
   for a=1, 2 do --Want x and y dim
@@ -502,10 +510,10 @@ end
 
 --Misc
 screenClass.init = function(self) --Currently used by computer screen to replace its original method
-  self.updateDisplay = nil
+  self.updateDisplay = screenClass.updateDisplay
 end 
 screenClass.setHandshakeDisplay = function(self)
-  self.handshakeDisplay = nil --So it will default to screenClass
+  self.updateDisplay = self.handshakeDisplay --Sets update to handshake version, defaults to super if doesn't exist
 end
 
 local function newMessageID()
@@ -518,6 +526,10 @@ local function transmit(send, receive, message, legacy, fingerprint)
   else
     modem.transmit(send, receive, {message = message, id = newMessageID(), fingerprint = fingerprint})
   end
+end
+
+local function wrapPrompt(prefix, str, dim) --Used to wrap the commandString
+  return prefix..str:sub(roundNegative(#str-computer.dim[1]+#str+1), -1)
 end
 --==ARGUMENTS==
 
@@ -564,15 +576,29 @@ if parameters.station then --This will set the screen update to display stats on
   screenClass.receiveChannels[computer.receive] = nil --Because it doesn't have a channel
   computer.receive = -1 --So it doesn't receive messages
   computer.send = nil
-  computer.init = function(comp) --This gets by setSize
+  computer.init = function(computer) --This gets by setSize
     computer.updateDisplay = function(self)
       for a, b in pairs(screenClass.sides) do
-        tryAdd("Side: ", a," ",b.id," ",b.receive, theme.pos, false, true, true) --Prints info about all screens
+        self:tryAdd("Side: ", a," ",b.id," ",b.receive, theme.pos, false, true, true) --Prints info about all screens
       end
+      self:tryAddRaw(computer.dim[2], wrapPrompt("Cmd: ", commandString, computer.dim[1]), true, true, false)
+      self:tryAddRaw(computer.dim[2], wrapPrompt("Command: ",commandString, computer.dim[1]), false, false, true) --This displays the last part of a string.
     end
   end
+  computer.setHandshakeDisplay = computer.init() --Handshake is same as regular
 else --If computer is a regular screen
-  
+  computer.init = function(computer)
+    computer.updateDisplay = function(self, isDone)
+      screenClass.updateDisplay(self, isDone)
+      self:tryAddRaw(computer.dim[2], wrapPrompt("Cmd: ", commandString, computer.dim[1]), true, true, false)
+      self:tryAddRaw(computer.dim[2], wrapPrompt("Command: ",commandString, computer.dim[1]), false, false, true)
+    end
+  end
+  computer.updateHandshake = function(self) --Not in setHandshake because that func checks object updateHandshake
+    screenClass.updateHandshake(self)
+    self:tryAddRaw(computer.dim[2], wrapPrompt("Cmd: ", commandString, computer.dim[1]), true, true, false)
+    self:tryAddRaw(computer.dim[2], wrapPrompt("Command: ",commandString, computer.dim[1]), false, false, true)
+  end
 end
 
 
@@ -647,7 +673,7 @@ end
         command [side] [command] --If only one screen, then don't need channel. Send a command to a turtle
         screen [side] [channel] [theme] --Links a new screen to use.
         remove [side] --Removes a screen
-        --theme [themeName] --Sets the default theme
+        theme [themeName] --Sets the default theme
         --receive [side] [newChannel] --Changes the channel of the selected screen
         --send [side] [newChannel]
   peripheral_detach
@@ -659,9 +685,8 @@ end
     resize proper screen
 
 ]]
-local commandString --This will be a command string sent to turtle
-local queuedMessage --If a command needs to be sent, this gets set
-local validCommands = {command = "sided", screen = "sided", remove = "sided"}
+
+local validCommands = {command = "sided", screen = true, remove = "sided", theme = true}
 while true do
   local event, par1, par2, par3, par4, par5 = os.pullEvent()
   ----MESSAGE HANDLING----
@@ -748,7 +773,8 @@ while true do
           local screen = screenClass.sides[args[2]]
           if screen then --If the side exists
             if command == "command" and screen.send then --If sending command to the turtle
-              transmit(screen.send, screen.receive, table.concat(args," ", 3), screen.legacy) --This transmits all text in the command with spaces
+              queuedMessage = table.concat(args," ", 3) --Tells message handler to send appropriate message
+              --transmit(screen.send, screen.receive, table.concat(args," ", 3), screen.legacy) --This transmits all text in the command with spaces. Duh this is handled when we get message
             end
             if command == "remove" and screen.side ~= "computer" then --We don't want to remove the main display!
               screen:remove()
@@ -763,15 +789,28 @@ while true do
           end
         end
       end
+      commandString = "" --Reset command string because it was sent
     end
     
     
-    if computer.send then --Update computer display
-      computer:updateDisplay()
+    if computer.send then --Update computer display (computer is only one that displays command string
+      computer:updateDisplay() --Note: Computer's method automatically adds commandString to last line
     else
       computer:updateHandshake()
     end
+    
+  elseif event == "monitor_resize" then
+    screenClass.sides[par2]:setSize()
+  
+  elseif event == "peripheral_detach" then
+    if screenClass.sides[par2] then
+      screenClass.sides[par2]:remove()
+    end
+  elseif event == "peripheral" then
+    --Maybe prompt to add a new screen? I don't know
+  
   end
+  
   
   
   

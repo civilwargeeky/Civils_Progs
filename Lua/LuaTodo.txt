@@ -10,11 +10,10 @@ Quarry Receiver x.x.x (matches current quarry):
   Make sure its backwards compatible (e.g. backup for peripheral.find)
   ToDo:
     Save file to restart with
-    Add on command line thing to computer's methods
     When a monitor receives final message, have an option for removing screen or restarting and waiting for another message
-    All the other event options
     Make "isDone" a part of the final message in turtle
     Make sure setTheme doesn't check the first file line as a color
+    Finish last command strings
   Ideas:
   1. All themes are in files in a "themes" folder.
   2. Some themes are included in the program code, and can be selected.
