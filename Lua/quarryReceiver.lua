@@ -837,12 +837,17 @@ while continue do
     computer:pushScreenUpdates()
     
   elseif event == "monitor_resize" then
-    screenClass.sides[par2]:setSize()
+    local screen = screenClass.sides[par1]
+    if screen then
+      screen:setSize()
+    end
   
   elseif event == "peripheral_detach" then
-    if screenClass.sides[par2] then
-      screenClass.sides[par2]:remove()
+    local screen = screenClass.sides[par1]
+    if screen then
+      screen:remove()
     end
+    
   elseif event == "peripheral" then
     --Maybe prompt to add a new screen? I don't know
   
