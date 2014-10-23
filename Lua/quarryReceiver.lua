@@ -34,6 +34,8 @@ local expectedFingerprint = "quarry"
 local themeFolder = "quarryResources/receiverThemes/"
 local modemSide --User can specify a modem side, but it is not necessary
 local modem --This will be the table for the modem
+local computer --The main screen is special. It gets defined first :3
+local continue = true --This keeps the main while loop going
 --These two are used by controller in main loop
 local commandString = "" --This will be a command string sent to turtle. This var is stored for display
 local queuedMessage --If a command needs to be sent, this gets set
@@ -42,7 +44,7 @@ local keyMap = {[57] = " ", [11] = "0", [12] = "-"} --This is for command string
 for i=2,10 do keyMap[i] = tostring(i-1) end --Add numbers
 for a,b in pairs(keys) do --Add all letters from keys api
   if #a == 1 then
-    keyMap[b] == a.upper()
+    keyMap[b] = a:upper()
   end
 end
 keyMap[keys.enter] = "enter"
@@ -50,7 +52,11 @@ keyMap[keys.backspace] = "backspace"
 
 --Generic Functions--
 local function debug(...)
-  if doDebug then return print(...) end
+  --if doDebug then return print(...) end --Basic
+  if doDebug then
+    print("DEBUG: ",...)
+    os.pullEvent("char")
+  end
 end
 local function clearScreen(x,y, periph)
   periph, x, y = periph or term, x or 1, y or 1
@@ -153,7 +159,7 @@ local screenClass = {} --This is the class for all monitor/screen objects
 screenClass.screens = {} --A simply numbered list of screens
 screenClass.sides = {} --A mapping of screens by their side attached
 screenClass.channels = {} --A mapping of receiving channels that have screens attached. Used for the receiver part
-screenClass.sizes = {{7,18,29,39,50}, (5,12,19} , computer = {51, 19}, turtle = {39,13}, pocket = {26,20}}
+screenClass.sizes = {{7,18,29,39,50}, {5,12,19} , computer = {51, 19}, turtle = {39,13}, pocket = {26,20}}
 
 screenClass.setTextColor = function(self, color) --Accepts raw color
   if color and self.term.isColor() then
@@ -162,13 +168,14 @@ screenClass.setTextColor = function(self, color) --Accepts raw color
   end
 end
 screenClass.setBackgroundColor = function(self, color) --Accepts raw color
-  if color and obj.isColor() then
-    currBackgroundColor = color
-    return obj.setBackgroundColor(color)
+  if color and self.term.isColor() then
+    self.backgroundColor = color
+    return self.term.setBackgroundColor(color)
   end
 end
 screenClass.setColor = function(self, color) --Wrapper, accepts themecolor objects
-  return self.setTextColor(color.text) and self.setBackgroundColor(color.background)
+  if type(color) ~= "table" then error("Set color received a non-table",2) end
+  return self:setTextColor(color.text) and self:setBackgroundColor(color.background)
 end
 
 screenClass.themeName = "default" --Setting super for fallback
@@ -177,7 +184,7 @@ screenClass.theme = themes.default
 
 screenClass.new = function(side, receive, themeFile)
   local self = {}
-  setmetatable(obj, {__index = screenClass}) --Establish Hierarchy
+  setmetatable(self, {__index = screenClass}) --Establish Hierarchy
   self.side = side
   if side == "computer" then
     self.term = term
@@ -253,6 +260,7 @@ screenClass.removeEntry = function(tab) --Cleanup function
     tab = screenClass.screens[tab]
   end
   if tab == "REMOVED" then return end
+  if tab.side == "computer" then error("Tried removing computer screen",2) end --This should never happen
   tab:reset() --Clear screen
   tab:say("Removed") --Let everyone know whats up
   screenClass.screens[tab.id] = "REMOVED" --Not nil because screw up len()
@@ -293,7 +301,7 @@ end
 
 screenClass.setTheme = function(self, themeName)
   if not themes[themeName] then --If we don't have it already, try to load it
-    local fileName = themeName
+    local fileName = themeName or ".." --.. returns false and I don't think you can name a file this
     if fs.exists(themeFolder) then fileName = themeFolder..fileName end
     if fs.exists(fileName) then
       self.themeName = themeName --We can now set our themeName to the fileName
@@ -321,15 +329,17 @@ end
 --Adds text to the screen buffer
 screenClass.tryAddRaw = function(self, line, text, color, ...) --This will try to add text if Y dimension is a certain size
   local doAdd = {...} --booleans for small, medium, and large
+  if type(text) ~= "string" then error("tryAddRaw got non string",2) end
   text = text or "NIL"
-  color = color or {text = colors.white}
+  if type(color) ~= "table" then error("tryAddRaw did not get a color",2) end
+  --color = color or {text = colors.white}
   for i=1, ySizes do --As of now there are 3 Y sizes
-    if doAdd[i] and screenSize[2] == i then --If should add this text for this screen size and the monitor is this size
+    if doAdd[i] and self.size[2] == i then --If should add this text for this screen size and the monitor is this size
       if #text <= self.dim[1] then
         self.toPrint[line] = {text = text, color = color}
         return true
       else
-        debug("Tried adding ",text," on line ",#self.toPrint+1," but was too long")
+        debug("Tried adding ",text," on line ",line," but was too long")
       end
     end
   end
@@ -340,24 +350,34 @@ screenClass.tryAdd = function(self, text, color,...) --Just a wrapper
 end
 
 screenClass.reset = function(self,color)
+  color = color or self.theme.background
   self:setColor(color)
   self.term.clear()
   self.term.setCursorPos(1,1)
 end
-screenClass.say = function(self, text, color)
+screenClass.say = function(self, text, color, line)
   local currColor = self.backgroundColor
   color = color or debug("Printing ",text," but had no themeColor: ",self.theme.name) or {} --Set default for nice error, alert that errors occur
   self:setColor(color)
-  if doDebug and #text > dim[1] then error("Tried printing: '"..text.."', but was too big") end
+  local line = line or ({self.term.getCursorPos()})[2] or self:setSize() or 1 --If current yPos not found, sets screen size and moves cursor to 1
+  if doDebug and #text > self.dim[1] then error("Tried printing: '"..text.."', but was too big") end
+  self.term.setCursorPos(1,line)
   for i=1, self.dim[1]-#text do --This is so the whole line's background gets filled.
     text = text.." "
   end
   self.term.write(text)
-  local pos = ({obj.getCursorPos()})[2] or setSize() or 1 --If current yPos not found, sets screen size and moves cursor to 1
-  self.term.setCursorPos(1, pos+1)
+  self.term.setCursorPos(1, line+1)
+end
+screenClass.pushScreenUpdates = function(self)
+  for i=1, self.dim[2] do
+    local tab = self.toPrint[i]
+    if tab then
+      self:say(tab.text, tab.color, i)
+    end
+  end
 end
 
-screenClass.updateDisplay = function(self, isDone)
+screenClass.updateNormal = function(self, isDone) --This is the normal updateDisplay function
   local str = tostring
   self.toPrint = {} --Reset table
   local message, theme = self.rec, self.theme
@@ -369,13 +389,13 @@ screenClass.updateDisplay = function(self, isDone)
       end
       
       self:tryAdd("-Fuel-", theme.subtitle , false, true, true)
-      if not self:tryAdd(str(message.fuel), nil, false, true, true) then --The fuel number may be bigger than the screen
+      if not self:tryAdd(str(message.fuel), theme.extra, false, true, true) then --The fuel number may be bigger than the screen
         self:tryAdd("A lot", nil, false, true, true)
       end
       
       self:tryAdd("--%%%--", theme.subtitle, false, true, true)
       self:tryAdd(align(str(message.percent).."%", 7), theme.pos , false, true, true) --This can be an example. Print (receivedMessage).percent in blue on all different screen sizes
-      self:tryAdd(center(str(message.percent).."%"), theme.pos, true) --I want it to be centered on 1x1
+      self:tryAdd(center(str(message.percent).."%", self.dim[1]), theme.pos, true) --I want it to be centered on 1x1
       
       self:tryAdd("--Pos--", theme.subtitle, false, true, true)
       self:tryAdd("X:"..align(str(message.relxPos), 5), theme.pos, true, true, true)
@@ -406,9 +426,9 @@ screenClass.updateDisplay = function(self, isDone)
       end
       
       self:tryAdd("-------Fuel-------", theme.subtitle , false, true, true)
-      if not self:tryAdd(str(message.fuel), nil, false, true, true) then --The fuel number may be bigger than the screen
+      if not self:tryAdd(str(message.fuel), theme.extra, false, true, true) then --The fuel number may be bigger than the screen
         toPrint[#toPrint] = nil
-        self:tryAdd("A lot", nil, false, true, true)
+        self:tryAdd("A lot", theme.extra, false, true, true)
       end
       
       self:tryAdd(str(message.percent).."% Complete", theme.pos , true, true, true) --This can be an example. Print (receivedMessage).percent in blue on all different screen sizes
@@ -437,27 +457,27 @@ screenClass.updateDisplay = function(self, isDone)
       end
     end
     if self.size[1] >= 3 then --Large or larger screens
-      if not self:tryAdd(message.label..align(" Turtle #"..str(message.id),dim[1]-#message.label), theme.title, true, true, true) then
+      if not self:tryAdd(message.label..align(" Turtle #"..str(message.id),self.dim[1]-#message.label), theme.title, true, true, true) then
         self:tryAdd("Your turtle's name is long...", theme.title, true, true, true)
       end
-      self:tryAdd("Fuel: "..align(str(message.fuel),dim[1]-6), nil, true, true, true)
+      self:tryAdd("Fuel: "..align(str(message.fuel),self.dim[1]-6), theme.extra, true, true, true)
       
-      self:tryAdd("Percentage Done: "..align(str(message.percent).."%",dim[1]-17), theme.pos, true, true, true)
+      self:tryAdd("Percentage Done: "..align(str(message.percent).."%",self.dim[1]-17), theme.pos, true, true, true)
       
       local var1 = math.max(#str(message.x), #str(message.z), #str(message.layers))
-      local var2 = (dim[1]-5-var1+3)/3
+      local var2 = (self.dim[1]-6-var1+3)/3
       self:tryAdd("Pos: "..align(" X:"..align(str(message.relxPos),var1),var2)..align(" Z:"..align(str(message.zPos),var1),var2)..align(" Y:"..align(str(message.layersDone),var1),var2), theme.pos, true, true, true)
       self:tryAdd("Size:"..align(" X:"..align(str(message.x),var1),var2)..align(" Z:"..align(str(message.z),var1),var2)..align(" Y:"..align(str(message.layers),var1),var2), theme.dim, true, true, true)
       self:tryAdd("Volume: "..str(message.volume), theme.dim, false, true, true)
-      self:tryAdd("",nil, false, false, true)
-      self:tryAdd(center("____---- EXTRAS ----____"), theme.subtitle, false, false, true)
-      self:tryAdd(center("Time:"..align(textutils.formatTime(os.time()),8)), theme.extra, false, true, true)
-      self:tryAdd(center("Current Day: "..str(os.day())), theme.extra, false, false, true)
-      self:tryAdd("Used Inventory Slots: "..align(str(16-message.openSlots),dim[1]-22), theme.extra, false, true, true)
-      self:tryAdd("Blocks Mined: "..align(str(message.mined),dim[1]-14), theme.extra, false, true, true)
-      self:tryAdd("Blocks Moved: "..align(str(message.moved),dim[1]-14), theme.extra, false, true, true)
-      self:tryAdd("Distance to Turtle: "..align(str(message.distance), dim[1]-20), theme.extra, false, false, true)
-      self:tryAdd("Actual Y Pos (Not Layer): "..align(str(message.yPos), dim[1]-26), theme.extra, false, false, true)
+      self:tryAdd("",{}, false, false, true)
+      self:tryAdd(center("____---- EXTRAS ----____",self.dim[1]), theme.subtitle, false, false, true)
+      self:tryAdd(center("Time:"..align(textutils.formatTime(os.time()),8), self.dim[1]), theme.extra, false, true, true)
+      self:tryAdd(center("Current Day: "..str(os.day()), self.dim[1]), theme.extra, false, false, true)
+      self:tryAdd("Used Inventory Slots: "..align(str(16-message.openSlots),self.dim[1]-22), theme.extra, false, true, true)
+      self:tryAdd("Blocks Mined: "..align(str(message.mined),self.dim[1]-14), theme.extra, false, true, true)
+      self:tryAdd("Blocks Moved: "..align(str(message.moved),self.dim[1]-14), theme.extra, false, true, true)
+      self:tryAdd("Distance to Turtle: "..align(str(message.distance), self.dim[1]-20), theme.extra, false, false, true)
+      self:tryAdd("Actual Y Pos (Not Layer): "..align(str(message.yPos), self.dim[1]-26), theme.extra, false, false, true)
       
       if message.chestFull then
         self:tryAdd("Dropoff is Full, Please Fix", theme.error, false, true, true)
@@ -479,8 +499,8 @@ screenClass.updateDisplay = function(self, isDone)
       self:tryAdd("Fuel"..align(str(message.fuel),3), theme.pos, true, true, true)
       self:tryAdd("-------", theme.subtitle, false,true,true)
       self:tryAdd("Turtle", theme.subtitle, false, true, true)
-      self:tryAdd(center("is"), theme.subtitle, false, true, true)
-      self:tryAdd(center("Done!"), theme.subtitle, false, true, true)
+      self:tryAdd(center("is", self.dim[1]), theme.subtitle, false, true, true)
+      self:tryAdd(center("Done!", self.dim[1]), theme.subtitle, false, true, true)
     else
       self:tryAdd("Done!", theme.title, true, true, true)
       self:tryAdd("Blocks Dug: "..str(message.mined), theme.inverse, true, true, true)
@@ -491,29 +511,30 @@ screenClass.updateDisplay = function(self, isDone)
     end
   end
 end
-self.handshakeDisplay = function(self)
+screenClass.updateHandshake = function(self)
   self.toPrint = {}
   local half = math.ceil(self.dim[2]/2)
   if self.size[1] == 1 then
-    self:tryAddRaw("Waiting", half-2, self.theme.error, true, true, true)
-    self:tryAddRaw("For Msg", half-1, self.theme.error, true, true, true)
-    self:tryAddRaw("On Chnl", half, self.theme.error, true, true, true)
-    self:tryAddRaw(tostring(self.receive), half+1, self.theme.error, true, true, true)
+    self:tryAddRaw(half-2, "Waiting", self.theme.error, true, true, true)
+    self:tryAddRaw(half-1, "For Msg", self.theme.error, true, true, true)
+    self:tryAddRaw(half, "On Chnl", self.theme.error, true, true, true)
+    self:tryAddRaw(half+1, tostring(self.receive), self.theme.error, true, true, true)
   else
     local str = "for"
     if self.size[1] == 2 then str = "4" end--Just a small grammar change
-    self:tryAddRaw(center("Waiting "..str.." Message"), half-1, self.theme.error, true, true, true)
-    self:tryAddRaw(center("On Channel "..tostring(self.receive), half, self.theme.error, true, true, true))
+    self:tryAddRaw(half-1, center("Waiting "..str.." Message", self.dim[1]), self.theme.error, true, true, true)
+    self:tryAddRaw(half, center("On Channel "..tostring(self.receive), self.dim[1]), self.theme.error, true, true, true)
   end
 end
 
+screenClass.updateDisplay = screenClass.updateNormal --Update screen method is normally this one
 
 --Misc
 screenClass.init = function(self) --Currently used by computer screen to replace its original method
-  self.updateDisplay = screenClass.updateDisplay
+  self.updateDisplay = self.updateNormal --This defaults to super if doesn't exist
 end 
 screenClass.setHandshakeDisplay = function(self)
-  self.updateDisplay = self.handshakeDisplay --Sets update to handshake version, defaults to super if doesn't exist
+  self.updateDisplay = self.updateHandshake --Sets update to handshake version, defaults to super if doesn't exist
 end
 
 local function newMessageID()
@@ -529,7 +550,7 @@ local function transmit(send, receive, message, legacy, fingerprint)
 end
 
 local function wrapPrompt(prefix, str, dim) --Used to wrap the commandString
-  return prefix..str:sub(roundNegative(#str-computer.dim[1]+#str+1), -1)
+  return prefix..str:sub(roundNegative(#str+#prefix-computer.dim[1]+2), -1).."_" --it is str + 2 because we add in the "_"
 end
 --==ARGUMENTS==
 
@@ -563,41 +584,42 @@ for a,b in ipairs(tArgs) do
   end
 end
 
+for i=1,#parameters do
+  debug("Parameter: ",parameters[i][1])
+end
+
 --Options before screen loads
 if parameters.theme then
   screenClass:setTheme(parameters.theme[1] or "")
 end
 
---Init Computer Screen Object
-local computer = screenClass.new("computer", parameters.receivechannel and parameters.receivechannel[1])--This sets channel, checking if parameter exists
+--Init Computer Screen Object (was defined at top)
+computer = screenClass.new("computer", parameters.receivechannel and parameters.receivechannel[1])--This sets channel, checking if parameter exists
+computer:setSize()
 
 --Technically, you could have any screen be the station, but oh well.
 if parameters.station then --This will set the screen update to display stats on all other monitors. For now it does little
   screenClass.receiveChannels[computer.receive] = nil --Because it doesn't have a channel
   computer.receive = -1 --So it doesn't receive messages
   computer.send = nil
-  computer.init = function(computer) --This gets by setSize
-    computer.updateDisplay = function(self)
-      for a, b in pairs(screenClass.sides) do
-        self:tryAdd("Side: ", a," ",b.id," ",b.receive, theme.pos, false, true, true) --Prints info about all screens
-      end
-      self:tryAddRaw(computer.dim[2], wrapPrompt("Cmd: ", commandString, computer.dim[1]), true, true, false)
-      self:tryAddRaw(computer.dim[2], wrapPrompt("Command: ",commandString, computer.dim[1]), false, false, true) --This displays the last part of a string.
+  computer.updateNormal = function(self)--This gets set in setSize
+    for a, b in pairs(screenClass.sides) do
+      self:tryAdd("Side: ", a," ",b.id," ",b.receive, theme.pos, false, true, true) --Prints info about all screens
     end
+    self:tryAddRaw(computer.dim[2], wrapPrompt("Cmd: ", commandString, computer.dim[1]), self.theme.command, true, true, false)
+    self:tryAddRaw(computer.dim[2], wrapPrompt("Command: ",commandString, computer.dim[1]), self.theme.command, false, false, true) --This displays the last part of a string.
   end
-  computer.setHandshakeDisplay = computer.init() --Handshake is same as regular
+  computer.setHandshakeDisplay = computer.init --Handshake is same as regular
 else --If computer is a regular screen
-  computer.init = function(computer)
-    computer.updateDisplay = function(self, isDone)
-      screenClass.updateDisplay(self, isDone)
-      self:tryAddRaw(computer.dim[2], wrapPrompt("Cmd: ", commandString, computer.dim[1]), true, true, false)
-      self:tryAddRaw(computer.dim[2], wrapPrompt("Command: ",commandString, computer.dim[1]), false, false, true)
-    end
+  computer.updateNormal = function(self, isDone)
+    screenClass.updateDisplay(self, isDone)
+    self:tryAddRaw(computer.dim[2], wrapPrompt("Cmd: ", commandString, computer.dim[1]), self.theme.command, true, true, false)
+    self:tryAddRaw(computer.dim[2], wrapPrompt("Command: ",commandString, computer.dim[1]), self.theme.command, false, false, true)
   end
   computer.updateHandshake = function(self) --Not in setHandshake because that func checks object updateHandshake
     screenClass.updateHandshake(self)
-    self:tryAddRaw(computer.dim[2], wrapPrompt("Cmd: ", commandString, computer.dim[1]), true, true, false)
-    self:tryAddRaw(computer.dim[2], wrapPrompt("Command: ",commandString, computer.dim[1]), false, false, true)
+    self:tryAddRaw(computer.dim[2], wrapPrompt("Cmd: ", commandString, computer.dim[1]), self.theme.command, true, true, false)
+    self:tryAddRaw(computer.dim[2], wrapPrompt("Command: ",commandString, computer.dim[1]), self.theme.command, false, false, true)
   end
 end
 
@@ -606,7 +628,7 @@ for i=1, #parameters do --Do actions for parameters that can be used multiple ti
   local command, args = parameters[i].param, parameters[i] --For ease
   
   if command == "screen" then
-    screenClass.new(args[1], args[2], args[3])
+    local a = screenClass.new(args[1], args[2], args[3])    
   end
   
 end
@@ -624,7 +646,7 @@ end
 --==SET UP==
 clearScreen()
 print("Welcome to Quarry Receiver!")
-sleep(2)
+sleep(1)
 
 while not initModem() do
   clearScreen()
@@ -650,8 +672,12 @@ for a, b in pairs(screenClass.sides) do
     else
       print("That is not a valid number")
     end
-    sleep(1)
+    sleep(0.5)
   end
+  b:setSize() --Finish initialization process
+  b:updateDisplay()
+  b:reset()
+  b:pushScreenUpdates()
 end
 
 for a, b in pairs(screenClass.channels) do --Open up all the channels
@@ -676,6 +702,7 @@ end
         theme [themeName] --Sets the default theme
         --receive [side] [newChannel] --Changes the channel of the selected screen
         --send [side] [newChannel]
+        exit/quit/end
   peripheral_detach
     check what was lost, if modem, set to nil. If screen side, do screen:setSize()
   peripheral
@@ -686,14 +713,14 @@ end
 
 ]]
 
-local validCommands = {command = "sided", screen = true, remove = "sided", theme = true}
-while true do
+local validCommands = {command = "sided", screen = true, remove = "sided", theme = true, exit = true, quit = true, ["end"] = true}
+while continue do
   local event, par1, par2, par3, par4, par5 = os.pullEvent()
   ----MESSAGE HANDLING----
   if event == "modem_message" and screenClass.channels[par2] then --If we got a message for a screen that exists
     local screen = screenClass.channels[par2] --For convenience
     if not screen.send then --This is the handshake
-      debug("Checking handshake. Received: ",par4)
+      debug("\nChecking handshake. Received: ",par4)
       local flag = false
       if par4 == expectedMessage then
         screen.legacy = true --Accepts serialized tables
@@ -732,16 +759,7 @@ while true do
         rec.distance = math.floor(rec.distance)
         rec.label = rec.label or "Quarry!"
         screen.rec = rec --Set the table
-        screen:updateDisplay() --isDone is queried inside this
-        screen:reset(screen.theme.background)
-        for i=1, screen.dim[2] do
-          local tab = screen.toPrint[i]
-          if tab then
-            screen:say(tab.text, tab.color)
-          else
-            screen:say("",screen.color.background) --Advance lines and all that
-          end
-        end
+        --Updating screen occurs outside of the if
         local toSend
         if queuedMessage then
           toSend = queuedMessage
@@ -751,21 +769,29 @@ while true do
         end
         transmit(screen.send,screen.receive, toSend, screen.legacy) --Send reply message for turtle
       end
+      
     end
+    
+    screen:updateDisplay() --isDone is queried inside this
+    screen:reset(screen.theme.background)
+    screen:pushScreenUpdates() --Actually write things to screen
+    
   
   ----KEY HANDLING----
   elseif event == "key" and keyMap[par1] then
     local key = par1
     if key ~= keys.enter then --If we aren't submitting a command
-      if key == keys.backspace and #commandString > 0 then
-        commandString = commandString:sub(1,-2)
+      if key == keys.backspace then
+        if #commandString > 0 then
+          commandString = commandString:sub(1,-2)
+        end
       else
         commandString = commandString..keyMap[key]
       end
     else --If we are submitting a command
       local args = {}
       for a in commandString:gmatch("%S+") do
-        args[#args+1] = a.lower()
+        args[#args+1] = a:lower()
       end
       local command = args[1]
       if validCommands[command] then --If it is a valid command...
@@ -787,17 +813,22 @@ while true do
           if command == "theme" then
             screenClass:setTheme(args[2])
           end
+          if command == "quit" or command == "exit" or command == "end" then
+            continue = false
+          end
         end
+      else
+        debug("\nInvalid Command")
       end
       commandString = "" --Reset command string because it was sent
     end
     
     
-    if computer.send then --Update computer display (computer is only one that displays command string
-      computer:updateDisplay() --Note: Computer's method automatically adds commandString to last line
-    else
-      computer:updateHandshake()
-    end
+    --Update computer display (computer is only one that displays command string
+    computer:updateDisplay() --Note: Computer's method automatically adds commandString to last line
+    if not continue then computer:tryAddRaw(computer.dim[2]-1,"Program Exiting", computer.theme.inverse, false, true, true) end
+    computer:reset()
+    computer:pushScreenUpdates()
     
   elseif event == "monitor_resize" then
     screenClass.sides[par2]:setSize()
@@ -816,4 +847,6 @@ while true do
   
   
 end
+
+--Down here shut down all the channels, remove the saved file, other cleanup stuff
 

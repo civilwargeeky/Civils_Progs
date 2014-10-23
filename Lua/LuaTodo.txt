@@ -14,6 +14,15 @@ Quarry Receiver x.x.x (matches current quarry):
     Make "isDone" a part of the final message in turtle
     Make sure setTheme doesn't check the first file line as a color
     Finish last command strings
+    Make the turtle comply with standard message rules
+  Testing:
+    Finished:
+      Basic turning on and sending messages
+      Command line
+    ToDo:
+      Theme loading
+      Screens
+      Parameters
   Ideas:
   1. All themes are in files in a "themes" folder.
   2. Some themes are included in the program code, and can be selected.
@@ -24,6 +33,7 @@ Quarry Receiver x.x.x (matches current quarry):
   9. Idea for implementing themes: use addColor above, and have a table of possible display items. Each display item would have a foreground color, background
        color, and centering that would be defined by a theme. You could even have 1 be small, 2 be medium, 3 be large, and 0 be default
   10. When program running, you could have a command "theme screenSide fileName" which would set a certain theme for a certain computer
+  11. Fun Idea: If you hit a screen, it briefly flashes in error colors "Quit Touching Meeeee!" :D That would be funny
 
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 
