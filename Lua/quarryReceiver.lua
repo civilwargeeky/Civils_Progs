@@ -152,6 +152,19 @@ newTheme("default")
   :addColor("command", colors.lightBlue, colors.black)
   :addColor("help", colors.red, colors.white)
   :addColor("background", colors.white, colors.black)
+  
+newTheme("random")
+  :addColor("title", colors.pink, colors.blue)
+  :addColor("subtitle", colors.white, colors.black)
+  :addColor("pos", colors.green, colors.black)
+  :addColor("dim", colors.lightBlue, colors.black)
+  :addColor("extra", colors.lightGray, colors.black)
+  :addColor("error", colors.red, colors.white)
+  :addColor("info", colors.blue, colors.lightGray)
+  :addColor("inverse", colors.yellow, colors.lightGray)
+  :addColor("command", colors.green, colors.lightGray)
+  :addColor("help", colors.black, colors.yellow)
+  :addColor("background", colors.white, colors.red)
 
   
 --==SCREEN CLASS FUNCTIONS==
@@ -204,13 +217,12 @@ screenClass.new = function(side, receive, themeFile)
   end
   
   --Channels and ids
-  self.receive = receive --Receive Channel
+  self.receive = tonumber(receive) --Receive Channel
   self.send = nil --Reply Channel, obtained in handshake
   self.id = #screenClass.screens+1
   --Colors
   self.themeName = nil --Will be set by setTheme
   self.theme = nil 
-
   self.isColor = self.term.isColor() --Just for convenience
   --Other Screen Properties
   self.dim = {self.term.getSize()} --Raw dimensions
@@ -304,6 +316,7 @@ screenClass.setSize = function(self) --Sets screen size
 end
 
 screenClass.setTheme = function(self, themeName)
+  debug("In function")
   if not themes[themeName] then --If we don't have it already, try to load it
     local fileName = themeName or ".." --.. returns false and I don't think you can name a file this
     if fs.exists(themeFolder) then fileName = themeFolder..fileName end
@@ -324,7 +337,8 @@ screenClass.setTheme = function(self, themeName)
       --Does not set so falls back to super
       return false
     end
-    
+   else
+    self.themeName = themeName
    end
    self.theme = themes[self.themeName] --Now the theme is loaded or the function doesn't get here
    return true
@@ -582,7 +596,7 @@ for a,b in ipairs(tArgs) do
   end
   if val:match("^%-") then
     parameterIndex = parameterIndex + 1
-    parameters[parameterIndex] = {param = val:sub(2)} --Starts a chain with the command. Can be unpacked later
+    parameters[parameterIndex] = {val:sub(2)} --Starts a chain with the command. Can be unpacked later
     parameters[val:sub(2)] = {} --Needed for force/before/after parameters
   elseif parameterIndex ~= 0 then
     table.insert(parameters[parameterIndex], b) --b because arguments should be case sensitive for filenames
@@ -596,6 +610,7 @@ end
 
 --Options before screen loads
 if parameters.theme then
+  debug("Got here")
   screenClass:setTheme(parameters.theme[1] or "")
 end
 
@@ -692,7 +707,6 @@ for a, b in pairs(screenClass.channels) do --Open up all the channels
   end
 end
 --Handshake will be handled in main loop
-
 
 --[[Workflow
   Wait for events
