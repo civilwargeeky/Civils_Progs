@@ -25,6 +25,8 @@ Quarry Receiver x.x.x (matches current quarry):
       Parameters
       Test on Turtle
       Test on Pocket Computer
+      Sending tables on old minecraft versions (1.4.7)
+      Test resuming a turtle (the handshake isn't a table)
   Ideas:
   1. All themes are in files in a "themes" folder.
   2. Some themes are included in the program code, and can be selected.
@@ -36,6 +38,7 @@ Quarry Receiver x.x.x (matches current quarry):
        color, and centering that would be defined by a theme. You could even have 1 be small, 2 be medium, 3 be large, and 0 be default
   10. When program running, you could have a command "theme screenSide fileName" which would set a certain theme for a certain computer
   11. Fun Idea: If you hit a screen, it briefly flashes in error colors "Quit Touching Meeeee!" :D That would be funny
+  12. Instead of the above, if you hit a screen, it would "select" it. Then any messages will be sent to its turtle. (Or maybe just have sided ones add that side auto.
 
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 

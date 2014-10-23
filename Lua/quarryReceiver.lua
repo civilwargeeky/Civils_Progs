@@ -54,7 +54,7 @@ keyMap[keys.backspace] = "backspace"
 local function debug(...)
   --if doDebug then return print(...) end --Basic
   if doDebug then
-    print("DEBUG: ",...)
+    print("\nDEBUG: ",...)
     os.pullEvent("char")
   end
 end
@@ -557,6 +557,7 @@ screenClass.setHandshakeDisplay = function(self)
   self.updateDisplay = self.updateHandshake --Sets update to handshake version, defaults to super if doesn't exist
 end
 
+--Rednet
 local function newMessageID()
   return math.random(1,2000000000) --1 through 2 billion. Good enough solution
 end
@@ -762,16 +763,24 @@ while continue do
       
       local rec
       if screen.legacy then --We expect strings here
-        if type(par4) == "string" then
-          rec = textutils.unserialize(par4)
-          rec.distance = par5
+        if type(par4) == "string" then --Otherwise its not ours
+          if par4 == "stop" then --This is the stop message. All other messages will be ending ones
+            screen.isDone = true
+          else
+            rec = textutils.unserialize(par4)
+            rec.distance = par5
+          end
         end
       elseif type(par4) == "table" and par4.fingerprint == expectedFingerprint then --Otherwise, we check if it is valid message
         rec = par4.message
+        if not type(rec) == "table" then debug("Message received did not contain table") end
         if not par4.distance then --This is cool because it can add distances from the repeaters
           rec.distance = par5
         else
           rec.distance = par4.distance + par5
+        end
+        if rec.isDone then
+          screen.isDone = true
         end
       end
        

@@ -1,5 +1,5 @@
 --Civilwargeeky's Quarry Program--
-  VERSION = "3.5.3"
+  VERSION = "3.5.4"
 --[[ 
 Recent Changes:
   Changes with receiver
@@ -55,6 +55,7 @@ send = os.getComputerID() + 1  ,
 receive = os.getComputerID() + 101 ,
 confirm = "Turtle Quarry Receiver",
 message = "Civil's Quarry",
+fingerprint = "quarry"
 }
 
 --AVERAGE USER: YOU DON'T CARE BELOW THIS POINT
@@ -441,6 +442,7 @@ if gpsEnabled and not restoreFoundSwitch then
 end
 addParam("sendChannel", "Rednet Send Channel", "number 1-65535", false, supportsRednet, "channels.send")
 addParam("receiveChannel","Rednet Receive Channel", "number 1-65535", false, supportsRednet, "channels.receive")
+addParam("fingerprint","Sending Fingerprint", "string", false, supportsRednet, "channels.fingerprint")
 --Fuel
 addParam("uniqueExtras","Unique Items", "number 0-15")
 addParam("doRefuel", "Refuel from Inventory","boolean", nil, turtle.getFuelLevel() ~= math.huge) --math.huge due to my changes
@@ -676,7 +678,13 @@ else
   end
 end
 
---Initial Rednet Handshake
+--Rednet Handshake
+function newMessageID()
+  return math.random(1,2000000000)
+end
+function sendMessage(send, receive, message)
+  return modem.transmit(send , receive, {fingerprint = channels.fingerprint, id = newMessageID(), message = message})
+end
 if rednetEnabled then
   screen(1,1)
   print("Rednet is Enabled")
@@ -692,13 +700,13 @@ if rednetEnabled then
       local id = os.startTimer(3)
       i=i+1
       print("Sending Initial Message "..i)
-      modem.transmit(channels.send, channels.receive, channels.message)
+      sendMessage(channels.send, channels.receive, channels.message)
       local message
       repeat
         local event, idCheck, channel,_,locMessage, distance = os.pullEvent()
         message = locMessage
-      until (event == "timer" and idCheck == id) or (event == "modem_message" and channel == channels.receive and message == channels.confirm)
-    until message == channels.confirm
+      until (event == "timer" and idCheck == id) or (event == "modem_message" and channel == channels.receive and type(message) == "table")
+    until message.message == channels.confirm
   connected = true
   print("Connection Confirmed!")
   sleep(1.5)
@@ -713,15 +721,15 @@ function biometrics(isAtBedrock)
     isGoingToNextLayer = (gotoDest == "layerStart"), foundBedrock = foundBedrock,
     fuel = turtle.getFuelLevel(), volume = volume,
     }
-  modem.transmit(channels.send, channels.receive, textutils.serialize(toSend))
+  sendMessage(channels.send, channels.receive, toSend)
   id = os.startTimer(0.1)
-  local event, message
+  local event, received
   repeat
     local locEvent, idCheck, confirm, _, locMessage, distance = os.pullEvent()
-    event, message = locEvent, locMessage or ""
-  until (event == "timer" and idCheck == id) or (event == "modem_message" and confirm == channels.receive)
+    event, received = locEvent, locMessage or {message = ""}
+  until (event == "timer" and idCheck == id) or (event == "modem_message" and confirm == channels.receive and type(received) == "table")
   if event == "modem_message" then connected = true else connected = false end
-  message = message:lower()
+  local message = received.message:lower()
   if message == "stop" then error("Rednet said to stop...",0) end
   if message == "return" then
     endingProcedure()
@@ -734,7 +742,7 @@ function biometrics(isAtBedrock)
     print("\nTurtle is paused. Send 'resume' or press any character to resume")
     repeat
       local event, idCheck, confirm, _, message, distance = os.pullEvent()
-    until (event == "modem_message" and confirm == channels.receive and message == "resume") or (event == "char")
+    until (event == "modem_message" and confirm == channels.receive and message.message == "resume") or (event == "char")
   end
   
 end
@@ -814,10 +822,8 @@ function display() --This is just the last screen that displays at the end
     print("")
     print("Sent Stop Message")
     local finalTable = {mined = mined, cobble = totals.cobble, fuelblocks = totals.fuel,
-        other = totals.other, fuel = checkFuel() }
-    modem.transmit(channels.send,channels.receive,"stop")
-    sleep(0.5)
-    modem.transmit(channels.send,channels.receive,textutils.serialize(finalTable))
+        other = totals.other, fuel = checkFuel(), isDone = true }
+    sendMessage(channels.send,channels.receive, finalTable)
     modem.close(channels.receive)
   end
   if doBackup then fs.delete(saveFile) end
