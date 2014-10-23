@@ -23,6 +23,8 @@ Quarry Receiver x.x.x (matches current quarry):
       Theme loading
       Screens
       Parameters
+      Test on Turtle
+      Test on Pocket Computer
   Ideas:
   1. All themes are in files in a "themes" folder.
   2. Some themes are included in the program code, and can be selected.

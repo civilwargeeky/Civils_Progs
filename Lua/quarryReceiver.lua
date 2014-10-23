@@ -142,14 +142,14 @@ end
 --This is how adding colors will work
 newTheme("default")
   :addColor("title", colors.green, colors.gray)
-  :addColor("subtitle", colors.white)
-  :addColor("pos", colors.green)
-  :addColor("dim", colors.lightBlue)
-  :addColor("extra", colors.lightGray)
+  :addColor("subtitle", colors.white, colors.black)
+  :addColor("pos", colors.green, colors.black)
+  :addColor("dim", colors.lightBlue, colors.black)
+  :addColor("extra", colors.lightGray, colors.black)
   :addColor("error", colors.red, colors.white)
   :addColor("info", colors.blue, colors.lightGray)
   :addColor("inverse", colors.yellow, colors.lightGray)
-  :addColor("command", colors.lightBlue)
+  :addColor("command", colors.lightBlue, colors.black)
   :addColor("help", colors.red, colors.white)
   :addColor("background", colors.white, colors.black)
 
@@ -164,14 +164,18 @@ screenClass.sizes = {{7,18,29,39,50}, {5,12,19} , computer = {51, 19}, turtle = 
 screenClass.setTextColor = function(self, color) --Accepts raw color
   if color and self.term.isColor() then
     self.textColor = color
-    return self.term.setTextColor(color)
+    self.term.setTextColor(color)
+    return true
   end
+  return false
 end
 screenClass.setBackgroundColor = function(self, color) --Accepts raw color
   if color and self.term.isColor() then
     self.backgroundColor = color
-    return self.term.setBackgroundColor(color)
+    self.term.setBackgroundColor(color)
+    return true
   end
+  return false
 end
 screenClass.setColor = function(self, color) --Wrapper, accepts themecolor objects
   if type(color) ~= "table" then error("Set color received a non-table",2) end
@@ -522,8 +526,10 @@ screenClass.updateHandshake = function(self)
   else
     local str = "for"
     if self.size[1] == 2 then str = "4" end--Just a small grammar change
+    self:tryAddRaw(half-2, "", self.theme.error, true, true, true) --Filler
     self:tryAddRaw(half-1, center("Waiting "..str.." Message", self.dim[1]), self.theme.error, true, true, true)
     self:tryAddRaw(half, center("On Channel "..tostring(self.receive), self.dim[1]), self.theme.error, true, true, true)
+    self:tryAddRaw(half+1, "",self.theme.error, true, true, true)
   end
 end
 
