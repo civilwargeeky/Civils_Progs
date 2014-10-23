@@ -150,8 +150,9 @@ while true do
   if type(incrementFunction) ~= "function" then --This allows you to have your own custom logic for how to shift up and down and press enter. 
     incrementFunction = defaultMenuKeyHandler--e.g. You could use redstone on left to increment, right to decrement, front to press enter.
   end
-  action = incrementFunction(currIndex, #textTable)
-  if type(action) == number or tonumber(action) then
+  local event = { os.pullEvent() } --Gets a nice table to pass event with
+  local action = incrementFunction(currIndex, #textTable, unpack(event))
+  if tonumber(action) then
     local num = tonumber(action)
     if num <= #textTable and num > 0 then
       currIndex = num
@@ -166,17 +167,16 @@ while true do
 end
 end
 
-function defaultMenuKeyHandler(index, maxIndex)
-  while true do --So it doesn't redraw every time button pressed
-    _, key = os.pullEvent("key")
-    if key == 200 then 
+function defaultMenuKeyHandler(index, maxIndex, event, key) --This handles events
+  if event == "key" then
+    if key == 200 then --Up arrow
       if index == 1 then return maxIndex end --Go to bottom if at top
       return "up"
-    elseif key == 208 then
+    elseif key == 208 then --Down Arrow
       if index == maxIndex then return 1 end --Go to top if at bottom
       return "down"
     elseif key == 28 then return "enter"
-    elseif key >= 2 and key <= 11 then return key-1 --This is for quickly selected a menu option
+    elseif key >= 2 and key <= 11 then return key-1 --This is for quickly selecting a menu option
     end
   end
 end
