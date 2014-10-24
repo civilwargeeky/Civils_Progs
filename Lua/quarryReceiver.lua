@@ -39,6 +39,8 @@ local continue = true --This keeps the main while loop going
 --These two are used by controller in main loop
 local commandString = "" --This will be a command string sent to turtle. This var is stored for display
 local queuedMessage --If a command needs to be sent, this gets set
+local defaultSide
+local defaultCommand
 
 local keyMap = {[57] = " ", [11] = "0", [12] = "-"} --This is for command string
 for i=2,10 do keyMap[i] = tostring(i-1) end --Add numbers
@@ -128,10 +130,16 @@ local function initModem() --Sets up modem, returns true if modem exists
 end
 
 --COLOR/THEME RELATED
+for a, b in pairs(colors) do --This is so commands color commands can be entered in one case
+  colors[a:lower()] = b
+end
+
 local themes = {} --Loaded themes, gives each one a names
 local function newTheme(name)
+  name = name:lower() or "none"
   local self = {name = name}
   self.addColor = function(self, name, text, back) --Background is optional. Will not change if nil
+    name = name or "none"
     self[name] = {text = text, background = back}
     return self --Allows for chaining :)
   end
@@ -155,15 +163,15 @@ newTheme("default")
   
 newTheme("random")
   :addColor("title", colors.pink, colors.blue)
-  :addColor("subtitle", colors.white, colors.black)
+  :addColor("subtitle", colors.black, colors.white)
   :addColor("pos", colors.green, colors.black)
   :addColor("dim", colors.lightBlue, colors.black)
-  :addColor("extra", colors.lightGray, colors.black)
-  :addColor("error", colors.red, colors.white)
+  :addColor("extra", colors.lightGray, colors.lightBlue)
+  :addColor("error", colors.white, colors.yellow)
   :addColor("info", colors.blue, colors.lightGray)
   :addColor("inverse", colors.yellow, colors.lightGray)
   :addColor("command", colors.green, colors.lightGray)
-  :addColor("help", colors.black, colors.yellow)
+  :addColor("help", colors.white, colors.yellow)
   :addColor("background", colors.white, colors.red)
 
   
@@ -264,6 +272,7 @@ screenClass.new = function(side, receive, themeFile)
   screenClass.screens[self.id] = self
   screenClass.sides[self.side] = self
   if self.receive then
+    modem.open(self.receive) --Modem should be defined by the time anything is open
     screenClass.channels[self.receive] = self --If anyone ever asked, you could have multiple screens per channel, but its silly if no one ever needs it
   end
   self:setSize() --Finish Initialization
@@ -271,14 +280,14 @@ screenClass.new = function(side, receive, themeFile)
   return self
 end
 
-screenClass.removeEntry = function(tab) --Cleanup function
+screenClass.remove = function(tab) --Cleanup function
   if type(tab) == "number" then --Expects table, can take id (for no apparent reason)
     tab = screenClass.screens[tab]
   end
   if tab == "REMOVED" then return end
   if tab.side == "computer" then error("Tried removing computer screen",2) end --This should never happen
   tab:reset() --Clear screen
-  tab:say("Removed") --Let everyone know whats up
+  tab:say("Removed", tab.theme.info, 1) --Let everyone know whats up
   screenClass.screens[tab.id] = "REMOVED" --Not nil because screw up len()
   screenClass.sides[tab.side] = nil
   screenClass.channels[tab.receive] = nil
@@ -291,12 +300,16 @@ end
 screenClass.setSize = function(self) --Sets screen size
   if self.side ~= "computer" and not self.term then self.term = peripheral.wrap(self.side) end
   if not self.term then --If peripheral is having problems/not there. Don't go further than term, otherwise index nil (maybe?)
+    debug("There is no term...")
     self.updateDisplay = function() end --Do nothing on screen update, overrides class
+  --elseif not self.receive then --Ironically broken right now
+  --  self:setBrokenDisplay() --This will prompt user to set channel
   elseif self.send then --This allows for class inheritance
     self:init() --In case objects have special updateDisplay methods --Remove function in case it exists, defaults to super
   else --If the screen needs to have a handshake display
     self:setHandshakeDisplay()
   end
+  self.dim = { self.term.getSize()}
   local tab = screenClass.sizes
   for a=1, 2 do --Want x and y dim
     for b=1, #tab[a] do --Go through all normal sizes, x and y individually
@@ -315,30 +328,34 @@ screenClass.setSize = function(self) --Sets screen size
   return self
 end
 
-screenClass.setTheme = function(self, themeName)
-  debug("In function")
+screenClass.setTheme = function(self, themeName, stopReset)
   if not themes[themeName] then --If we don't have it already, try to load it
     local fileName = themeName or ".." --.. returns false and I don't think you can name a file this
     if fs.exists(themeFolder) then fileName = themeFolder..fileName end
     if fs.exists(fileName) then
-      self.themeName = themeName --We can now set our themeName to the fileName
+      debug("Loading theme: ",fileName)
+      self.themeName = themeName:lower() --We can now set our themeName to the fileName
       local file = fs.open(fileName, "r")
-      local addedTheme = newTheme(file.read():match("%w+") or "newTheme") --Initializes the new theme
-      for line in file:lines() do --Go through all the color lines (hopefully not the first one. Requires testing)
+      if not file then debug("Could not load theme '",themeName,"' file not found") end
+      local addedTheme = newTheme(file.readLine():match("%w+") or "newTheme") --Initializes the new theme
+      for line in function() return file.readLine() end do --Go through all the color lines (hopefully not the first one. Requires testing)
         local args = {}
         for word in line:gmatch("%S+") do
           table.insert(args,word)
         end
-        debug("Loading ",args[1]," with colors ",args[2]," and ",args[3])
-        addedTheme:add(args[1]:match("%a+") or "nothing", colors[args[2]], colors[args[3]]) --"nothing" will never get used, so its just lazy error prevention
+        addedTheme:addColor(args[1]:match("%a+") or "nothing", colors[args[2]], colors[args[3]]) --"nothing" will never get used, so its just lazy error prevention
       end
       file.close()
     else
-      --Does not set so falls back to super
+      --Resets theme to super
+      if not stopReset then --This exists so its possible to set default theme without breaking world
+        self.themeName = nil
+        self.theme = nil
+      end
       return false
     end
    else
-    self.themeName = themeName
+    self.themeName = themeName:lower()
    end
    self.theme = themes[self.themeName] --Now the theme is loaded or the function doesn't get here
    return true
@@ -532,11 +549,11 @@ end
 screenClass.updateHandshake = function(self)
   self.toPrint = {}
   local half = math.ceil(self.dim[2]/2)
-  if self.size[1] == 1 then
-    self:tryAddRaw(half-2, "Waiting", self.theme.error, true, true, true)
-    self:tryAddRaw(half-1, "For Msg", self.theme.error, true, true, true)
-    self:tryAddRaw(half, "On Chnl", self.theme.error, true, true, true)
-    self:tryAddRaw(half+1, tostring(self.receive), self.theme.error, true, true, true)
+  if self.size[1] == 1 then --Not relying on the parameter system because less calls
+    self:tryAddRaw(half-2, "Waiting", self.theme.error, true)
+    self:tryAddRaw(half-1, "For Msg", self.theme.error, true)
+    self:tryAddRaw(half, "On Chnl", self.theme.error, true)
+    self:tryAddRaw(half+1, tostring(self.receive), self.theme.error, true)
   else
     local str = "for"
     if self.size[1] == 2 then str = "4" end--Just a small grammar change
@@ -545,6 +562,14 @@ screenClass.updateHandshake = function(self)
     self:tryAddRaw(half, center("On Channel "..tostring(self.receive), self.dim[1]), self.theme.error, true, true, true)
     self:tryAddRaw(half+1, "",self.theme.error, true, true, true)
   end
+end
+screenClass.updateBroken = function(self) --If screen needs channel
+  self.toPrint = {}
+  self:tryAdd("On Comp", self.theme.error, true, true, true)
+  sefl:tryAdd("Type:", self.theme.error, true, true, true)
+  self:tryAdd("RECEIVE",self.theme.info, true, true, true)
+  local lolChaining = self:tryAdd(self.side, self.theme.info, true, true, true) or self:tryAdd("[side]",self.theme.info, true, true, true) --Simpler than if else
+  self:tryAdd("[Chnl]", self.theme.info, true, true, true)
 end
 
 screenClass.updateDisplay = screenClass.updateNormal --Update screen method is normally this one
@@ -556,7 +581,22 @@ end
 screenClass.setHandshakeDisplay = function(self)
   self.updateDisplay = self.updateHandshake --Sets update to handshake version, defaults to super if doesn't exist
 end
+screenClass.setBrokenDisplay = function(self)
+  self.updateDisplay = self.updateBroken
+end
 
+
+local function wrapPrompt(prefix, str, dim) --Used to wrap the commandString
+  return prefix..str:sub(roundNegative(#str+#prefix-computer.dim[1]+2), -1).."_" --it is str + 2 because we add in the "_"
+end
+
+local function updateAllScreens()
+  for a, b in pairs(screenClass.sides) do
+    b:updateDisplay()
+    b:reset()
+    b:pushScreenUpdates()
+  end
+end
 --Rednet
 local function newMessageID()
   return math.random(1,2000000000) --1 through 2 billion. Good enough solution
@@ -570,9 +610,18 @@ local function transmit(send, receive, message, legacy, fingerprint)
   end
 end
 
-local function wrapPrompt(prefix, str, dim) --Used to wrap the commandString
-  return prefix..str:sub(roundNegative(#str+#prefix-computer.dim[1]+2), -1).."_" --it is str + 2 because we add in the "_"
+--==SET UP==
+clearScreen()
+print("Welcome to Quarry Receiver!")
+sleep(1)
+
+while not initModem() do
+  clearScreen()
+  print("No modem is connected, please attach one")
+  os.pullEvent("peripheral")
 end
+debug("Modem successfully connected!")
+
 --==ARGUMENTS==
 
 --[[
@@ -611,49 +660,57 @@ end
 
 --Options before screen loads
 if parameters.theme then
-  debug("Got here")
-  screenClass:setTheme(parameters.theme[1] or "")
+  screenClass:setTheme(parameters.theme[1])
 end
 
 --Init Computer Screen Object (was defined at top)
 computer = screenClass.new("computer", parameters.receivechannel and parameters.receivechannel[1])--This sets channel, checking if parameter exists
-computer:setSize()
 
+computer.displayCommand = function(self)
+  local sideString = ((defaultSide and " (") or "")..(defaultSide or "")..((defaultSide and ")") or "")
+  self:tryAddRaw(self.dim[2], wrapPrompt("Cmd"..sideString:sub(2,-2)..": ", commandString, self.dim[1]), self.theme.command, true, true, false)
+  self:tryAddRaw(self.dim[2], wrapPrompt("Command"..sideString..": ",commandString, self.dim[1]), self.theme.command, false, false, true) --This displays the last part of a string.
+end
 --Technically, you could have any screen be the station, but oh well.
 if parameters.station then --This will set the screen update to display stats on all other monitors. For now it does little
   screenClass.receiveChannels[computer.receive] = nil --Because it doesn't have a channel
   computer.receive = -1 --So it doesn't receive messages
   computer.send = nil
+    
   computer.updateNormal = function(self)--This gets set in setSize
     for a, b in pairs(screenClass.sides) do
       self:tryAdd("Side: ", a," ",b.id," ",b.receive, theme.pos, false, true, true) --Prints info about all screens
     end
-    self:tryAddRaw(computer.dim[2], wrapPrompt("Cmd: ", commandString, computer.dim[1]), self.theme.command, true, true, false)
-    self:tryAddRaw(computer.dim[2], wrapPrompt("Command: ",commandString, computer.dim[1]), self.theme.command, false, false, true) --This displays the last part of a string.
+    computer:displayCommand()
   end
   computer.setHandshakeDisplay = computer.init --Handshake is same as regular
 else --If computer is a regular screen
   computer.updateNormal = function(self, isDone)
     screenClass.updateDisplay(self, isDone)
-    self:tryAddRaw(computer.dim[2], wrapPrompt("Cmd: ", commandString, computer.dim[1]), self.theme.command, true, true, false)
-    self:tryAddRaw(computer.dim[2], wrapPrompt("Command: ",commandString, computer.dim[1]), self.theme.command, false, false, true)
+    computer:displayCommand()
   end
   computer.updateHandshake = function(self) --Not in setHandshake because that func checks object updateHandshake
     screenClass.updateHandshake(self)
-    self:tryAddRaw(computer.dim[2], wrapPrompt("Cmd: ", commandString, computer.dim[1]), self.theme.command, true, true, false)
-    self:tryAddRaw(computer.dim[2], wrapPrompt("Command: ",commandString, computer.dim[1]), self.theme.command, false, false, true)
+    computer:displayCommand()
+  end
+  computer.updateBroken = function(self)
+    screenClass.updateBroken(self)
+    computer:displayCommand()
   end
 end
+computer:setSize() --Update changes made to display functions
 
 
 for i=1, #parameters do --Do actions for parameters that can be used multiple times
-  local command, args = parameters[i].param, parameters[i] --For ease
-  
+  local command, args = parameters[i][1], parameters[i] --For ease
   if command == "screen" then
-    local a = screenClass.new(args[1], args[2], args[3])    
+    local a = screenClass.new(args[2], args[3], args[4])
+    debug(type(a))
   end
   
 end
+
+for a,b in pairs(screenClass.sides) do debug(a) end
 
 if parameters.auto then
   local tab = peripheral.getNames()
@@ -665,17 +722,7 @@ if parameters.auto then
 end
 
 
---==SET UP==
-clearScreen()
-print("Welcome to Quarry Receiver!")
-sleep(1)
-
-while not initModem() do
-  clearScreen()
-  print("No modem is connected, please attach one")
-  os.pullEvent("peripheral")
-end
-debug("Modem successfully connected!")
+--==FINAL CHECKS==
 
 --Making sure all screens have a channel
 for a, b in pairs(screenClass.sides) do
@@ -696,16 +743,9 @@ for a, b in pairs(screenClass.sides) do
     end
     sleep(0.5)
   end
-  b:setSize() --Finish initialization process
-  b:updateDisplay()
+  b:updateDisplay()--Finish initialization process
   b:reset()
   b:pushScreenUpdates()
-end
-
-for a, b in pairs(screenClass.channels) do --Open up all the channels
-  if not modem.isOpen(a) then
-    modem.open(a)
-  end
 end
 --Handshake will be handled in main loop
 
@@ -721,8 +761,12 @@ end
         screen [side] [channel] [theme] --Links a new screen to use.
         remove [side] --Removes a screen
         theme [themeName] --Sets the default theme
-        --receive [side] [newChannel] --Changes the channel of the selected screen
-        --send [side] [newChannel]
+        theme [side] [themeName] --Changes this screen's theme
+        color [side/theme] [colorName] [textColor] [backgroundColor]
+        side [side] --Sets a default side, added to prompts
+        set [string] --Sets a default command, added to display immediately
+        receive [side] [newChannel] --Changes the channel of the selected screen
+        send [side] [newChannel]
         exit/quit/end
   peripheral_detach
     check what was lost, if modem, set to nil. If screen side, do screen:setSize()
@@ -734,7 +778,8 @@ end
 
 ]]
 
-local validCommands = {command = "sided", screen = true, remove = "sided", theme = true, exit = true, quit = true, ["end"] = true}
+--Modes: 1 - Sided, 2 - Not Sided, 3 - Both sided and not
+local validCommands = {command = 1, screen = 2, remove = 1, theme = 3, exit = 2, quit = 2, ["end"] = 2, color = 3, side = 2, set = 2, receive = 1, send = 1}
 while continue do
   local event, par1, par2, par3, par4, par5 = os.pullEvent()
   ----MESSAGE HANDLING----
@@ -756,7 +801,7 @@ while continue do
         screen.send = par3
         screen:setSize() --Resets update method to proper since channel is set
         debug("Sending back on ",screen.send)
-        modem.transmit(screen.send,screen.receive, replyMessage)
+        transmit(screen.send,screen.receive, replyMessage)
       end
     
     else --Everything else is for regular messages
@@ -766,7 +811,7 @@ while continue do
         if type(par4) == "string" then --Otherwise its not ours
           if par4 == "stop" then --This is the stop message. All other messages will be ending ones
             screen.isDone = true
-          else
+          elseif textutils.unserialize(par4) then
             rec = textutils.unserialize(par4)
             rec.distance = par5
           end
@@ -824,23 +869,85 @@ while continue do
       end
       local command = args[1]
       if validCommands[command] then --If it is a valid command...
-        if validCommands[command] == "sided" then --If the command requires a "side" like transmitting commands, versus setting a default
+        local commandType = validCommands[command]
+        if commandType == 1 or commandType == 3 then --If the command requires a "side" like transmitting commands, versus setting a default
+          if defaultSide then table.insert(args, 2, defaultSide) end
           local screen = screenClass.sides[args[2]]
           if screen then --If the side exists
             if command == "command" and screen.send then --If sending command to the turtle
               queuedMessage = table.concat(args," ", 3) --Tells message handler to send appropriate message
               --transmit(screen.send, screen.receive, table.concat(args," ", 3), screen.legacy) --This transmits all text in the command with spaces. Duh this is handled when we get message
             end
+
+            if command == "color" then
+              screen.theme:addColor(args[3],colors[args[4] or ""],colors[args[5] or ""])
+            end
+            if command == "theme" then
+              screen:setTheme(args[3])
+            end
+            if command == "send" then --This changes a send channel, and can also revert to handshake
+              local chan = checkChannel(tonumber(args[3]) or -1)
+              if chan then screen.send = chan else screen.send = nil end
+              screen:setSize() --If on handshake, resets screen
+            end
+            if command == "receive" then
+              local chan = checkChannel(tonumber(args[3]) or -1)
+              if chan and not screenClass.channels[chan] then
+                modem.close(screen.receive)
+                modem.open(chan)
+                screenClass.channels[screen.receive] = nil
+                screen.receive = chan
+                screenClass.channels[chan] = screen
+              end
+            end
+            
             if command == "remove" and screen.side ~= "computer" then --We don't want to remove the main display!
+              print()
               screen:remove()
+            else --Because if removed it does stupid things
+              screen:reset()
+              screen:updateDisplay()
+              screen:pushScreenUpdates()
             end
           end
-        else --Does not require a screen side
-          if command == "screen" and peripheral.getType(args[2]) == "monitor" and checkChannel(tonumber(args[3])) then
-            screenClass.new(args[2], args[3], args[4]) --args[4] is the theme, and will default if doesn't exists
+        end
+        if commandType == 2 or commandType == 3 then--Does not require a screen side
+          if command == "screen" and peripheral.getType(args[2]) == "monitor" then 
+            if checkChannel(tonumber(args[3])) then
+              local mon = screenClass.new(args[2], args[3], args[4]) --args[4] is the theme, and will default if doesn't exists
+              mon:setSize()
+              mon:updateDisplay()
+              mon:reset()
+              mon:pushScreenUpdates()
+            else
+              computer:tryAddRaw(computer.dim[2]-1, "Could not add, invalid channel: "..args[3], computer.theme.error, false, false, true)
+              computer:reset()
+              computer:pushScreenUpdates()
+              sleep(2) --So they can read this message
+            end
           end
           if command == "theme" then
-            screenClass:setTheme(args[2])
+            screenClass:setTheme(args[2], true) --Otherwise this would set base theme to nil, erroring
+            updateAllScreens()
+          end
+          if command == "color" and themes[args[2]] then
+            themes[args[2]]:addColor(args[3],colors[args[4]],colors[args[5]])
+            updateAllScreens() --Because any screen could have this theme
+          end
+          if command == "side" then
+            if screenClass.sides[args[2]] then
+              defaultSide = args[2]
+            else
+              defaultSide = nil
+            end
+          end
+          if command == "set" then
+            if args[2] then
+              defaultCommand = table.concat(args," ",2)
+              defaultCommand = defaultCommand:upper()
+            else
+              defaultCommand = nil
+            end
           end
           if command == "quit" or command == "exit" or command == "end" then
             continue = false
@@ -849,7 +956,7 @@ while continue do
       else
         debug("\nInvalid Command")
       end
-      commandString = "" --Reset command string because it was sent
+      if defaultCommand then commandString = defaultCommand.." " else commandString = "" end --Reset command string because it was sent
     end
     
     
@@ -863,6 +970,9 @@ while continue do
     local screen = screenClass.sides[par1]
     if screen then
       screen:setSize()
+      screen:updateDisplay()
+      screen:reset()
+      screen:pushScreenUpdates()
     end
   
   elseif event == "peripheral_detach" then
@@ -882,5 +992,24 @@ while continue do
   
 end
 
+sleep(1.5)
+for a in pairs(screenClass.channels) do
+  modem.close(a)
+end
+for a, b in pairs(screenClass.sides) do
+  b:setTextColor(colors.white)
+  b:setBackgroundColor(colors.black)
+  b.term.clear()
+  b.term.setCursorPos(1,1)
+end
+
+local text --Fun :D
+if computer.isComputer then text = "SUPER COMPUTER OS 9000"
+elseif computer.isTurtle then text = "SUPER DIAMOND-MINING OS XXX"
+elseif computer.isPocket then text = "PoCkEt OOS AMAYZE 65"
+end
+if text then
+  computer:say(text, computer.theme.title,1)
+end
 --Down here shut down all the channels, remove the saved file, other cleanup stuff
 

@@ -11,22 +11,21 @@ Quarry Receiver x.x.x (matches current quarry):
   ToDo:
     Save file to restart with
     When a monitor receives final message, have an option for removing screen or restarting and waiting for another message
-    Make "isDone" a part of the final message in turtle
-    Make sure setTheme doesn't check the first file line as a color
-    Finish last command strings
-    Make the turtle comply with standard message rules
+    Maybe do tests with no receiveChannel and display to get brokenUpdate. As of now it is dead code
   Testing:
     Finished:
       Basic turning on and sending messages
       Command line
-    ToDo:
       Theme loading
       Screens
       Parameters
+    ToDo:
       Test on Turtle
       Test on Pocket Computer
       Sending tables on old minecraft versions (1.4.7)
       Test resuming a turtle (the handshake isn't a table)
+      Using Relays
+      Actually sending messages from turtle (legacy and non)
   Ideas:
   1. All themes are in files in a "themes" folder.
   2. Some themes are included in the program code, and can be selected.
