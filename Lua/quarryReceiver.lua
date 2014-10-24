@@ -42,7 +42,7 @@ local queuedMessage --If a command needs to be sent, this gets set
 local defaultSide
 local defaultCommand
 
-local keyMap = {[57] = " ", [11] = "0", [12] = "-"} --This is for command string
+local keyMap = {[57] = " ", [11] = "0", [12] = "-", [52] = "."} --This is for command string
 for i=2,10 do keyMap[i] = tostring(i-1) end --Add numbers
 for a,b in pairs(keys) do --Add all letters from keys api
   if #a == 1 then
@@ -146,7 +146,9 @@ local function newTheme(name)
   themes[name] = self
   return self
 end
-  
+
+local requiredColors = {"title", "subtitle", "pos", "dim", "extra", "error", "info", "inverse", "command", "help", "background"}
+
 --This is how adding colors will work
 newTheme("default")
   :addColor("title", colors.green, colors.gray)
@@ -173,6 +175,20 @@ newTheme("random")
   :addColor("command", colors.green, colors.lightGray)
   :addColor("help", colors.white, colors.yellow)
   :addColor("background", colors.white, colors.red)
+  
+--If you modify a theme a bunch and want to save it
+local function saveTheme(fileName, theme)
+  if not theme or not type(fileName) == "string" then return false end
+  local file = fs.open(fileName,"w")
+  if not file then return false end
+  file.writeLine(fileName)
+  for a,b in pairs(theme) do
+    if type(b) == "table" then --If it contains color objects
+      file.writeLine(a.." "..tostring(b.text).." "..tostring(b.background))
+    end
+  end
+  file.close()
+end
 
   
 --==SCREEN CLASS FUNCTIONS==
@@ -334,18 +350,30 @@ screenClass.setTheme = function(self, themeName, stopReset)
     if fs.exists(themeFolder) then fileName = themeFolder..fileName end
     if fs.exists(fileName) then
       debug("Loading theme: ",fileName)
-      self.themeName = themeName:lower() --We can now set our themeName to the fileName
       local file = fs.open(fileName, "r")
       if not file then debug("Could not load theme '",themeName,"' file not found") end
-      local addedTheme = newTheme(file.readLine():match("%w+") or "newTheme") --Initializes the new theme
+      local addedTheme = newTheme(file.readLine() or "newTheme") --Initializes the new theme
       for line in function() return file.readLine() end do --Go through all the color lines (hopefully not the first one. Requires testing)
         local args = {}
         for word in line:gmatch("%S+") do
           table.insert(args,word)
         end
-        addedTheme:addColor(args[1]:match("%a+") or "nothing", colors[args[2]], colors[args[3]]) --"nothing" will never get used, so its just lazy error prevention
+        addedTheme:addColor(args[1]:match("%a+") or "nothing", tonumber(args[2]) or colors[args[2]], tonumber(args[3]) or colors[args[3]]) --"nothing" will never get used, so its just lazy error prevention
       end
       file.close()
+      local flag = true --Make sure a theme has all required elements
+      for a,b in ipairs(requiredColors) do
+        if not addedTheme[b] then
+          flag = false 
+          debug("Theme is missing color '",b,"'")
+        end
+      end
+      if not flag then
+        themes[addedTheme.name] = nil
+        debug("Failed to load theme")
+        return false
+      end
+      self.themeName = themeName:lower() --We can now set our themeName to the fileName
     else
       --Resets theme to super
       if not stopReset then --This exists so its possible to set default theme without breaking world
@@ -743,6 +771,7 @@ for a, b in pairs(screenClass.sides) do
     end
     sleep(0.5)
   end
+  if not modem.isOpen(b.receive) then modem.open(b.receive) end
   b:updateDisplay()--Finish initialization process
   b:reset()
   b:pushScreenUpdates()
@@ -762,6 +791,7 @@ end
         remove [side] --Removes a screen
         theme [themeName] --Sets the default theme
         theme [side] [themeName] --Changes this screen's theme
+        savetheme [new name] [themeName]
         color [side/theme] [colorName] [textColor] [backgroundColor]
         side [side] --Sets a default side, added to prompts
         set [string] --Sets a default command, added to display immediately
@@ -779,7 +809,7 @@ end
 ]]
 
 --Modes: 1 - Sided, 2 - Not Sided, 3 - Both sided and not
-local validCommands = {command = 1, screen = 2, remove = 1, theme = 3, exit = 2, quit = 2, ["end"] = 2, color = 3, side = 2, set = 2, receive = 1, send = 1}
+local validCommands = {command = 1, screen = 2, remove = 1, theme = 3, exit = 2, quit = 2, ["end"] = 2, color = 3, side = 2, set = 2, receive = 1, send = 1, savetheme = 2}
 while continue do
   local event, par1, par2, par3, par4, par5 = os.pullEvent()
   ----MESSAGE HANDLING----
@@ -881,6 +911,7 @@ while continue do
 
             if command == "color" then
               screen.theme:addColor(args[3],colors[args[4] or ""],colors[args[5] or ""])
+              updateAllScreens() --Because we are changing a theme color which others may have
             end
             if command == "theme" then
               screen:setTheme(args[3])
@@ -948,6 +979,9 @@ while continue do
             else
               defaultCommand = nil
             end
+          end
+          if command == "savetheme" then
+            saveTheme(args[2], themes[args[3]])
           end
           if command == "quit" or command == "exit" or command == "end" then
             continue = false
