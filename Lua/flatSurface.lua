@@ -3,8 +3,8 @@
 local slot = 1
 local turnFunc = turtle.turnRight
 
-
-if ({...})[1]:lower() == "left" then
+local tArgs = {...}
+if (tArgs[1] or ""):lower() == "left" then
   turnFunc = turtle.turnLeft
 end
 
@@ -18,9 +18,11 @@ local function placeDo(moveFunc, placeFunc)
 end
 
 turtle.select(1)
+turtle.turnLeft()
+turtle.turnLeft()
 local switch = false --Whether or not it is above the layer
 while true do
-  while placeDo(turtle.back) do end --Will keep going back until the end of the row
+  while placeDo(turtle.back, turtle.place) do end --Will keep going back until the end of the row
   turnFunc()
   if not placeDo(turtle.back, turtle.place) then --If can't turn will end
     switch = true
