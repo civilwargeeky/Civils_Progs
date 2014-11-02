@@ -135,9 +135,9 @@ end
 
 
 local function testPeripheral(periph, periphFunc)
-  if not periph or type(periph) ~= "table" then return false end
+  if type(periph) ~= "table" then return false end
+  if type(periph[periphFunc]) ~= "function" then return false end
   if periph[periphFunc]() == nil then --Expects string because the function could access nil
-    periph.isDisconnected = true --My current solution
     return false
   end
   return true
@@ -721,10 +721,11 @@ sleep(1)
 while not initModem() do
   clearScreen()
   print("No modem is connected, please attach one")
-  os.pullEvent("peripheral")
   if not peripheral.find then
     print("What side was that on?")
-    modemSide = input()
+    modemSide = read()
+  else
+    os.pullEvent("peripheral")
   end
 end
 debug("Modem successfully connected!")
