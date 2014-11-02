@@ -1,22 +1,8 @@
---Quarry Receiver Version 3.5.4
+--Quarry Receiver Version 3.5.5
 --Made by Civilwargeeky
---[[
-Ideas:
-
-    
-]]
 --[[
 Recent Changes:
   Completely Remade!
-]]
-
-local commandHelpParagraph = [[
-Stop: Stops the turtle where it is
-Return: The turtle will return to its starting point, drop off its load, and stop
-Drop: Turtle will immediately go and drop its inventory
-Pause: Pauses the turtle
-Resume: Resumes paused turtles
-Help: This :D
 ]]
 
 
@@ -51,6 +37,28 @@ for a,b in pairs(keys) do --Add all letters from keys api
 end
 keyMap[keys.enter] = "enter"
 keyMap[keys.backspace] = "backspace"
+
+local helpResources = {
+main = [[Hello and welcome to
+Quarry Receiver Help
+
+This function goes over all aspects of the receiver.
+There are several different sections
+
+Press a section number at any time to go the beginning of that section
+ 1. Basic Use
+ 2. Parameters
+ 3. Commands
+ 4. Turtle Commands
+]],
+[[Stop: Stops the turtle where it is
+Return: The turtle will return to its starting point, drop off its load, and stop
+Drop: Turtle will immediately go and drop its inventory
+Pause: Pauses the turtle
+Resume: Resumes paused turtles
+Help: This :D
+]]
+}
 
 --Generic Functions--
 local function debug(...)
@@ -178,6 +186,19 @@ newTheme("default")
   :addColor("title", colors.green, colors.gray)
   :addColor("subtitle", colors.white, colors.black)
   :addColor("pos", colors.green, colors.black)
+  :addColor("dim", colors.lightBlue, colors.black)
+  :addColor("extra", colors.lightGray, colors.black)
+  :addColor("error", colors.red, colors.white)
+  :addColor("info", colors.blue, colors.lightGray)
+  :addColor("inverse", colors.yellow, colors.lightGray)
+  :addColor("command", colors.lightBlue, colors.black)
+  :addColor("help", colors.red, colors.white)
+  :addColor("background", colors.white, colors.black)
+  
+newTheme("seagle")
+  :addColor("title", colors.white, colors.black)
+  :addColor("subtitle", colors.red, colors.black)
+  :addColor("pos", colors.gray, colors.black)
   :addColor("dim", colors.lightBlue, colors.black)
   :addColor("extra", colors.lightGray, colors.black)
   :addColor("error", colors.red, colors.white)

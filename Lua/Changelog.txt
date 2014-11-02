@@ -18,6 +18,10 @@
   Phased out turtle.getFuelLevel in favor of checkFuel
 
 ----Quarry Receiver----
+  --Known Issues:
+  1. Receiver cannot connect properly over repeaters. Old quarry won't recognize new format
+  2. Receiver cannot properly display the stop message for old quarries. It was sent in two different messages so it won't work
+
 --Version 3.5.4 (first recorded)
   Modified rednet system to new protocols
   Added in-program command line
@@ -25,9 +29,11 @@
   So many new parameters
   New theme system
   Multiple screen supported and encouraged!
-  --Known Issues:
-  1. Receiver cannot connect properly over repeaters. Old quarry won't recognize new format
-  2. Receiver cannot properly display the stop message for old quarries. It was sent in two different messages so it won't work
+--Version 3.5.5
+  Added in seagle23's old theme as "seagle"
+  Added in proper help
+
+
 
 ----Quarry Repeater----
 --Version 1.0 (first release)
