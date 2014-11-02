@@ -119,21 +119,15 @@ Random future thoughts: Maybe make more seamless. Have an arg/option to make cal
 
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 
-Quarry Version 3.5.3:
+Quarry Version 3.5.4:
   General Ideas:
     maybe look for multiple "-forcePrompt setting" parameters, and each time one is found, 
 add it to a table. When you do addParam function, check if on force prompt table, then prompt if so.
     instead of params being one-time, have them "register" a "listener" so that they can be called multiple times
 
-Things for 3.5.4:
-  Organize all the things! Everything is so messy right now...
-  Refactor quarryReceiver so that everything is generalized into classes. This will lead to having multiple screens: each in their own class with their own colors and attributes.
-  Take out all the "str"s in the main loop of receiver
-  In quarry tArgs, make a way to take out key value pairs in all forms
-  
 Things for 3.5.5:
-  Maybe, on bottom line of receiver, have a couple buttons for drop, return, etc.
-    Ooh! Maybe have "buttonHandler" table of functions that would make, place, activate, and deactivate buttons.
+  Organize all the things! Everything is so messy right now...
+  In quarry tArgs, make a way to take out key value pairs in all forms
   
 Things to add for quarry version 3.6.0 (After rednet update and shell is done):
   Add support for mods. Like open peripheral chest finding.
