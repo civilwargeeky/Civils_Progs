@@ -6,38 +6,21 @@ To use keyboard shortcuts, set var = os.startTimer(num), then in event loop, che
 
 Quarry Receiver x.x.x (matches current quarry):
   Add in "usage" parameter, because not even I can remember it. So like "usage", "help", "-help", "?" and "-?" bring up parameters.
-  Add in a "themes" system accessible by the command line
-  Make sure its backwards compatible (e.g. backup for peripheral.find)
   ToDo:
     Save file to restart with
     When a monitor receives final message, have an option for removing screen or restarting and waiting for another message
     Maybe do tests with no receiveChannel and display to get brokenUpdate. As of now it is dead code
   Testing:
-    Finished:
-      Basic turning on and sending messages
-      Command line
-      Theme loading
-      Screens
-      Parameters
     ToDo:
-      Test on Turtle
-      Test on Pocket Computer
-      Sending tables on old minecraft versions (1.4.7)
-      Test resuming a turtle (the handshake isn't a table)
-      Using Relays
+      Sending tables eon old minecraft versions (1.4.7)
       Actually sending messages from turtle (legacy and non)
   Ideas:
   1. All themes are in files in a "themes" folder.
   2. Some themes are included in the program code, and can be selected.
-  4. Layout for a "theme" file would just be "addColor(parameters)" for all the different styles. Maybe to be fancy you could have overrides on all different things, like give them an id and stuff
   5. Integration with shell: Interactive menu to design/choose theme. Maybe have a default themes-set to download.
-  8. You could have a cool theme maker. Basically it would just be a list of editable parameters and it would connect with an adjacent screen so you could see
-       parameters change in real time. Then you could save it to pastebin or your themes folder.
   9. Idea for implementing themes: use addColor above, and have a table of possible display items. Each display item would have a foreground color, background
        color, and centering that would be defined by a theme. You could even have 1 be small, 2 be medium, 3 be large, and 0 be default
-  10. When program running, you could have a command "theme screenSide fileName" which would set a certain theme for a certain computer
   11. Fun Idea: If you hit a screen, it briefly flashes in error colors "Quit Touching Meeeee!" :D That would be funny
-  12. Instead of the above, if you hit a screen, it would "select" it. Then any messages will be sent to its turtle. (Or maybe just have sided ones add that side auto.
 
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 

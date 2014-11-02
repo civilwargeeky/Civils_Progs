@@ -1,10 +1,10 @@
---Version 1.0.1
+--Version 1.0.2
 --This program will act as a repeater between a turtle and a receiver computer
 --important options are doAcceptPing and arbitraryNumber
 --expected message format: {message, id, distance, fingerprint}
 
 --Config
-local doDebug = true --...
+local doDebug = false --...
 local arbitraryNumber = 100 --How many messages to keep between deletions
 local saveFile = "QuarryRepeaterSave"
 local expectedFingerprints = {quarry = true, quarryReceiver = true}
@@ -36,11 +36,11 @@ end
 local function save()
   debug("Saving File")
   local file = fs.open(saveFile, "w")
-  file.write(textutils.unpack(channels))
-  file.write(counter)
+  file.writeLine(textutils.serialize(channels):gsub("[\n\r]",""))
+  file.writeLine(counter)
   return file.close()
 end
-local function openChannels(modem)
+local function openChannels()
   for a,b in pairs(channels) do
     debug("Checking channel ",b)
     if not modem.isOpen(b) then
@@ -53,10 +53,10 @@ end
 --Actual Program Part Starts Here--
 if fs.exists(saveFile) then
   local file = fs.open(saveFile,"r")
-  channels = textutils.unserialize(file:read()) or print("Channels could not be read") or {}
-  counter = tonumber(file:read()) or print("Counter could not be read") or 0
+  channels = textutils.unserialize(file.readLine()) or (print("Channels could not be read") and {})
+  counter = tonumber(file.readLine()) or (print("Counter could not be read") and 0)
   print("Done reading save file")
-  file:close()
+  file.close()
 end
 
 while not modem do
@@ -66,16 +66,22 @@ while not modem do
   os.pullEvent("peripheral")
 end
 
-while true do
+for i=1, #channels do
+  debug("Opening ",channels[i])
+  modem.open(channels[i])
+end
+
+local continue = true
+while continue do
   print("\nHit 'q' to quit, 'r' to remove channels, 'p' to ping or any other key to add channels")
   local event, key, receivedFreq, replyFreq, received, dist = os.pullEvent()
   term.clear()
   term.setCursorPos(1,1)
   if event == "modem_message" then
     print("Modem Message Received")
-    if acceptLegacy and not type(received) == "table" then
+    if acceptLegacy and type(received) ~= "table" then
       debug("Unformatted message, formatting for quarry")
-      received = { message = received, id = newID(), distance = 0, fingerprint = expectedFingerprint}
+      received = { message = received, id = newID(), distance = 0, fingerprint = "quarry"}
     end
     
     debug("Message Properties")
@@ -83,13 +89,20 @@ while true do
       debug(a,"   ",b)
     end
     
-    if expectedFingerprints[received.fingerprint] then --A regular expected message
-      received.distance = received.distance + dist --Add on to repeater how far message had to go
+    if expectedFingerprints[received.fingerprint] and not sentMessages[received.id] then --A regular expected message
+      if received.distance then
+        received.distance = received.distance + dist --Add on to repeater how far message had to go
+      else
+        received.distance = dist
+      end
       debug("Sending Return Message")
       modem.transmit(receivedFreq, replyFreq, received) --Send back exactly what we got
       addID(received.id)
     elseif doAcceptPing and received.fingerprint == pingFingerprint then --We got a ping!
-      redstone.setOutput(pingSide, not redstone.getOutput(pingSide)) --Just a toggle should be fine
+      debug("We got a ping!")
+      redstone.setOutput(pingSide, true) --Just a toggle should be fine
+      sleep(1)
+      redstone.setOutput(pingSide, false)
     end
 
     if tempCounter > arbitraryNumber then --Purge messages to save memory
@@ -97,16 +110,20 @@ while true do
       sleep(0.05) --Wait a tick for no good reason
       sentMessages = {} --Completely reset table
       sentMessages[recentID] = true --Reset last message (not sure if really needed. Oh well.
+      tempCounter = 0
     end
     
     print("Messages Received: "..counter)
     
   elseif event == "char" then
     if key == "q" then --Quitting
-      error("Quitting",0)
+      print("Quitting")
+      continue = false
     elseif key == "p" then --Ping other channels
       for a,b in pairs(channels) do --Ping all open channels
+        debug("Pinging channel ",b)
         modem.transmit(b,b,{message = "I am ping! Wrar!", fingerprint = "ping"})
+        sleep(1)
       end
     elseif key == "c" then --Removing Channels
       print("Enter a comma seperated list of channels to remove")
@@ -134,6 +151,7 @@ while true do
       print("What channels would you like to open. Enter a comma-separated list\n")
       local input = io.read()
       for num in input:gmatch("%d+") do
+        num = tonumber(num)
         if num >= 1 and num <= 65535 then
           table.insert(channels, tonumber(num))
         end
@@ -143,4 +161,8 @@ while true do
     openChannels()
     
   end
+end
+
+for i=1, #channels do
+  modem.close(channels[i])
 end

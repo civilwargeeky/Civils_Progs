@@ -193,16 +193,15 @@ local function copyTable(tab) local toRet = {}; for a, b in pairs(tab) do toRet[
     
 local foundBedrock = false
 
-local getFuel, checkFuel
-if turtle then
-  getFuel = turtle.getFuelLevel  --This is for cleanup at the end
-  do --Common variable name...
-  local flag = turtle.getFuelLevel() == "unlimited"--Unlimited screws up my calculations
-  if flag then --Fuel is disabled
-    turtle.getFuelLevel = function() return math.huge end --Infinite Fuel
+local checkFuel, checkFuelLimit
+if turtle then --Function inits
+  checkFuel, checkFuelLimit = turtle.getFuelLevel, turtle.getFuelLimit
+  if turtle.getFuelLevel() == "unlimited" then --Fuel is disabled --Unlimited screws up my calculations
+    checkFuel = function() return math.huge end --Infinite Fuel
   end --There is no "else" because it will already return the regular getFuel
+  if not turtle.getFuelLimit or turtle.getFuelLimit() == "unlimited" then --If the function doesn't exist 
+    checkFuelLimit = function() return math.huge end
   end
-  checkFuel = turtle.getFuelLevel --Just an alias for backwards compat
   
   turtle.select(1) --To ensure this is correct
 end
@@ -334,17 +333,17 @@ if restoreFoundSwitch then
   if test then
     os.run(getfenv(1),saveFile) --This is where the actual magic happens
     numResumed = numResumed + 1
-    if turtle.getFuelLevel() ~= math.huge then --If turtle uses fuel
-      if fuelLevel - turtle.getFuelLevel() == 1 then
+    if checkFuel() ~= math.huge then --If turtle uses fuel
+      if fuelLevel - checkFuel() == 1 then
         if facing == 0 then xPos = xPos + 1
         elseif facing == 2 then xPos = xPos - 1
         elseif facing == 1 then zPos = zPos + 1
         elseif facing == 3 then zPos = zPos - 1 end
-      elseif fuelLevel - turtle.getFuelLevel() ~= 0 then
+      elseif fuelLevel - checkFuel() ~= 0 then
         print("Very Strange Fuel in Restore Section...")
-        print("Current: ",turtle.getFuelLevel())
+        print("Current: ",checkFuel())
         print("Saved: ",fuelLevel)
-        print("Difference: ",fuelLevel - turtle.getFuelLevel())
+        print("Difference: ",fuelLevel - checkFuel())
         os.pullEvent("char")
       end
      end
@@ -445,8 +444,8 @@ addParam("receiveChannel","Rednet Receive Channel", "number 1-65535", false, sup
 addParam("fingerprint","Sending Fingerprint", "string", false, supportsRednet, "channels.fingerprint")
 --Fuel
 addParam("uniqueExtras","Unique Items", "number 0-15")
-addParam("doRefuel", "Refuel from Inventory","boolean", nil, turtle.getFuelLevel() ~= math.huge) --math.huge due to my changes
-addParam("doCheckFuel", "Check Fuel", "boolean", nil, turtle.getFuelLevel() ~= math.huge)
+addParam("doRefuel", "Refuel from Inventory","boolean", nil, checkFuel() ~= math.huge) --math.huge due to my changes
+addParam("doCheckFuel", "Check Fuel", "boolean", nil, checkFuel() ~= math.huge)
 --Logging
 addParam("logging", "Logging", "boolean")
 addParam("logFolder", "Log Folder", "string")
@@ -507,8 +506,8 @@ if type(extras) == "table" then
     file.write(a.." = "..tostring(b).."\n")
   end
 end
-if turtle.getFuelLevel() ~= math.huge then --Used for location comparing
-  file.write("fuelLevel = "..tostring(turtle.getFuelLevel()).."\n")
+if checkFuel() ~= math.huge then --Used for location comparing
+  file.write("fuelLevel = "..tostring(checkFuel()).."\n")
 end
 file.close()
 end
@@ -531,7 +530,7 @@ do --Because many local variables unneeded elsewhere
   neededFuel = neededFuel + fuelTable[fuelSafety] --For safety
 end
 
-if turtle.getFuelLimit and neededFuel+checkFuel() > turtle.getFuelLimit() then--Checks for if refueling goes over turtle fuel limit
+if neededFuel+checkFuel() > checkFuelLimit() then--Checks for if refueling goes over turtle fuel limit
   if not doRefuel then
     screen()
     print("Turtle cannot hold enough fuel\n")
@@ -542,7 +541,7 @@ if turtle.getFuelLimit and neededFuel+checkFuel() > turtle.getFuelLimit() then--
       doRefuel = true
     end
   end
-  neededFuel = turtle.getFuelLimit()-checkFuel()-1
+  neededFuel = checkFuelLimit()-checkFuel()-1
 end
     
     
@@ -701,10 +700,10 @@ if rednetEnabled then
       i=i+1
       print("Sending Initial Message "..i)
       sendMessage(channels.send, channels.receive, channels.message)
-      local message
+      local message = {} --Have to initialize as table to prevent index nil
       repeat
         local event, idCheck, channel,_,locMessage, distance = os.pullEvent()
-        message = locMessage
+        if locMessage then message = locMessage end
       until (event == "timer" and idCheck == id) or (event == "modem_message" and channel == channels.receive and type(message) == "table")
     until message.message == channels.confirm
   connected = true
@@ -719,7 +718,7 @@ function biometrics(isAtBedrock)
     openSlots = getNumOpenSlots(), mined = mined, moved = moved,
     chestFull = chestFull, isAtChest = (xPos == 0 and yPos == 1 and zPos == 1),
     isGoingToNextLayer = (gotoDest == "layerStart"), foundBedrock = foundBedrock,
-    fuel = turtle.getFuelLevel(), volume = volume,
+    fuel = checkFuel(), volume = volume,
     }
   sendMessage(channels.send, channels.receive, toSend)
   id = os.startTimer(0.1)
@@ -814,7 +813,7 @@ end
 function display() --This is just the last screen that displays at the end
   screen(1,1)
   print("Total Blocks Mined: "..mined)
-  print("Current Fuel Level: "..turtle.getFuelLevel())
+  print("Current Fuel Level: "..checkFuel())
   print("Cobble: "..totals.cobble)
   print("Usable Fuel: "..totals.fuel)
   print("Other: "..totals.other)
@@ -1205,7 +1204,7 @@ function mine(doDigDown, doDigUp, outOfPath,doCheckInv) -- Basic Move Forward
       sleep(0.2)
     end
     if count > maxTries then
-      if turtle.getFuelLevel() == 0 then --Don't worry about inf fuel because I modified this function
+      if checkFuel() == 0 then --Don't worry about inf fuel because I modified this function
         saveProgress({doCheckFuel = true})
         error("No more fuel",0)
       elseif yPos > (startY-7) and turtle.detect() then --If it is near bedrock
@@ -1356,13 +1355,13 @@ end
 
 function midRunRefuel(i)
   local numToRefuel = turtle.getItemCount(i)-allowedItems[i]
-  if checkFuel() >= turtle.getFuelLimit() then return true end --If it doesn't need fuel, then signal to not take more
+  if checkFuel() >= checkFuelLimit() then return true end --If it doesn't need fuel, then signal to not take more
   local firstCheck = checkFuel()
   if numToRefuel > 0 then turtle.refuel(1) end --This is so we can see how many fuel we need.
   local singleFuel
   if checkFuel() - firstCheck > 0 then singleFuel = checkFuel() - firstCheck else singleFuel = math.huge end --If fuel is 0, we want it to be huge so the below will result in 0 being taken
   --Refuel      The lesser of   max allowable or         remaining fuel space         /    either inf or a single fuel (which can be 0)
-  turtle.refuel(math.min(numToRefuel-1, math.ceil((turtle.getFuelLimit()-checkFuel()) / singleFuel))) --The refueling part of the the doRefuel option
+  turtle.refuel(math.min(numToRefuel-1, math.ceil((checkFuelLimit-checkFuel()) / singleFuel))) --The refueling part of the the doRefuel option
   return false --Turtle can still be fueled
 end
   
@@ -1465,8 +1464,6 @@ function endingProcedure(endingMessage) --Used both at the end and in "biometric
   eventAdd("error",endingMessage or "",0)
   toQuit = true --I'll use this flag to clean up (legacy)
   runAllEvents()
-  --Cleanup
-  turtle.getFuelLevel = getFuel
 end
 function bedrock()
   foundBedrock = true --Let everyone know

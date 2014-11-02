@@ -13,17 +13,30 @@
   If turtle runs low on fuel, comes back and errors.
   Fixed turtle asking rednet enabled when there is no modem
   Removed invCheckFreq parameter. I doubt anyone used it. It now just checks every 1
+--Version 3.5.4
+  Updated rednet sending for new protocol
+  Phased out turtle.getFuelLevel in favor of checkFuel
 
 ----Quarry Receiver----
 --Version 3.5.4 (first recorded)
-  //Modified redent receive/send to allow for new repeater system
-  //--Note: New system may break compatibility with pre-1.6 minecraft.
+  Modified rednet system to new protocols
+  Added in-program command line
+  So many new commands
+  So many new parameters
+  New theme system
+  Multiple screen supported and encouraged!
+  --Known Issues:
+  1. Receiver cannot connect properly over repeaters. Old quarry won't recognize new format
+  2. Receiver cannot properly display the stop message for old quarries. It was sent in two different messages so it won't work
 
 ----Quarry Repeater----
 --Version 1.0 (first release)
   Everything is new :)
 --Version 1.0.1
   Added "quarryReceiver" to expected fingerprints
+--Version 1.0.2
+  Fixed many bugs
+  Ping now works
   
 ----MenuAPI----
 --Version 1.0.1
