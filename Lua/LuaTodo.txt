@@ -10,10 +10,7 @@ Quarry Receiver x.x.x (matches current quarry):
     Save file to restart with
     When a monitor receives final message, have an option for removing screen or restarting and waiting for another message
     Maybe do tests with no receiveChannel and display to get brokenUpdate. As of now it is dead code
-  Testing:
-    ToDo:
-      Sending tables eon old minecraft versions (1.4.7)
-      Actually sending messages from turtle (legacy and non)
+    
   Ideas:
   1. All themes are in files in a "themes" folder.
   2. Some themes are included in the program code, and can be selected.

@@ -22,36 +22,68 @@ local modemSide --User can specify a modem side, but it is not necessary
 local modem --This will be the table for the modem
 local computer --The main screen is special. It gets defined first :3
 local continue = true --This keeps the main while loop going
+local tArgs = {...}
 --These two are used by controller in main loop
 local commandString = "" --This will be a command string sent to turtle. This var is stored for display
 local queuedMessage --If a command needs to be sent, this gets set
 local defaultSide
 local defaultCommand
 
-local keyMap = {[57] = " ", [11] = "0", [12] = "_", [52] = "."} --This is for command string
-for i=2,10 do keyMap[i] = tostring(i-1) end --Add numbers
+for i=1, #tArgs do --Parameters that must be set before rest of program for proper debugging
+  local val = tArgs[i]:lower()
+  if val == "-v" or val == "-verbose" then
+    doDebug = true
+  end
+  if val == "-q" or val == "-quiet" then
+    doDebug = false
+  end
+end
+
+local keyMap = {[57] = " ", [11] = "0", [12] = "_", [52] = ".", [82] = "0", [83] = "."} --This is for command string
+for i=2,10 do keyMap[i] = tostring(i-1) end --Add top numbers
+for a=0,2 do --All the numpad numbers
+  for b=0,2 do
+    keyMap[79-(4*a)+b] = tostring(b + 1 + a*3) --Trust me, this just works
+  end
+end
 for a,b in pairs(keys) do --Add all letters from keys api
   if #a == 1 then
     keyMap[b] = a:upper()
   end
 end
 keyMap[keys.enter] = "enter"
+keyMap[156] = "enter" --Numpad enter
 keyMap[keys.backspace] = "backspace"
+keyMap[200] = "up"
+keyMap[208] = "down"
+keyMap[203] = "left"
+keyMap[205] = "right"
 
-local helpResources = {
-main = [[Hello and welcome to
+local helpResources = { --$$ is a new page
+main = [[$$Hello and welcome to
 Quarry Receiver Help
 
 This function goes over all aspects of the receiver.
 There are several different sections
+Within a section, use the arrow keys to navigate
 
 Press a section number at any time to go the beginning of that section
  1. Basic Use
  2. Parameters
  3. Commands
  4. Turtle Commands
+ 
+$$A secret page!
+You found it! Good job :)
 ]],
-[[Stop: Stops the turtle where it is
+[[$$Your turtle and you
+]],
+[[$$Parameters!
+]],
+[[$$Commands!
+]],
+[[$$Turtle Commands!
+Stop: Stops the turtle where it is
 Return: The turtle will return to its starting point, drop off its load, and stop
 Drop: Turtle will immediately go and drop its inventory
 Pause: Pauses the turtle
@@ -125,12 +157,25 @@ local function roundNegative(num) --Rounds numbers up to 0
   if num >= 0 then return num else return 0 end
 end
 local function displayHelp()
-  print("I am help!")
-  print("This will be done later")
-  print("For now just check the forum")
-  print("Press any key")
-  os.pullEvent("key")
-  error("",0)
+  local tab = {}
+  local indexOuter = "main"
+  local indexInner = 1
+  for key, value in pairs(helpResources) do
+    tab[key] = {}
+    for a in value:gmatch("$$([^$]+)") do
+      table.insert(tab[key], a) --Just inserting pages
+    end
+  end
+  while true do
+    clearScreen()
+    print(tab[indexOuter][indexInner])
+    local event, key = os.pullEvent("key")
+    key = keyMap[key]
+    if tonumber(key) and tab[key] then
+      indexInner = key
+    elseif 
+  end
+    
 end
 
 
@@ -743,13 +788,12 @@ Parameters:
   -colorEditor
 ]]
 
---tArgs and peripheral list init
-local tArgs = {...}
+--tArgs init
 local parameters = {} --Each command is stored with arguments
 local parameterIndex = 0 --So we can add new commands to the right table
 for a,b in ipairs(tArgs) do
   val = b:lower()
-  if val == "help" or val == "-help" or val == "?" or val == "-?" then
+  if val == "help" or val == "-help" or val == "?" or val == "-?" or val == "usage" or val == "-usage" then
     displayHelp() --To make
     error("The End of Help",0)
   end
@@ -763,6 +807,10 @@ for a,b in ipairs(tArgs) do
   end
 end
 
+if parameters.v or parameters.verbose then --Why not
+  doDebug = true
+end
+
 for i=1,#parameters do
   debug("Parameter: ",parameters[i][1])
 end
@@ -771,6 +819,8 @@ end
 if parameters.theme then
   screenClass:setTheme(parameters.theme[1])
 end
+
+
 
 --Init Computer Screen Object (was defined at top)
 computer = screenClass.new("computer", parameters.receivechannel and parameters.receivechannel[1])--This sets channel, checking if parameter exists
@@ -921,7 +971,8 @@ end
 ]]
 
 --Modes: 1 - Sided, 2 - Not Sided, 3 - Both sided and not
-local validCommands = {command = 1, screen = 2, remove = 1, theme = 3, exit = 2, quit = 2, ["end"] = 2, color = 3, side = 2, set = 2, receive = 1, send = 1, savetheme = 2, auto = 2}
+local validCommands = {command = 1, screen = 2, remove = 1, theme = 3, exit = 2, quit = 2, ["end"] = 2, color = 3, side = 2, set = 2, receive = 1, send = 1, savetheme = 2,
+                       auto = 2, verbose = 2, quiet = 2}
 while continue do
   local event, par1, par2, par3, par4, par5 = os.pullEvent()
   ----MESSAGE HANDLING----
@@ -1005,18 +1056,19 @@ while continue do
   
   ----KEY HANDLING----
   elseif event == "key" and keyMap[par1] then
-    local key = par1
-    if key ~= keys.enter then --If we aren't submitting a command
-      if key == keys.backspace then
+    local key = keyMap[par1]
+    if key ~= "enter" then --If we aren't submitting a command
+      if key == "backspace" then
         if #commandString > 0 then
           commandString = commandString:sub(1,-2)
         end
-      else
+      elseif #key == 1 then
         commandString = commandString..keyMap[key]
       end
+    --ALL THE COMMANDS
     else --If we are submitting a command
       local args = {}
-      for a in commandString:gmatch("%S+") do
+      for a in commandString:gmatch("%S+") do --This captures all individual words in the command string
         args[#args+1] = a:lower()
       end
       local command = args[1]
@@ -1112,9 +1164,13 @@ while continue do
             sleep(1)
           end
           if command == "auto" then
-            autoDetect()
+            local newTab = copyTable(args) --This is so we can pass all additional words as channel numbers
+            table.remove(newTab, 1)
+            autoDetect(newTab)
             updateAllScreens()
           end
+          if command == "verbose" then doDebug = true end
+          if command == "quiet" then doDebug = false end
           if command == "quit" or command == "exit" or command == "end" then
             continue = false
           end
