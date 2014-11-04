@@ -20,6 +20,7 @@ local tempCounter = 0 --How many messages since last delete
 local recentID = 1 --Most recent message ID received, used for restore in delete
 local channels = {} --List of channels to open listen on
 local modem --The wireless modem
+local modemSide --Will not necessarily be set
 
 
 --Function Declarations--
@@ -37,8 +38,9 @@ end
 local function save()
   debug("Saving File")
   local file = fs.open(saveFile, "w")
-  file.writeLine(textutils.serialize(channels):gsub("[\n\r]",""))
-  file.writeLine(counter)
+  file.writeLine(textutils.serialize(channels):gsub("[\n\r]","")) --All the channels
+  file.writeLine(counter) --Total number of messages received
+  file.writeLine(modemSide) --The side the modem is on, helps for old MC
   return file.close()
 end
 local function openChannels()
@@ -75,7 +77,8 @@ local function initModem() --Sets up modem, returns true if modem exists
   end
   return true
 end
-local function addChannel(num, manually) --Tries to add channel number. Checks if channel not already added. Speaks if manually set to true.
+local function addChannel(num, doPrint) --Tries to add channel number. Checks if channel not already added. Speaks if doPrint set to true.
+  num = tonumber(num)
   local chExists = false
   for a, b in pairs(channels) do
     if b == num then
@@ -85,13 +88,13 @@ local function addChannel(num, manually) --Tries to add channel number. Checks i
   end
   if not chExists then
     if num >= 1 and num <= 65535 then
-      table.insert(channels, tonumber(num))
-      if manually then
+      table.insert(channels, num)
+      if doPrint then
         print("Channel "..num.." added.")
       end
     end
   else
-    if manually then
+    if doPrint then
       print("Channel "..num.." already added.")
     end
   end
@@ -102,6 +105,7 @@ if fs.exists(saveFile) then
   local file = fs.open(saveFile,"r")
   channels = textutils.unserialize(file.readLine()) or (print("Channels could not be read") and {})
   counter = tonumber(file.readLine()) or (print("Counter could not be read") and 0)
+  modemSide = file.readLine() or (print("Modem Side not read") and "")
   print("Done reading save file")
   file.close()
 end
@@ -190,26 +194,25 @@ while continue do
         for a, b in pairs(channels) do
           if b == tonumber(num) then
             debug("Removing ",b)
-            table.insert(toRemove, a, 1) --This way it will go from the back of the table
+            table.insert(toRemove, a, 1) --This way it will remove indexes from the back of the table
             modem.close(b)
             break --No use checking the rest of the table for this number
           end
         end
       end
-      for i=1, #toRemove do --So that we arent
+      for i=1, #toRemove do
         table.remove(channels, toRemove[i])
       end
     else  --Adding Channels
       print("What channels would you like to open. Enter a comma-separated list.\nAdd only sending channels. Receiving ones will be added automatically.\n")
       local input = io.read()
       for num in input:gmatch("%d+") do
-        num = tonumber(num)
         addChannel(num,true)
       end
       sleep(2)
     end
     save()
-    openChannels()
+    openChannels() --This will only open channels if they aren't open
     
   end
 end
