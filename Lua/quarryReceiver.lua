@@ -61,11 +61,13 @@ keyMap[205] = "right"
 
 local helpResources = { --$$ is a new page
 main = [[$$Hello and welcome to
-Quarry Receiver Help
+Quarry Receiver Help!
 
-This function goes over all aspects of the receiver.
-There are several different sections
-Within a section, use the arrow keys to navigate
+This goes over everything there is to know about the receiver
+
+Use the arrow keys to navigate!
+Press '0' to come back here!
+Press 'q' to quit!
 
 Press a section number at any time to go the beginning of that section
  1. Basic Use
@@ -76,19 +78,110 @@ Press a section number at any time to go the beginning of that section
 $$A secret page!
 You found it! Good job :)
 ]],
-[[$$Your turtle and you
+[[$$Your turtle and you!
+
+To use this program, you need a wireless modem on both this computer and the turtle
+
+Make sure they are attached to both the turtle and this computer
+$$Using your new program!
+
+Once you have done that, start the turtle and when it says "Rednet?", say "Yes"
+  Optionally, you can use the parameter "-rednet true"
+Then remember the channel it tells you to open.
+
+Come back to this computer, and run the program. Follow onscreen directions.
+  Optionally, you can use the parameter "-receiveChannel"
+  
+Check out the other help sections for more parameters
+$$Adding Screens!
+You can add screens with the "-screen" parameter or the "SCREEN" command
+An example would be "SCREEN LEFT" for a screen on the left side.
+
+You can connect screens over wired modems. Attach a modem to the computer and screen, then right click the modem on the screen.
+Then you can say "SCREEN MONITOR_0" or whatever it says
+
 ]],
 [[$$Parameters!
+  note: {} means required, [] means optional
+
+-help/help/-?/?/-usage/usage: That's this!
+
+-receiveChannel {channel}: Sets the main screen's receive channel
+
+-theme {name}: sets the "default" theme that screens use when they don't have a set theme
+
+-screen {side} [channel] [theme]: makes a new screen on the given side with channel and theme
+$$Parameters!
+  note: {} means required, [] means optional
+
+-station: makes the main computer a "station" that monitors all screens
+ 
+-auto [channel list]: This finds all attached monitors and initializes them. The channel list assigns channels to screens sequentially
+  example: -auto 1 2 5 9   This looks for screens and automatically gives them channels 1, 2, 5, and 9
+
+-colorEditor: makes the main screen a color editor that just prints the current colors. Good for theme making
+$$Parameters!
+
+-v/-verbose: turns on debug
+
+-q/-quiet: turns off debug
 ]],
 [[$$Commands!
+  These commands can use the "side" command
+
+COMMAND [screen] [text]: Sends text to the connected turtle. See turtle commands for valid commands
+
+REMOVE [screen]: Removes the selected screen (cannot remove the main screen)
+
+THEME [screen] [name]: Sets the theme of the given screen. THEME [screen] resets the screen to default theme
+$$Commands!
+  These commands can use the "side" command
+
+COLOR [screen] [typeName] [textColor] [backColor]: Changes the local theme of the screen. If the screen has no theme, it changes the global default theme. See notes on "colorEditor" parameter for more info
+
+RECEIVE [screen] [channel]: Changes the receive channel of the given screen
+
+SEND [screen] [channel]: Changes the send channel of the given screen (for whatever reason)
+$$Commands!
+  These are regular commands
+
+SET [text]: Sets a default command that can be backspaced. Useful for color editing or command sending
+
+SIDE [screen]: Sets a default screen for "sided" commands
+
+EXIT/QUIT: Quits the program gracefully
+
+THEME [name]: Sets the default theme.
+$$Commands!
+  These are regular commands
+
+COLOR [themeName] [typeColor] [textColor] [backColor]: Sets the the text and background colors of the given typeColor of the given theme. See notes on "colorEditor" parameter for more info
+
+SAVETHEME [themeName] [fileName]: Saves the given theme as fileName for later use
+
+AUTO [channelList]: Automatically searches for nearby screens, providing them sequentially with channels if a channel list is given
+  Example Use: AUTO 1 2 5 9
+$$Commands!
+  These are regular commands
+  
+HELP: Displays this again!
+
+VERBOSE: Turns debug on
+
+QUIET: Turns debug off
+
 ]],
 [[$$Turtle Commands!
+
 Stop: Stops the turtle where it is
+
 Return: The turtle will return to its starting point, drop off its load, and stop
+
 Drop: Turtle will immediately go and drop its inventory
+
 Pause: Pauses the turtle
+
 Resume: Resumes paused turtles
-Help: This :D
 ]]
 }
 
@@ -169,11 +262,24 @@ local function displayHelp()
   while true do
     clearScreen()
     print(tab[indexOuter][indexInner])
+    local text = tostring(indexInner).."/"..tostring(#tab[indexOuter])
+    term.setCursorPos(({term.getSize()})[1]-#text,1)
+    term.write(text) --Print the current page number
     local event, key = os.pullEvent("key")
     key = keyMap[key]
-    if tonumber(key) and tab[key] then
-      indexInner = key
-    elseif 
+    if tonumber(key) and tab[tonumber(key)] then
+      indexOuter = tonumber(key)
+      indexInner = 1
+    elseif key == "Q" then
+      os.pullEvent("char") --Capture extra event (note: this always works because only q triggers this)
+      return true
+    elseif key == "0" then --Go back to beginning
+      indexOuter, indexInner = "main",1
+    elseif key == "up" and indexInner > 1 then
+      indexInner = indexInner-1
+    elseif key == "down" and indexInner < #tab[indexOuter] then
+      indexInner = indexInner + 1
+    end
   end
     
 end
@@ -226,6 +332,30 @@ end
 
 local requiredColors = {"title", "subtitle", "pos", "dim", "extra", "error", "info", "inverse", "command", "help", "background"}
 
+local function parseTheme(file)
+  local addedTheme = newTheme(file:match("^.-\n") or "newTheme") --Initializes the new theme to the first line
+  file:sub(file:find("\n") or 1) --If there is a newLine, this cuts everything before it. I don't care that the newLine is kept
+  for line in file:gmatch("[^\n]+\n") do --Go through all the color lines (besides first one)
+    local args = {}
+    for word in line:gmatch("%S+") do
+      table.insert(args,word)
+    end
+    addedTheme:addColor(args[1]:match("%a+") or "nothing", tonumber(args[2]) or colors[args[2]], tonumber(args[3]) or colors[args[3]]) --"nothing" will never get used, so its just lazy error prevention
+  end
+  local flag = true --Make sure a theme has all required elements
+  for a,b in ipairs(requiredColors) do
+    if not addedTheme[b] then
+      flag = false 
+      debug("Theme is missing color '",b,"'")
+    end
+  end
+  if not flag then
+    themes[addedTheme.name] = nil
+    debug("Failed to load theme")
+    return false
+  end
+  return addedTheme
+end
 --This is how adding colors will work
 newTheme("default")
   :addColor("title", colors.green, colors.gray)
@@ -444,27 +574,8 @@ screenClass.setTheme = function(self, themeName, stopReset)
       debug("Loading theme: ",fileName)
       local file = fs.open(fileName, "r")
       if not file then debug("Could not load theme '",themeName,"' file not found") end
-      local addedTheme = newTheme(file.readLine() or "newTheme") --Initializes the new theme
-      for line in function() return file.readLine() end do --Go through all the color lines (hopefully not the first one. Requires testing)
-        local args = {}
-        for word in line:gmatch("%S+") do
-          table.insert(args,word)
-        end
-        addedTheme:addColor(args[1]:match("%a+") or "nothing", tonumber(args[2]) or colors[args[2]], tonumber(args[3]) or colors[args[3]]) --"nothing" will never get used, so its just lazy error prevention
-      end
+      parseTheme(file.readAll()) --Parses the text to make a theme, returns theme
       file.close()
-      local flag = true --Make sure a theme has all required elements
-      for a,b in ipairs(requiredColors) do
-        if not addedTheme[b] then
-          flag = false 
-          debug("Theme is missing color '",b,"'")
-        end
-      end
-      if not flag then
-        themes[addedTheme.name] = nil
-        debug("Failed to load theme")
-        return false
-      end
       self.themeName = themeName:lower() --We can now set our themeName to the fileName
     else
       --Resets theme to super

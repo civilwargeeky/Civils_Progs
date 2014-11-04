@@ -5,6 +5,9 @@ To use keyboard shortcuts, set var = os.startTimer(num), then in event loop, che
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 
 Quarry Receiver x.x.x (matches current quarry):
+  --Known Issues:
+    1. Receiver cannot connect properly over repeaters. Old quarry won't recognize new format
+    2. Receiver cannot properly display the stop message for old quarries. It was sent in two different messages so it won't work
   Add in "usage" parameter, because not even I can remember it. So like "usage", "help", "-help", "?" and "-?" bring up parameters.
   ToDo:
     Save file to restart with
@@ -14,9 +17,7 @@ Quarry Receiver x.x.x (matches current quarry):
   Ideas:
   1. All themes are in files in a "themes" folder.
   2. Some themes are included in the program code, and can be selected.
-  5. Integration with shell: Interactive menu to design/choose theme. Maybe have a default themes-set to download.
-  9. Idea for implementing themes: use addColor above, and have a table of possible display items. Each display item would have a foreground color, background
-       color, and centering that would be defined by a theme. You could even have 1 be small, 2 be medium, 3 be large, and 0 be default
+  3. Maybe have a default themes-set to download.
   11. Fun Idea: If you hit a screen, it briefly flashes in error colors "Quit Touching Meeeee!" :D That would be funny
 
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
@@ -116,13 +117,18 @@ Random future thoughts: Maybe make more seamless. Have an arg/option to make cal
 
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 
-Quarry Version 3.5.4:
+Quarry Version 3.5.5:
   General Ideas:
     maybe look for multiple "-forcePrompt setting" parameters, and each time one is found, 
 add it to a table. When you do addParam function, check if on force prompt table, then prompt if so.
     instead of params being one-time, have them "register" a "listener" so that they can be called multiple times
 
 Things for 3.5.5:
+  Look into bug where it errors line 807. Its an event that calls nil
+  Implement new oreQuarry along with old one. Like, if turtle.inspect exists, use new one, otherwise use old one. Completely seperate them in the code, though
+  Make percent a ceil instead of a floor. Otherwise make sure it is counting all movement
+  
+Things for 3.5.6:
   Organize all the things! Everything is so messy right now...
   In quarry tArgs, make a way to take out key value pairs in all forms
   

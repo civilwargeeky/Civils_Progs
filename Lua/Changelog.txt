@@ -28,6 +28,8 @@
 --Version 3.5.5
   Added in seagle23's old theme as "seagle"
   Added in proper help
+  Slightly changed key handling
+  Added support for directly copying pastebin themes into code
 
 
 
