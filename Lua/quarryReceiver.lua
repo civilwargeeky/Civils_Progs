@@ -120,6 +120,7 @@ $$Parameters!
   example: -auto 1 2 5 9   This looks for screens and automatically gives them channels 1, 2, 5, and 9
 
 -colorEditor: makes the main screen a color editor that just prints the current colors. Good for theme making
+current typeColors: title, subtitle, pos, dim, extra, error, info, inverse, command, help, background
 $$Parameters!
 
 -v/-verbose: turns on debug
