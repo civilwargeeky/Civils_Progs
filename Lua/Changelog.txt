@@ -41,6 +41,12 @@
 --Version 1.0.2
   Fixed many bugs
   Ping now works
+--Version 1.0.3
+  Thanks to DJF on the CC forums:
+    Auto-Adds Reply Channels
+    Remove channel function waits for proper char
+    MC 1.5.2 Support
+    Receiver won't add repeated channels
   
 ----MenuAPI----
 --Version 1.0.1

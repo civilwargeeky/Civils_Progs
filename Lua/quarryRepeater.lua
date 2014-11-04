@@ -1,7 +1,8 @@
---Version 1.0.2
+--Version 1.0.3
 --This program will act as a repeater between a turtle and a receiver computer
 --important options are doAcceptPing and arbitraryNumber
 --expected message format: {message, id, distance, fingerprint}
+--added modifications similar to receiver program 
 
 --Config
 local doDebug = false --...
@@ -49,6 +50,52 @@ local function openChannels()
     end
   end
 end
+local function testPeripheral(periph, periphFunc)
+  if type(periph) ~= "table" then return false end
+  if type(periph[periphFunc]) ~= "function" then return false end
+  if periph[periphFunc]() == nil then --Expects string because the function could access nil
+    return false
+  end
+  return true
+end
+local function initModem() --Sets up modem, returns true if modem exists
+  if not testPeripheral(modem, "isWireless") then
+    if peripheral.getType(modemSide or "") == "modem" then
+      modem = peripheral.wrap(modemSide)    
+      if not modem.isWireless() then --Apparently this is a thing
+        modem = nil
+        return false
+      end
+      return true
+    end
+    if peripheral.find then
+      modem = peripheral.find("modem", function(side, obj) return obj.isWireless() end)
+    end
+    return modem and true or false
+  end
+  return true
+end
+local function addChannel(num, manually) --Tries to add channel number. Checks if channel not already added. Speaks if manually set to true.
+  local chExists = false
+  for a, b in pairs(channels) do
+    if b == num then
+      chExists = true
+      break
+    end
+  end
+  if not chExists then
+    if num >= 1 and num <= 65535 then
+      table.insert(channels, tonumber(num))
+      if manually then
+        print("Channel "..num.." added.")
+      end
+    end
+  else
+    if manually then
+      print("Channel "..num.." already added.")
+    end
+  end
+end
 
 --Actual Program Part Starts Here--
 if fs.exists(saveFile) then
@@ -59,13 +106,15 @@ if fs.exists(saveFile) then
   file.close()
 end
 
-while not modem do
-  modem = peripheral.find("modem")
-  if modem then break end
-  print("Please attach a modem")
-  os.pullEvent("peripheral")
+while not initModem() do
+  print("No modem is connected, please attach one")
+  if not peripheral.find then
+    print("What side was that on?")
+    modemSide = read()
+  else
+    os.pullEvent("peripheral")
+  end
 end
-
 for i=1, #channels do
   debug("Opening ",channels[i])
   modem.open(channels[i])
@@ -79,6 +128,7 @@ while continue do
   term.setCursorPos(1,1)
   if event == "modem_message" then
     print("Modem Message Received")
+    debug("Received on channel "..receivedFreq.."\nReply channel is "..replyFreq.."\nDistance is "..dist)
     if acceptLegacy and type(received) ~= "table" then
       debug("Unformatted message, formatting for quarry")
       received = { message = received, id = newID(), distance = 0, fingerprint = "quarry"}
@@ -95,6 +145,8 @@ while continue do
       else
         received.distance = dist
       end
+      debug("Adding return channel "..replyFreq.." to channels")
+      addChannel(replyFreq,false)
       debug("Sending Return Message")
       modem.transmit(receivedFreq, replyFreq, received) --Send back exactly what we got
       addID(received.id)
@@ -125,7 +177,7 @@ while continue do
         modem.transmit(b,b,{message = "I am ping! Wrar!", fingerprint = "ping"})
         sleep(1)
       end
-    elseif key == "c" then --Removing Channels
+    elseif key == "r" then --Removing Channels
       print("Enter a comma seperated list of channels to remove")
       local str = "" --Concantenate all the channels into one, maybe restructure this for sorting?
       for i=1,#channels do
@@ -148,14 +200,13 @@ while continue do
         table.remove(channels, toRemove[i])
       end
     else  --Adding Channels
-      print("What channels would you like to open. Enter a comma-separated list\n")
+      print("What channels would you like to open. Enter a comma-separated list.\nAdd only sending channels. Receiving ones will be added automatically.\n")
       local input = io.read()
       for num in input:gmatch("%d+") do
         num = tonumber(num)
-        if num >= 1 and num <= 65535 then
-          table.insert(channels, tonumber(num))
-        end
+        addChannel(num,true)
       end
+      sleep(2)
     end
     save()
     openChannels()
