@@ -6,7 +6,7 @@ To use keyboard shortcuts, set var = os.startTimer(num), then in event loop, che
 
 Quarry Receiver x.x.x (matches current quarry):
   --Known Issues:
-    1. Receiver cannot connect properly over repeaters. Old quarry won't recognize new format
+    1. Receiver cannot connect properly over repeaters with legacy on. Old quarry won't recognize new format
     2. Receiver cannot properly display the stop message for old quarries. It was sent in two different messages so it won't work
   ToDo:
     Save file to restart with
@@ -126,6 +126,14 @@ Things for 3.5.5:
   Make percent a ceil instead of a floor. Otherwise make sure it is counting all movement. Experimentally, I had a quarry at 99% finish
   
 Things for 3.5.6:
+  Cool Ideas from elektronemulo:
+  -flatBedrock [y/N]
+    would have the turtle mine down to the flat bedrock layer.
+    The Direwolf20 packs have had flat bedrock and the 1.7.10 version of his pack has diamonds concentrated a touch lower than default, so I hear. Also, Dark Iron tends to be down in the bedrock layers.)
+  -enderRefuel [y/N]
+    would have the turtle place an enderchest full of fuel, pull fuel from the ender chest and refuel itself, return the extra fuel back to the enderchest, break the chest, and resume.
+  
+Things for 3.5.7:
   Organize all the things! Everything is so messy right now...
   In quarry tArgs, make a way to take out key value pairs in all forms (?)
   
