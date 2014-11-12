@@ -29,6 +29,9 @@ doRefuel = false --Whenever it comes to start location will attempt to refuel fr
 keepOpen = 1 --How many inventory slots it will attempt to keep open at all times [Default 1]
 fuelSafety = "moderate" --How much fuel it will ask for: safe, moderate, and loose [Default moderate]
 saveFile = "Civil_Quarry_Restore" --Where it saves restore data [Default "Civil_Quarry_Restore"]
+autoResume = false --If true, turtle will auto-restart when loaded. [Default false]
+startupRename = "oldStartup.quarry" --What the startup is temporarily renamed to [Default "oldStartup.quarry"]
+startupName = "startup" --What the turtle auto-resumes with [Default "startup"]
 doBackup = true --If it will keep backups for session persistence [Default true]
 uniqueExtras = 8 --How many different items (besides cobble) the turtle expects. [Default 8]
 maxTries = 50 --How many times turtle will try to dig a block before it "counts" bedrock [Default 50]
@@ -66,6 +69,7 @@ Welcome!: Welcome to quarry help. Below are help entries for all parameters. Exa
 -invert: [t/f] If true, quarry will be inverted (go up instead of down)
 -rednet: [t/f] If true and you have a wireless modem on the turtle, will attempt to make a rednet connection for sending important information to a screen
 -restore / -resume: If your quarry stopped in the middle of its run, use this to resume at the point where the turtle was. Not guarenteed to work properly. For more accurate location finding, check out the -GPS parameter
+-autoResume / autoRestore: Turtle will automatically resume if stopped. Replaces startup
 -oreQuarry: [t/f] If true, the turtle will use ore quarry mode. It will not mine the blocks that are placed in the turtle initially. So if you put in stone, it will ignore stone blocks and only mine ores.
 -oreQuarry: [t/f] If you are using a newer version of CC, you won't have to put in any compare blocks. (CC 1.64+)
 -blacklist: [file name] If using oreQuarry, this is the blacklist file it will read. Example --
@@ -85,6 +89,8 @@ Welcome!: Welcome to quarry help. Below are help entries for all parameters. Exa
 -sendChannel: [number] This is what channel your turtle will send rednet messages on
 -receiveChannel: [number] This is what channel your turtle will receive rednet messages on
 -startY: [current Y coord] Randomly encountering bedrock? This is the parameter for you! Just give it what y coordinate you are at right now. If it is not within bedrock range, it will never say it found bedrock
+-startupRename: [file name] What to rename any existing startup to.
+-startupName: [file name] What the turtle will save its startup file to.
 -extraDropItems: [force] If oreQuarry then this will prompt the user for extra items to drop, but not compare to (like cobblestone)
 -dumpCompareItems: [t/f] If oreQuarry and this is true, the turtle will dump off compare blocks instead of storing them in a chest
 -oldOreQuarry: [t/f] If you are using new CC versions, you can use this to use the old oreQuarry.
@@ -103,6 +109,7 @@ Welcome!: Welcome to quarry help. Below are help entries for all parameters. Exa
       |
       |
       |_ _ _ _ >
+-promptAll: This is the opposite of -Default, it prompts for everything
 -manualPos: [xPos] [zPos] [yPos] [facing] This is for advanced use. If the server reset when the turtle was in the middle of a 100x100x100 quarry, fear not, you can now manually set the position of the turtle. yPos is always positive. The turtle's starting position is 0, 1, 1, 0. Facing is measured 0 - 3. 0 is forward, and it progresses clockwise. Example- "-manualPos 65 30 30 2"
 -help: Thats what this is :D
 Examples: Everything below is examples and tips for use
@@ -245,7 +252,8 @@ local restoreFound, restoreFoundSwitch = false --Initializing so they are in sco
 function addParam(name, displayText, formatString, forcePrompt, trigger, variableOverride) --To anyone that doesn't understand this very well, probably not your best idea to go in here.
   if trigger == nil then trigger = true end --Defaults to being able to run
   if not trigger then return end --This is what the trigger is for. Will not run if trigger not there
-  if restoreFoundSwitch or tArgs["-default"] then forcePrompt = false end --Don't want to prompt if these
+  if restoreFoundSwitch or tArgs["-default"] then forcePrompt = false end --Don't want to prompt if these. Default is no variable because resuming
+  if not restoreFoundSwitch and tArgs["-promptall"] then forcePrompt = true end
   local toGetText = name:lower() --Because all params are now lowered
   local formatType = formatString:match("^%a+"):lower() or error("Format String Unknown: "..formatString) --Type of format string
   local args = formatString:sub(({formatString:find(formatType)})[2] + 2).."" --Everything in formatString but the type and space
@@ -463,6 +471,11 @@ addParam("startY", "Start Y","number 1-256")
 addParam("keepOpen", "Slots to Keep Open", "number 1-15")
 addParam("careAboutResources", "Care About Resources","boolean")
 addParam("maxTries","Tries Before Bedrock", "number 1-9001")
+--Auto Startup
+addParam("autoResume", "Auto Resume", "boolean")
+addParam("autoRestart", "Auto Restart", "boolean", nil, nil, "autoResume")
+addParam("startupRename", "Startup Rename","string", nil, autoResume)
+addParam("startupName", "Startup File", "string", nil, autoResume)
 --Ore Quarry
 addParam("oreQuarry", "Ore Quarry", "boolean" )
 if oreQuarry and not turtle.inspect then
@@ -477,7 +490,24 @@ addParam("extraDumpItems", "", "force", nil, oldOreQuarry, "extraDropItems") --c
 --New Ore
 addParam("blacklist","Ore Blacklist", "string", nil, oreQuarry, "oreQuarryBlacklistName")
 
-
+--Auto Startup functions
+if autoResume and not fs.exists(startupRename) then --Don't do for restore because would overwrite renamed thing. Users can still -restore and -autoResume, though
+  
+end
+--oreQuarry blacklist
+local blacklist = { "minecraft:air",  "minecraft:bedrock", "minecraft:cobblestone", "minecraft:dirt", "minecraft:ice", "minecraft:ladder", "minecraft:netherrack", "minecraft:sand", "minecraft:sandstone",
+  "minecraft:snow", "minecraft:snow_layer", "minecraft:stone", "minecraft:gravel", "minecraft:grass" }
+for a,b in pairs(blacklist) do
+  blacklist[b], blacklist[b] = true, nil --Switch
+end
+if fs.exists(oreQuarryBlacklistName) then --Loading user-defined blacklist
+  local file = fs.open(oreQuarryBlacklistName, "r")
+  blacklist = {}
+  for a in file:readAll():gmatch("[^,]+") do
+    blacklist[a:match("%S+:%S+")] = true --Grab only the actual characters, not whitespaces
+  end
+  file:close()
+end
 
 --Manual Position
 if tArgs["-manualpos"] then --Gives current coordinates in xPos,zPos,yPos, facing
@@ -496,21 +526,6 @@ if addParam("atChest", "Is at Chest", "force") then --This sets position to 0,1,
   end
   xPos, zPos, yPos, facing, rowCheck, layersDone = 0,1,1, 0, true, math.ceil(neededLayer/3)
   events = {{"goto",1,1,neededLayer, 0}}
-end
-
---oreQuarry blacklist
-local blacklist = { "minecraft:air",  "minecraft:bedrock", "minecraft:cobblestone", "minecraft:dirt", "minecraft:ice", "minecraft:ladder", "minecraft:netherrack", "minecraft:sand", "minecraft:sandstone",
-  "minecraft:snow", "minecraft:snow_layer", "minecraft:stone", "minecraft:gravel", "minecraft:grass" }
-for a,b in pairs(blacklist) do
-  blacklist[b], blacklist[b] = true, nil --Switch
-end
-if fs.exists(oreQuarryBlacklistName) then --Loading user-defined blacklist
-  local file = fs.open(oreQuarryBlacklistName, "r")
-  blacklist = {}
-  for a in file:readAll():gmatch("[^,]+") do
-    blacklist[a:match("%S+:%S+")] = true --Grab only the actual characters, not whitespaces
-  end
-  file:close()
 end
 
 

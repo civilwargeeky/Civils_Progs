@@ -23,6 +23,12 @@
   New parameters:
     -blacklist: set the name of the oreQuarry blacklist file
     -oldOreQuarry: forces use of old ore quarry, instead of new
+    -autoResume: saves a startup file to run quarry with resume
+    -autoRestart: same as above
+    -startupRename: changes what the startup file is renamed to
+    -startupName: the file to save the startup to (usually "startup" but I don't know what OSs may do)
+    -promptAll: feeling adventurous? This will prompt you for literally every parameter
+    
 
 ----Quarry Receiver----
 --Version 3.5.4 (first recorded)
