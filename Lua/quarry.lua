@@ -61,12 +61,20 @@ fingerprint = "quarry"
 
 local help_paragraph = [[
 Welcome!: Welcome to quarry help. Below are help entries for all parameters. Examples and tips are at the bottom.
--Default: This will force no prompts. If you use this and nothing else, only defaults will be used.
+-default: This will force no prompts. If you use this and nothing else, only defaults will be used.
 -dim: [length] [width] [height] This sets the dimensions for the quarry
 -invert: [t/f] If true, quarry will be inverted (go up instead of down)
 -rednet: [t/f] If true and you have a wireless modem on the turtle, will attempt to make a rednet connection for sending important information to a screen
 -restore / -resume: If your quarry stopped in the middle of its run, use this to resume at the point where the turtle was. Not guarenteed to work properly. For more accurate location finding, check out the -GPS parameter
 -oreQuarry: [t/f] If true, the turtle will use ore quarry mode. It will not mine the blocks that are placed in the turtle initially. So if you put in stone, it will ignore stone blocks and only mine ores.
+-oreQuarry: [t/f] If you are using a newer version of CC, you won't have to put in any compare blocks. (CC 1.64+)
+-blacklist: [file name] If using oreQuarry, this is the blacklist file it will read. Example --
+  minecraft:stone
+  minecraft:sand
+  ThermalExpansion:Sponge
+  ThermalFoundation:Storage
+  
+  If you have bspkrsCore, look for "UniqueNames.txt" in your config
 -atChest: [force] This is for use with "-restore," this will tell the restarting turtle that it is at its home chest, so that if it had gotten lost, it now knows where it is.
 -doRefuel: [t/f] If true, the turtle will refuel itself with coal and planks it finds on its mining run
 -doCheckFuel: [t/f] If you for some reason don't want the program to check fuel usage, set to false. This is honestly a hold-over from when the refueling algorithm was awful...
@@ -79,6 +87,7 @@ Welcome!: Welcome to quarry help. Below are help entries for all parameters. Exa
 -startY: [current Y coord] Randomly encountering bedrock? This is the parameter for you! Just give it what y coordinate you are at right now. If it is not within bedrock range, it will never say it found bedrock
 -extraDropItems: [force] If oreQuarry then this will prompt the user for extra items to drop, but not compare to (like cobblestone)
 -dumpCompareItems: [t/f] If oreQuarry and this is true, the turtle will dump off compare blocks instead of storing them in a chest
+-oldOreQuarry: [t/f] If you are using new CC versions, you can use this to use the old oreQuarry.
 -maxTries: [number] This is the number of times the turtle will try to dig before deciding its run into bedrock.
 -logging: [t/f] If true, will record information about its mining run in a folder at the end of the mining run
 -doBackup: [t/f] If false, will not back up important information and cannot restore, but will not make an annoying file (Actually I don't really know why anyone would use this...)
@@ -460,9 +469,13 @@ if oreQuarry and not turtle.inspect then
   oldOreQuarry = true
   oreQuarry = false
 end
+--Old Ore
+addParam("oldOreQuarry", "Old Ore Quarry", "boolean")
 addParam("dumpCompareItems", "Dump Compare Items", "boolean", nil, oldOreQuarry) --Do not dump compare items if not oreQuarry
 addParam("extraDropItems", "", "force", nil, oldOreQuarry) --Prompt for extra dropItems
 addParam("extraDumpItems", "", "force", nil, oldOreQuarry, "extraDropItems") --changed to Dump
+--New Ore
+addParam("blacklist","Ore Blacklist", "string", nil, oreQuarry, "oreQuarryBlacklistName")
 
 
 
@@ -485,6 +498,7 @@ if addParam("atChest", "Is at Chest", "force") then --This sets position to 0,1,
   events = {{"goto",1,1,neededLayer, 0}}
 end
 
+--oreQuarry blacklist
 local blacklist = { "minecraft:air",  "minecraft:bedrock", "minecraft:cobblestone", "minecraft:dirt", "minecraft:ice", "minecraft:ladder", "minecraft:netherrack", "minecraft:sand", "minecraft:sandstone",
   "minecraft:snow", "minecraft:snow_layer", "minecraft:stone", "minecraft:gravel", "minecraft:grass" }
 for a,b in pairs(blacklist) do
@@ -901,7 +915,7 @@ function logMiningRun(textExtension, extras) --Logging mining runs
   write("Days to complete mining run: ",os.day()-originalDay)
   write("Day Started: ", originalDay)
   write("Number of times resumed: ", numResumed)
-  write("Was an ore quarry? ",boolToText(oreQuarry))
+  write("Was an ore quarry? ",boolToText(oreQuarry or oldOreQuarry))
   write("Was inverted? ",boolToText(invert))
   write("Was using rednet? ",boolToText(rednetEnabled))
   write("Chest was on the ",dropSide," side")
@@ -1032,12 +1046,13 @@ function count(add) --Done any time inventory dropped and at end, true=add, fals
 end
 
 --Mining functions
-function dig(doAdd, func, inspectFunc)
+function dig(doAdd, mineFunc, inspectFunc) --Note, turtle will not bother comparing if not given an inspectFunc
   if doAdd == nil then doAdd = true end
-  func = func or turtle.dig
+  mineFunc = mineFunc or turtle.dig
   local function retTab(tab) if type(tab) == "table" then return tab end end --Please ignore the stupid one-line trickery. I felt special writing that. (Unless it breaks, then its cool)
+    --Mine if not in blacklist. inspectFunc returns success and (table or string) so retTab filters out the string and the extra table prevents errors.
   if not oreQuarry or not inspectFunc or not blacklist[(retTab(({inspectFunc()})[2]) or {name = "none"}).name] then --Will stop at first false, last part won't run if one of first are false
-   if func() then
+   if mineFunc() then
      if doAdd then
        mined = mined + 1
      end
@@ -1061,7 +1076,7 @@ if inverted then --If inverted, switch the options
   digUp, digDown = digDown, digUp
 end
 
-function smartDig(digUp, digDown) --This function is used only in mine when oreQuarry
+function smartDig(digUp, digDown) --This function is used only in mine when oldOreQuarry
   local blockAbove, blockBelow = digUp and turtle.detectUp(), digDown and turtle.detectDown() --These control whether or not the turtle digs
   local index = 1
   for i=1, #compareSlots do
