@@ -29,7 +29,7 @@ doRefuel = false --Whenever it comes to start location will attempt to refuel fr
 keepOpen = 1 --How many inventory slots it will attempt to keep open at all times [Default 1]
 fuelSafety = "moderate" --How much fuel it will ask for: safe, moderate, and loose [Default moderate]
 saveFile = "Civil_Quarry_Restore" --Where it saves restore data [Default "Civil_Quarry_Restore"]
-autoResume = false --If true, turtle will auto-restart when loaded. [Default false]
+autoResume = true --If true, turtle will auto-restart when loaded. [Default true]
 startupRename = "oldStartup.quarry" --What the startup is temporarily renamed to [Default "oldStartup.quarry"]
 startupName = "startup" --What the turtle auto-resumes with [Default "startup"]
 doBackup = true --If it will keep backups for session persistence [Default true]
@@ -341,7 +341,7 @@ addParam("doBackup", "Backup Save File", "boolean")
 addParam("saveFile", "Save File Name", "string")
 
 restoreFound = fs.exists(saveFile)
-restoreFoundSwitch = (tArgs["-restore"] or tArgs["-resume"] or tArgs["-atchest"]) and restoreFound
+restoreFoundSwitch = (tArgs["-restore"] or tArgs["-resume"] or tArgs["-atchest"]) and restoreFound and doBackup
 if restoreFoundSwitch then
   local file = fs.open(saveFile,"r")
   local test = file.readAll() ~= ""
@@ -472,8 +472,8 @@ addParam("keepOpen", "Slots to Keep Open", "number 1-15")
 addParam("careAboutResources", "Care About Resources","boolean")
 addParam("maxTries","Tries Before Bedrock", "number 1-9001")
 --Auto Startup
-addParam("autoResume", "Auto Resume", "boolean")
-addParam("autoRestart", "Auto Restart", "boolean", nil, nil, "autoResume")
+addParam("autoResume", "Auto Resume", "boolean", nil, doBackup)
+addParam("autoRestart", "Auto Restart", "boolean", nil, doBackup, "autoResume")
 addParam("startupRename", "Startup Rename","string", nil, autoResume)
 addParam("startupName", "Startup File", "string", nil, autoResume)
 --Ore Quarry
@@ -492,7 +492,27 @@ addParam("blacklist","Ore Blacklist", "string", nil, oreQuarry, "oreQuarryBlackl
 
 --Auto Startup functions
 if autoResume and not fs.exists(startupRename) then --Don't do for restore because would overwrite renamed thing. Users can still -restore and -autoResume, though
-  
+  if fs.exists(startupName) then
+    fs.move(startupName, startupRename)
+  end
+  local file = fs.open(startupName,"r")
+  file.writeLine( --The below is on the left because spacing
+[[
+--This is an auto-generated startup
+--Made by civilwargeeky's Variable Size Quarry
+print("Now Resuming Quarry")
+print("Press any key to quit. You have 5 seconds.")
+local event
+for i=5,1,-1 do
+  print(i)
+  os.setTimer(1)
+  event = os.pullEvent()
+end
+if event == "timer" then
+  os.run({},"]]..shell.getRunningProgram()..[[","-resume")
+end
+  ]])
+  file.close()
 end
 --oreQuarry blacklist
 local blacklist = { "minecraft:air",  "minecraft:bedrock", "minecraft:cobblestone", "minecraft:dirt", "minecraft:ice", "minecraft:ladder", "minecraft:netherrack", "minecraft:sand", "minecraft:sandstone",
@@ -647,6 +667,7 @@ if doCheckFuel and checkFuel() < neededFuel then
     end
     neededFuelItems = math.ceil((neededFuel - checkFuel()) / oneFuel) --This line is not repeated uselessly, it's for the display function
   end
+  select(1)
 end
 --Ender Chest Obtaining
 function promptEnderChest()
@@ -873,7 +894,15 @@ function display() --This is just the last screen that displays at the end
     sendMessage(channels.send,channels.receive, finalTable)
     modem.close(channels.receive)
   end
-  if doBackup then fs.delete(saveFile) end
+  if doBackup then 
+    fs.delete(saveFile)
+    if autoResume then --Getting rid of the original startup files and replacing
+      fs.delete(startupName)
+      if fs.exists(startupRename) then
+        fs.move(startupRename, startupName)
+      end
+    end
+  end
 end
 function updateDisplay() --Runs in Mine(), display information to the screen in a certain place
 screen(1,1)
@@ -1238,11 +1267,11 @@ function mine(doDigDown, doDigUp, outOfPath,doCheckInv) -- Basic Move Forward
       for i=1, 16 do
         if fuelSwitch then break end
         if turtle.getItemCount(i) > 0 and slot[i][1] == 2 then --If there are items and type 2 (fuel)
-          turtle.select(i)
+          select(i)
           fuelSwitch = midRunRefuel(i) --See above "function drop" for usage
         end
       end
-      turtle.select(1) --Cleanup
+      select(1) --Cleanup
       print("Done fueling")
       if checkFuel() > initialFuel then 
         continueEvac = false
@@ -1254,7 +1283,9 @@ function mine(doDigDown, doDigUp, outOfPath,doCheckInv) -- Basic Move Forward
     end
     if continueEvac then
       eventClear() --Clear any annoying events for evac
-      endingProcedure("Turtle ran low on fuel so was brought back to start for you :)\n\nTo resume where you left off, use '-startDown "..tostring(y-2).."' when you start") --Finish the program
+      endingProcedure() --End the program
+      print("Turtle ran low on fuel so was brought back to start for you :)\n\nTo resume where you left off, use '-startDown "..tostring(y-2).."' when you start")
+      error("",0)
     end
   end
   local count = 0
@@ -1501,7 +1532,7 @@ function dropOff() --Not local because called in mine()
   end
   return true
 end
-function endingProcedure(endingMessage) --Used both at the end and in "biometrics"
+function endingProcedure() --Used both at the end and in "biometrics"
   eventAdd("goto",1,1,yPos,2,"quarryStart") --Allows for startDown variable
   eventAdd("goto",0,1,1,2, "quarryStart") --Go back to base
   runAllEvents()
@@ -1521,7 +1552,6 @@ function endingProcedure(endingMessage) --Used both at the end and in "biometric
   eventAdd("display")
   --Log current mining run
   eventAdd("logMiningRun",logExtension)
-  eventAdd("error",endingMessage or "",0)
   toQuit = true --I'll use this flag to clean up (legacy)
   runAllEvents()
 end

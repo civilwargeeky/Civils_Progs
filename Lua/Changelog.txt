@@ -20,6 +20,9 @@
   Added new ore quarry to main program
   Removed inverting doDigUp and doDigDown in mine function
   digUp and digDown are now relative everywhere
+  Now autoresumes by default!
+  Fixed bug where turtle would loudly error when done
+  Fixed bug where turtle does not immediately select 1 after fueling
   New parameters:
     -blacklist: set the name of the oreQuarry blacklist file
     -oldOreQuarry: forces use of old ore quarry, instead of new

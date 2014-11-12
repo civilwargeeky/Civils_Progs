@@ -11,6 +11,7 @@ Quarry Receiver x.x.x (matches current quarry):
   ToDo:
     Save file to restart with
     When a monitor receives final message, have an option for removing screen or restarting and waiting for another message
+    Test if themes folder would actually work
     
   Ideas:
   1. All themes are in files in a "themes" folder.
@@ -119,10 +120,6 @@ Quarry Version 3.5.5:
     maybe look for multiple "-forcePrompt setting" parameters, and each time one is found, 
 add it to a table. When you do addParam function, check if on force prompt table, then prompt if so.
     To look for multiple of the same command, check quarryReceiver: just loop through all commands
-
-Things for 3.5.5:
-  Look into bug where it errors line 807. Its an event that calls nil
-  Make percent a ceil instead of a floor. Otherwise make sure it is counting all movement. Experimentally, I had a quarry at 99% finish
   
 Things for 3.5.6:
   Cool Ideas from elektronemulo:
@@ -134,6 +131,7 @@ Things for 3.5.6:
   
 Things for 3.5.7:
   Organize all the things! Everything is so messy right now...
+  Find out why turtle movement percent is slightly off
   In quarry tArgs, make a way to take out key value pairs in all forms (?)
   
 Things to add for quarry version 3.6.0 (After rednet update and shell is done):
