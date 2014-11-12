@@ -122,7 +122,6 @@ add it to a table. When you do addParam function, check if on force prompt table
 
 Things for 3.5.5:
   Look into bug where it errors line 807. Its an event that calls nil
-  Implement new oreQuarry along with old one. Like, if turtle.inspect exists, use new one, otherwise use old one. Completely separate them in the code, though
   Make percent a ceil instead of a floor. Otherwise make sure it is counting all movement. Experimentally, I had a quarry at 99% finish
   
 Things for 3.5.6:

@@ -1,10 +1,8 @@
 --Civilwargeeky's Quarry Program--
-  VERSION = "3.5.4"
+  VERSION = "3.5.5"
 --[[ 
 Recent Changes:
-  Changes with receiver
-  Fixed Bug with modem in most recent version of CC
-  Ore Quarry!!!
+  New Ore Quarry System
   Completely redid the system of dropping items off
   Improved session restoring for those using fuel
   Added New Rednet Support
@@ -43,6 +41,7 @@ startDown = 0 --How many blocks to start down from the top of the mine [Default 
 enderChestEnabled = false --Whether or not to use an ender chest [Default false]
 enderChestSlot = 16 --What slot to put the ender chest in [Default 16]
 oreQuarry = false --Enables ore quarry functionality [Default false]
+oreQuarryBlacklistName = "oreQuarryBlacklist.txt" --This is the file that will be parsed for item names [Default "oreQuarryBlacklist"]
 dumpCompareItems = true --If ore quarry, the turtle will dump items compared to (like cobblestone) [Default true]
 --Standard number slots for fuel (you shouldn't care)
 fuelTable = { --Will add in this amount of fuel to requirement.
@@ -158,8 +157,8 @@ end
 
 local tArgs = {...}
 --Pre-defining variables
-      xPos,yPos,zPos,facing,percent,mined,moved,relxPos, rowCheck, connected, isInPath, layersDone, attacked, startY, chestFull, gotoDest, atChest, fuelLevel, numDropOffs, allowedItems, compareSlots, dumpSlots, selectedSlot, extraDropItems
-    = 0,   1,   1,   0,     0,      0,    0,    1,       true   ,  false,     true,     1,          0,        0,      false,     "",       false,   0,         0,           {},             {},           {},      1,            false
+      xPos,yPos,zPos,facing,percent,mined,moved,relxPos, rowCheck, connected, isInPath, layersDone, attacked, startY, chestFull, gotoDest, atChest, fuelLevel, numDropOffs, allowedItems, compareSlots, dumpSlots, selectedSlot, extraDropItems, oldOreQuarry
+    = 0,   1,   1,   0,     0,      0,    0,    1,       true   ,  false,     true,     1,          0,        0,      false,     "",       false,   0,         0,           {},             {},           {},      1,            false,          false
     
 for i=1, 16 do --Initializing various inventory management tables
   allowedItems[i] = 0 --Number of items allowed in slot when dropping items
@@ -169,7 +168,7 @@ totals = {cobble = 0, fuel = 0, other = 0} -- Total for display (cannot go insid
 
 function resetDumpSlots()
     for i=1, 16 do
-      if oreQuarry then
+      if oldOreQuarry then
         if turtle.getItemCount(i) > 0 and i~= enderChestSlot then
           dumpSlots[i] = true
         else
@@ -179,9 +178,9 @@ function resetDumpSlots()
         dumpSlots[i] = false
       end
     end
-    if not oreQuarry and enderChestSlot == 1 then
+    if not oldOreQuarry and enderChestSlot == 1 then
       dumpSlots[2] = true
-    elseif not oreQuarry then
+    elseif not oldOreQuarry then
       dumpSlots[1] = true
     end
 end
@@ -457,9 +456,15 @@ addParam("careAboutResources", "Care About Resources","boolean")
 addParam("maxTries","Tries Before Bedrock", "number 1-9001")
 --Ore Quarry
 addParam("oreQuarry", "Ore Quarry", "boolean" )
-addParam("dumpCompareItems", "Dump Compare Items", "boolean", nil, oreQuarry) --Do not dump compare items if not oreQuarry
-addParam("extraDropItems", "", "force", nil, oreQuarry) --Prompt for extra dropItems
-addParam("extraDumpItems", "", "force", nil, oreQuarry, "extraDropItems") --changed to Dump
+if oreQuarry and not turtle.inspect then
+  oldOreQuarry = true
+  oreQuarry = false
+end
+addParam("dumpCompareItems", "Dump Compare Items", "boolean", nil, oldOreQuarry) --Do not dump compare items if not oreQuarry
+addParam("extraDropItems", "", "force", nil, oldOreQuarry) --Prompt for extra dropItems
+addParam("extraDumpItems", "", "force", nil, oldOreQuarry, "extraDropItems") --changed to Dump
+
+
 
 --Manual Position
 if tArgs["-manualpos"] then --Gives current coordinates in xPos,zPos,yPos, facing
@@ -478,6 +483,20 @@ if addParam("atChest", "Is at Chest", "force") then --This sets position to 0,1,
   end
   xPos, zPos, yPos, facing, rowCheck, layersDone = 0,1,1, 0, true, math.ceil(neededLayer/3)
   events = {{"goto",1,1,neededLayer, 0}}
+end
+
+local blacklist = { "minecraft:air",  "minecraft:bedrock", "minecraft:cobblestone", "minecraft:dirt", "minecraft:ice", "minecraft:ladder", "minecraft:netherrack", "minecraft:sand", "minecraft:sandstone",
+  "minecraft:snow", "minecraft:snow_layer", "minecraft:stone", "minecraft:gravel", "minecraft:grass" }
+for a,b in pairs(blacklist) do
+  blacklist[b], blacklist[b] = true, nil --Switch
+end
+if fs.exists(oreQuarryBlacklistName) then --Loading user-defined blacklist
+  local file = fs.open(oreQuarryBlacklistName, "r")
+  blacklist = {}
+  for a in file:readAll():gmatch("[^,]+") do
+    blacklist[a:match("%S+:%S+")] = true --Grab only the actual characters, not whitespaces
+  end
+  file:close()
 end
 
 
@@ -621,7 +640,7 @@ if enderChestEnabled then
   sleep(2)
 end
 --Setting which slots are marked as compare slots
-if oreQuarry then
+if oldOreQuarry then
   if not restoreFoundSwitch then --We don't want to reset compare blocks every restart
     local counter = 0
     for i=1, 16 do if turtle.getItemCount(i) > 0 and i ~= enderChestSlot then counter = counter+1 end end --If the slot has items, but isn't enderChest slot if it is enabled
@@ -966,7 +985,7 @@ end
 
 --This is so the turtle will properly get types, otherwise getRep of a type might not be a dumpSlot, even though it should be.
 if not restoreFoundSwitch then --We only want this to happen once
-  if oreQuarry then --If its not ore quarry, this screws up type assigning
+  if oldOreQuarry then --If its not ore quarry, this screws up type assigning
     initialTypes, initialCount = assignTypes()
   else
     initialTypes, initialCount = {1}, 1
@@ -1013,25 +1032,30 @@ function count(add) --Done any time inventory dropped and at end, true=add, fals
 end
 
 --Mining functions
-function dig(doAdd, func)
+function dig(doAdd, func, inspectFunc)
   if doAdd == nil then doAdd = true end
   func = func or turtle.dig
-  if func() then
-    if doAdd then
-      mined = mined + 1
-    end
-    return true
+  local function retTab(tab) if type(tab) == "table" then return tab end end --Please ignore the stupid one-line trickery. I felt special writing that. (Unless it breaks, then its cool)
+  if not oreQuarry or not inspectFunc or not blacklist[(retTab(({inspectFunc()})[2]) or {name = "none"}).name] then --Will stop at first false, last part won't run if one of first are false
+   if func() then
+     if doAdd then
+       mined = mined + 1
+     end
+     return true
+   else
+     return false
+   end
   end
-  return false
+  return true --This only runs if oreQuarry but item not in blacklist
 end
 
 
 
 function digUp(doAdd)--Regular functions :) I switch definitions for optimization (I think)
-  return dig(doAdd, turtle.digUp)
+  return dig(doAdd, turtle.digUp, turtle.inspectUp)
 end
 function digDown(doAdd)
-  return dig(doAdd, turtle.digDown)
+  return dig(doAdd, turtle.digDown, turtle.inspectDown)
 end
 if inverted then --If inverted, switch the options
   digUp, digDown = digDown, digUp
@@ -1149,6 +1173,20 @@ function attackDown(doAdd)
   end
 end
 
+function detect(func)
+  func = func or turtle.detect
+  return func()
+end
+function detectUp()
+  if inverted then return detect(turtle.detectDown)
+  else return detect(turtle.detectUp) end
+end
+function detectDown()
+  if inverted then return detect(turtle.detectUp)
+  else return detect(turtle.detectDown) end
+end
+
+
 
 function mine(doDigDown, doDigUp, outOfPath,doCheckInv) -- Basic Move Forward
   if doCheckInv == nil then doCheckInv = true end
@@ -1156,9 +1194,6 @@ function mine(doDigDown, doDigUp, outOfPath,doCheckInv) -- Basic Move Forward
   if doDigUp == nil then doDigUp = true end
   if outOfPath == nil then outOfPath = false end
   isInPath = (not outOfPath) --For rednet
-  if inverted then
-    doDigUp, doDigDown = doDigDown, doDigUp --Just Switch the two if inverted
-  end
   if not outOfPath and (checkFuel() <= xPos + zPos + yPos + 5) then --If the turtle can just barely get back to the start, we need to get it there. We don't want this to activate coming back though...
     local continueEvac = true --This turns false if more fuel is acquired
     if doRefuel then --Attempt an emergency refueling
@@ -1216,22 +1251,17 @@ function mine(doDigDown, doDigUp, outOfPath,doCheckInv) -- Basic Move Forward
   end
   checkSanity() --Not kidding... This is necessary
   saveProgress(tab)
-  if not oreQuarry then --The digging up and down part
-    if doDigUp then
-      while turtle.detectUp() do 
-        sleep(0) --Calls coroutine.yield
-        if not dig(true,turtle.digUp) then --This needs to be an absolute, because we are switching doDigUp/Down
-          if not attackUp() then
-            if yPos > (startY-7) then bedrock() end --Checking for bedrock, but respecting user wishes
-          end
-        end
+
+  if doDigUp then--The digging up and down part
+    sleep(0) --Calls coroutine.yield
+    if not digUp(true) and detectUp() then --This is relative: will dig down first on invert
+      if not attackUp() then
+        if yPos > (startY-7) then bedrock() end --Checking for bedrock, but respecting user wishes
       end
     end
-    if doDigDown then
-     dig(true,turtle.digDown) --This needs to be absolute as well
-    end
-  else
-    smartDig(doDigUp, doDigDown)
+  end
+  if doDigDown then
+   digDown(true) --This needs to be absolute as well
   end
   percent = math.ceil(moved/moveVolume*100)
   updateDisplay()
@@ -1404,7 +1434,7 @@ function drop(side, final)
     end
   end
   
-  if oreQuarry then count(nil) end--Subtract the items still there if oreQuarry
+  if oldOreQuarry then count(nil) end--Subtract the items still there if oreQuarry
   resetDumpSlots() --So that slots gone aren't counted as dump slots next
   
   select(1) --For fanciness sake
