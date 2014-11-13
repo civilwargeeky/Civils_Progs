@@ -1127,8 +1127,9 @@ if inverted then --If inverted, switch the options
   digUp, digDown = digDown, digUp
 end
 
-function smartDig(digUp, digDown) --This function is used only in mine when oldOreQuarry
-  local blockAbove, blockBelow = digUp and turtle.detectUp(), digDown and turtle.detectDown() --These control whether or not the turtle digs
+function smartDig(doDigUp, doDigDown) --This function is used only in mine when oldOreQuarry
+  if inverted then doDigUp, doDigDown = doDigDown, doDigUp end --Switching for invert
+  local blockAbove, blockBelow = doDigUp and turtle.detectUp(), doDigDown and turtle.detectDown() --These control whether or not the turtle digs
   local index = 1
   for i=1, #compareSlots do
     if not (blockAbove or blockBelow) then break end --We don't want to go selecting if there is nothing to dig
@@ -1320,16 +1321,20 @@ function mine(doDigDown, doDigUp, outOfPath,doCheckInv) -- Basic Move Forward
   checkSanity() --Not kidding... This is necessary
   saveProgress(tab)
 
-  if doDigUp then--The digging up and down part
-    sleep(0) --Calls coroutine.yield
-    if not digUp(true) and detectUp() then --This is relative: will dig down first on invert
-      if not attackUp() then
-        if yPos > (startY-7) then bedrock() end --Checking for bedrock, but respecting user wishes
+  if not oldOreQuarry then
+    if doDigUp then--The digging up and down part
+      sleep(0) --Calls coroutine.yield
+      if not digUp(true) and detectUp() then --This is relative: will dig down first on invert
+        if not attackUp() then
+          if yPos > (startY-7) then bedrock() end --Checking for bedrock, but respecting user wishes
+        end
       end
     end
-  end
-  if doDigDown then
-   digDown(true) --This needs to be absolute as well
+    if doDigDown then
+     digDown(true) --This needs to be absolute as well
+    end
+  else --If oldQuarry
+    smartDig(doDigUp,doDigDown)
   end
   percent = math.ceil(moved/moveVolume*100)
   updateDisplay()
