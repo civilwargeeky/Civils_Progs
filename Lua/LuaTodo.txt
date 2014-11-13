@@ -9,6 +9,7 @@ Quarry Receiver x.x.x (matches current quarry):
     1. Receiver cannot connect properly over repeaters with legacy on. Old quarry won't recognize new format
     2. Receiver cannot properly display the stop message for old quarries. It was sent in two different messages so it won't work
   ToDo:
+    ASAP: Make a parameter for setting modem side
     Save file to restart with
     When a monitor receives final message, have an option for removing screen or restarting and waiting for another message
     Test if themes folder would actually work
