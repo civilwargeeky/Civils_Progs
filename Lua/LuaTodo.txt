@@ -120,7 +120,10 @@ Quarry Version 3.5.5:
     maybe look for multiple "-forcePrompt setting" parameters, and each time one is found, 
 add it to a table. When you do addParam function, check if on force prompt table, then prompt if so.
     To look for multiple of the same command, check quarryReceiver: just loop through all commands
-  
+
+Things for 3.5.5:
+  oldOreQuarry doesn't work. Fix it!
+    
 Things for 3.5.6:
   Cool Ideas from elektronemulo:
   -flatBedrock [y/N]
