@@ -13,7 +13,7 @@ Recent Changes:
     -atChest [force] Using this with -resume will tell the turtle that it is at its chest, and needs to go back to where it was
 ]]
 --Defining things
-civilTable = nil; _G.civilTable = {}; setmetatable(civilTable, {__index = _G}); setfenv(1,civilTable)
+civilTable = nil; _G.civilTable = {}; setmetatable(civilTable, {__index = getfenv()}); setfenv(1,civilTable)
 originalDay = os.day() --Used in logging
 numResumed = 0 --Number of times turtle has been resumed
 -------Defaults for Arguments----------
@@ -491,25 +491,32 @@ addParam("extraDumpItems", "", "force", nil, oldOreQuarry, "extraDropItems") --c
 addParam("blacklist","Ore Blacklist", "string", nil, oreQuarry, "oreQuarryBlacklistName")
 
 --Auto Startup functions
-if autoResume and not fs.exists(startupRename) then --Don't do for restore because would overwrite renamed thing. Users can still -restore and -autoResume, though
+if autoResume and not restoreFoundSwitch then --Don't do for restore because would overwrite renamed thing. Can't edit mid-run because no shell in restarted
   if fs.exists(startupName) then
     fs.move(startupName, startupRename)
   end
-  local file = fs.open(startupName,"r")
+  local file = fs.open(startupName,"w")
   file.writeLine( --The below is on the left because spacing
 [[
 --This is an auto-generated startup
 --Made by civilwargeeky's Variable Size Quarry
 print("Now Resuming Quarry")
 print("Press any key to quit. You have 5 seconds.")
+sleep(1)
 local event
 for i=5,1,-1 do
   print(i)
-  os.setTimer(1)
+  os.startTimer(1)
   event = os.pullEvent()
+  if event ~= "timer" then break end
 end
 if event == "timer" then
   os.run({},"]]..shell.getRunningProgram()..[[","-resume")
+else
+  fs.delete("]]..startupName..[[")
+  if fs.exists("]]..startupRename..[[") then
+    fs.move("]]..startupRename.."\",\""..startupName..[[")
+  end
 end
   ]])
   file.close()
