@@ -25,7 +25,7 @@ local continue = true --This keeps the main while loop going
 local tArgs = {...}
 --These two are used by controller in main loop
 local commandString = "" --This will be a command string sent to turtle. This var is stored for display
-local queuedMessage --If a command needs to be sent, this gets set
+local lastCommand --If a command needs to be sent, this gets set
 local defaultSide
 local defaultCommand
 
@@ -877,18 +877,6 @@ clearScreen()
 print("Welcome to Quarry Receiver!")
 sleep(1)
 
-while not initModem() do
-  clearScreen()
-  print("No modem is connected, please attach one")
-  if not peripheral.find then
-    print("What side was that on?")
-    modemSide = read()
-  else
-    os.pullEvent("peripheral")
-  end
-end
-debug("Modem successfully connected!")
-
 --==ARGUMENTS==
 
 --[[
@@ -934,6 +922,22 @@ if parameters.theme then
   screenClass:setTheme(parameters.theme[1])
 end
 
+if parameters.modem then
+  modemSide = parameters.modem[1]
+end
+
+--Init Modem
+while not initModem() do
+  clearScreen()
+  print("No modem is connected, please attach one")
+  if not peripheral.find then
+    print("What side was that on?")
+    modemSide = read()
+  else
+    os.pullEvent("peripheral")
+  end
+end
+debug("Modem successfully connected!")
 
 
 --Init Computer Screen Object (was defined at top)
@@ -1152,9 +1156,9 @@ while continue do
         screen.rec = rec --Set the table
         --Updating screen occurs outside of the if
         local toSend
-        if queuedMessage then
-          toSend = queuedMessage
-          queuedMessage = nil
+        if screen.queuedMessage then
+          toSend = screen.queuedMessage
+          screen.queuedMessage = nil
         else
           toSend = replyMessage
         end
@@ -1176,11 +1180,16 @@ while continue do
         if #commandString > 0 then
           commandString = commandString:sub(1,-2)
         end
+      elseif key == "up" then
+        commandString = lastCommand or commandString --Set to last command, or do nothing if it doesn't exist
+      elseif key == "down" then
+        commandString = "" --If key down, clear
       elseif #key == 1 then
         commandString = commandString..key
       end
     --ALL THE COMMANDS
     else --If we are submitting a command
+      lastCommand = commandString --For using up arrow
       local args = {}
       for a in commandString:gmatch("%S+") do --This captures all individual words in the command string
         args[#args+1] = a:lower()
@@ -1193,7 +1202,7 @@ while continue do
           local screen = screenClass.sides[args[2]]
           if screen then --If the side exists
             if command == "command" and screen.send then --If sending command to the turtle
-              queuedMessage = table.concat(args," ", 3) --Tells message handler to send appropriate message
+              screen.queuedMessage = table.concat(args," ", 3) --Tells message handler to send appropriate message
               --transmit(screen.send, screen.receive, table.concat(args," ", 3), screen.legacy) --This transmits all text in the command with spaces. Duh this is handled when we get message
             end
 

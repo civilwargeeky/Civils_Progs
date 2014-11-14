@@ -805,7 +805,7 @@ function biometrics(isAtBedrock)
   until (event == "timer" and idCheck == id) or (event == "modem_message" and confirm == channels.receive and type(received) == "table")
   if event == "modem_message" then connected = true else connected = false end
   local message = received.message:lower()
-  if message == "stop" then error("Rednet said to stop...",0) end
+  if message == "stop" or message == "quit" or message == "kill" then error("Rednet said to stop...",0) end
   if message == "return" then
     endingProcedure()
     error('Rednet said go back to start...',0)
@@ -819,7 +819,7 @@ function biometrics(isAtBedrock)
       sleep(1) --The turtle sends out periodic messages, which will clear the receiver's queue and send a message (if it exists)
       sendMessage(channels.send, channels.receive, toSend) --This may be a bit overkill, sending the whole message again, but whatever.
       local event, idCheck, confirm, _, message, distance = os.pullEvent()
-    until (event == "modem_message" and confirm == channels.receive and message.message == "resume") or (event == "char")
+    until (event == "modem_message" and confirm == channels.receive and (message.message == "resume" or message.message = "unpause" or message.message == "pause")) or (event == "char")
   end
   
 end
