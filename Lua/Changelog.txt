@@ -23,6 +23,7 @@
   Now autoresumes by default!
   Fixed bug where turtle would loudly error when done
   Fixed bug where turtle does not immediately select 1 after fueling
+  Fixed bug where "pause" command didn't work
   New parameters:
     -blacklist: set the name of the oreQuarry blacklist file
     -oldOreQuarry: forces use of old ore quarry, instead of new

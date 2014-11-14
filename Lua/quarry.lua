@@ -816,6 +816,8 @@ function biometrics(isAtBedrock)
   if message == "pause" then
     print("\nTurtle is paused. Send 'resume' or press any character to resume")
     repeat
+      sleep(1) --The turtle sends out periodic messages, which will clear the receiver's queue and send a message (if it exists)
+      sendMessage(channels.send, channels.receive, toSend) --This may be a bit overkill, sending the whole message again, but whatever.
       local event, idCheck, confirm, _, message, distance = os.pullEvent()
     until (event == "modem_message" and confirm == channels.receive and message.message == "resume") or (event == "char")
   end

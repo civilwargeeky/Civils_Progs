@@ -452,13 +452,14 @@ screenClass.new = function(side, receive, themeFile)
   if side == "computer" then
     self.term = term
   else
-    self.term = peripheral.wrap(side)
-    if not (self.term and peripheral.getType(side) == "monitor") then --Don't create an object if it doesn't exist
+    if peripheral.getType(side) ~= "monitor" then --Don't create an object if it doesn't exist
       if doDebug then
         error("No monitor on side "..tostring(side))
       end
       self = nil --Save memory?
       return false
+    else
+      self.term = peripheral.wrap(side)
     end
   end
   
@@ -1010,7 +1011,7 @@ computer:setSize() --Update changes made to display functions
 for i=1, #parameters do --Do actions for parameters that can be used multiple times
   local command, args = parameters[i][1], parameters[i] --For ease
   if command == "screen" then
-    local a = screenClass.new(args[2], args[3], args[4])
+    local a = screenClass.new(args[2] or "", args[3], args[4])
     debug(type(a))
   end
   
@@ -1175,7 +1176,7 @@ while continue do
           commandString = commandString:sub(1,-2)
         end
       elseif #key == 1 then
-        commandString = commandString..keyMap[key]
+        commandString = commandString..key
       end
     --ALL THE COMMANDS
     else --If we are submitting a command

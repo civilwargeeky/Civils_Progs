@@ -10,7 +10,7 @@ local id, file = tArgs[1], tArgs[2]
 
 if fs.exists(file) then
   print("Removing Existing File")
-  fs.remove(file)
+  fs.delete(file)
 end
 shell.run("pastebin get "..id.." "..file)
 print("Done")
