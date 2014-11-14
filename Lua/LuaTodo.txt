@@ -9,8 +9,6 @@ Quarry Receiver x.x.x (matches current quarry):
     1. Receiver cannot connect properly over repeaters with legacy on. Old quarry won't recognize new format
     2. Receiver cannot properly display the stop message for old quarries. It was sent in two different messages so it won't work
   ToDo:
-    ASAP: Make a parameter for setting modem side
-    Change queued message to be per screen. A global queued message is kind of dumb, considering they have to put in a screen to send from...
     Save file to restart with
     When a monitor receives final message, have an option for removing screen or restarting and waiting for another message
     Test if themes folder would actually work
@@ -117,7 +115,7 @@ Random future thoughts: Maybe make more seamless. Have an arg/option to make cal
 
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 
-Quarry Version 3.5.5:
+Quarry Version 3.5.6:
   General Ideas:
     maybe look for multiple "-forcePrompt setting" parameters, and each time one is found, 
 add it to a table. When you do addParam function, check if on force prompt table, then prompt if so.
@@ -128,10 +126,9 @@ Things for 3.5.6:
   -flatBedrock [y/N]
     would have the turtle mine down to the flat bedrock layer.
     The Direwolf20 packs have had flat bedrock and the 1.7.10 version of his pack has diamonds concentrated a touch lower than default, so I hear. Also, Dark Iron tends to be down in the bedrock layers.)
+    Note: Must test if invert works with startDown
   -enderRefuel [y/N]
     would have the turtle place an enderchest full of fuel, pull fuel from the ender chest and refuel itself, return the extra fuel back to the enderchest, break the chest, and resume.
-  The turtle should send a "status" field through rednet that would say like "paused" and stuff. The screen would just print it if it could.
-  Add in command aliases, like "kill" and "quit" for "stop" and "unpause" and "pause" for "resume"
   
 Things for 3.5.7:
   Organize all the things! Everything is so messy right now...

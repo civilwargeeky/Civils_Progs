@@ -1,4 +1,4 @@
---Quarry Receiver Version 3.5.5
+--Quarry Receiver Version 3.5.6
 --Made by Civilwargeeky
 --[[
 Recent Changes:
@@ -25,7 +25,7 @@ local continue = true --This keeps the main while loop going
 local tArgs = {...}
 --These two are used by controller in main loop
 local commandString = "" --This will be a command string sent to turtle. This var is stored for display
-local queuedMessage --If a command needs to be sent, this gets set
+local lastCommand --If a command needs to be sent, this gets set
 local defaultSide
 local defaultCommand
 
@@ -122,6 +122,7 @@ $$Parameters!
 -colorEditor: makes the main screen a color editor that just prints the current colors. Good for theme making
 current typeColors: title, subtitle, pos, dim, extra, error, info, inverse, command, help, background
 $$Parameters!
+-modem {side}: Sets the modem side to side
 
 -v/-verbose: turns on debug
 
@@ -318,11 +319,25 @@ for a, b in pairs(colors) do --This is so commands color commands can be entered
   colors[a:lower()] = b
 end
 
+local function checkColor(name, text, back) --Checks if a given color works
+  local flag = false
+  for a, b in ipairs(requiredColors) do
+    if b == name then
+      flag == true
+      break
+    end
+  end
+  if not flag or not colors[text] or not colors[back] then return false end
+  return true
+end
+  
+
 local themes = {} --Loaded themes, gives each one a names
 local function newTheme(name)
   name = name:lower() or "none"
   local self = {name = name}
   self.addColor = function(self, name, text, back) --Background is optional. Will not change if nil
+    if not checkColor(name, text, back or "black") then debug("Color check failed: ",name," ",text," ",back); return self end --Back or black because optional
     name = name or "none"
     self[name] = {text = text, background = back}
     return self --Allows for chaining :)
@@ -370,6 +385,19 @@ newTheme("default")
   :addColor("command", colors.lightBlue, colors.black)
   :addColor("help", colors.red, colors.white)
   :addColor("background", colors.white, colors.black)
+  
+newTheme("blue")
+  :addColor("title", 2048, 8192)
+  :addColor("subtitle", 1, 2048)
+  :addColor("pos", 16, 2048)
+  :addColor("dim", 4096, 2048)
+  :addColor("extra", 8, 2048)
+  :addColor("error",  8, 16384)
+  :addColor("info", 2048, 256)
+  :addColor("inverse", 2048, 1)
+  :addColor("command", 2048, 8)
+  :addColor("help", 16384, 1)
+  :addColor("background", 1, 2048)
   
 newTheme("seagle")
   :addColor("title", colors.white, colors.black)
@@ -598,7 +626,10 @@ end
 screenClass.tryAddRaw = function(self, line, text, color, ...) --This will try to add text if Y dimension is a certain size
   local doAdd = {...} --booleans for small, medium, and large
   if type(text) ~= "string" then error("tryAddRaw got "..type(text)..", expected string",2) end
-  text = text or "NIL"
+  if not text then
+    debug("tryAddRaw got no string on line ",line)
+    return false
+  end
   if type(color) ~= "table" then error("tryAddRaw did not get a color",2) end
   --color = color or {text = colors.white}
   for i=1, ySizes do --As of now there are 3 Y sizes
@@ -726,6 +757,7 @@ screenClass.updateNormal = function(self) --This is the normal updateDisplay fun
       self:tryAdd("Used Slots:"..alignR(str(16-message.openSlots),7), theme.extra, false, false, true)
       self:tryAdd("Blocks Mined:"..alignR(str(message.mined), 5), theme.extra, false, false, true)
       self:tryAdd("Spaces Moved:"..alignR(str(message.moved), 5), theme.extra, false, false, true)
+      self:tryAdd(message.status, theme.info, false, false, true)
       if message.chestFull then
         self:tryAdd("Chest Full, Fix It", theme.error, false, true, true)
       end
@@ -758,6 +790,9 @@ screenClass.updateNormal = function(self) --This is the normal updateDisplay fun
       end
       if message.foundBedrock then
         self:tryAdd("Found Bedrock! Please Check!!", theme.error, false, true, true)
+      end
+      if message.status then
+        self:tryAdd("Turtle Status: "..message.status, theme.info, false, true, true)
       end
       if message.isAtChest then
         self:tryAdd("Turtle is at home chest", theme.info, false, true, true)
@@ -876,18 +911,6 @@ clearScreen()
 print("Welcome to Quarry Receiver!")
 sleep(1)
 
-while not initModem() do
-  clearScreen()
-  print("No modem is connected, please attach one")
-  if not peripheral.find then
-    print("What side was that on?")
-    modemSide = read()
-  else
-    os.pullEvent("peripheral")
-  end
-end
-debug("Modem successfully connected!")
-
 --==ARGUMENTS==
 
 --[[
@@ -933,6 +956,22 @@ if parameters.theme then
   screenClass:setTheme(parameters.theme[1])
 end
 
+if parameters.modem then
+  modemSide = parameters.modem[1]
+end
+
+--Init Modem
+while not initModem() do
+  clearScreen()
+  print("No modem is connected, please attach one")
+  if not peripheral.find then
+    print("What side was that on?")
+    modemSide = read()
+  else
+    os.pullEvent("peripheral")
+  end
+end
+debug("Modem successfully connected!")
 
 
 --Init Computer Screen Object (was defined at top)
@@ -1151,9 +1190,9 @@ while continue do
         screen.rec = rec --Set the table
         --Updating screen occurs outside of the if
         local toSend
-        if queuedMessage then
-          toSend = queuedMessage
-          queuedMessage = nil
+        if screen.queuedMessage then
+          toSend = screen.queuedMessage
+          screen.queuedMessage = nil
         else
           toSend = replyMessage
         end
@@ -1175,11 +1214,16 @@ while continue do
         if #commandString > 0 then
           commandString = commandString:sub(1,-2)
         end
+      elseif key == "up" then
+        commandString = lastCommand or commandString --Set to last command, or do nothing if it doesn't exist
+      elseif key == "down" then
+        commandString = "" --If key down, clear
       elseif #key == 1 then
         commandString = commandString..key
       end
     --ALL THE COMMANDS
     else --If we are submitting a command
+      lastCommand = commandString --For using up arrow
       local args = {}
       for a in commandString:gmatch("%S+") do --This captures all individual words in the command string
         args[#args+1] = a:lower()
@@ -1192,12 +1236,12 @@ while continue do
           local screen = screenClass.sides[args[2]]
           if screen then --If the side exists
             if command == "command" and screen.send then --If sending command to the turtle
-              queuedMessage = table.concat(args," ", 3) --Tells message handler to send appropriate message
+              screen.queuedMessage = table.concat(args," ", 3) --Tells message handler to send appropriate message
               --transmit(screen.send, screen.receive, table.concat(args," ", 3), screen.legacy) --This transmits all text in the command with spaces. Duh this is handled when we get message
             end
 
             if command == "color" then
-              screen.theme:addColor(args[3],colors[args[4] or ""],colors[args[5] or ""])
+              screen.theme:addColor(args[3],colors[args[4]],colors[args[5]] )
               updateAllScreens() --Because we are changing a theme color which others may have
             end
             if command == "theme" then

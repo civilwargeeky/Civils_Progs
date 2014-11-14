@@ -13,9 +13,11 @@
   If turtle runs low on fuel, comes back and errors.
   Fixed turtle asking rednet enabled when there is no modem
   Removed invCheckFreq parameter. I doubt anyone used it. It now just checks every 1
+  
 --Version 3.5.4
   Updated rednet sending for new protocol
   Phased out turtle.getFuelLevel in favor of checkFuel
+  
 --Version 3.5.5
   Added new ore quarry to main program
   Removed inverting doDigUp and doDigDown in mine function
@@ -32,8 +34,15 @@
     -startupRename: changes what the startup file is renamed to
     -startupName: the file to save the startup to (usually "startup" but I don't know what OSs may do)
     -promptAll: feeling adventurous? This will prompt you for literally every parameter
+--Version 3.5.6
+  Added in command aliases, like "kill" and "quit" for "stop" and "unpause" and "pause" for "resume"
+  Cool Ideas from elektronemulo
+  New Parameters:
+    -flatBedrock [t/f]: The turtle will initially dig down to bedrock (or possibly a mob) and set startDown from that
+  
     
 
+    
 ----Quarry Receiver----
 --Version 3.5.4 (first recorded)
   Modified rednet system to new protocols
@@ -42,22 +51,33 @@
   So many new parameters
   New theme system
   Multiple screen supported and encouraged!
+  
 --Version 3.5.5
   Added in seagle23's old theme as "seagle"
   Added in proper help
   Slightly changed key handling
   Added support for directly copying pastebin themes into code
+  
+--Version 3.5.6
+  Command sending is now per-screen, not global. Prevents issues where messages send in wrong order
+  Up key now loads previous command
+  Down key now clears command line
+  New Parameter:
+    -modem: sets the side that the modem is on
 
 
 
 ----Quarry Repeater----
 --Version 1.0 (first release)
   Everything is new :)
+  
 --Version 1.0.1
   Added "quarryReceiver" to expected fingerprints
+  
 --Version 1.0.2
   Fixed many bugs
   Ping now works
+  
 --Version 1.0.3
   Thanks to DJF on the CC forums:
     Auto-Adds Reply Channels
@@ -65,10 +85,14 @@
     MC 1.5.2 Support
     Receiver won't add repeated channels
   
+  
+  
 ----MenuAPI----
 --Version 1.0.1
   Program will pass current index to handler
   New Function: separateLines will take text and split it into a table of lines (really just moved this from local)
+  
+  
   
 ----Mod Pack----
 --Version 1.0
