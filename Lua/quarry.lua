@@ -40,6 +40,7 @@ gpsTimeout = 3 --The number of seconds the program will wait to get GPS coords. 
 logging = true --Whether or not the turtle will log mining runs. [Default ...still deciding]
 logFolder = "Quarry_Logs" --What folder the turtle will store logs in [Default "Quarry_Logs"]
 logExtension = "" --The extension of the file (e.g. ".txt") [Default ""]
+flatBedrock = false --If true, will go down to bedrock to set startDown [Default false]
 startDown = 0 --How many blocks to start down from the top of the mine [Default 0]
 enderChestEnabled = false --Whether or not to use an ender chest [Default false]
 enderChestSlot = 16 --What slot to put the ender chest in [Default 16]
@@ -444,7 +445,8 @@ end
 --Params: parameter/variable name, display name, type, force prompt, boolean condition, variable name override
 --Invert
 addParam("invert", "Inverted","boolean", true, nil, "inverted")
-addParam("startDown","Start Down","number 1-256")
+addParam("flatBedrock","Go to bedrock", "boolean")
+addParam("startDown","Start Down","number 1-256", not flatBedrock)
 --Inventory
 addParam("chest", "Chest Drop Side", "side front", nil, nil, "dropSide")
 addParam("enderChest","Ender Chest Enabled","boolean special", nil, nil, "enderChestEnabled") --This will accept anything (including numbers) thats not "f" or "n"
@@ -491,6 +493,12 @@ addParam("extraDropItems", "", "force", nil, oldOreQuarry) --Prompt for extra dr
 addParam("extraDumpItems", "", "force", nil, oldOreQuarry, "extraDropItems") --changed to Dump
 --New Ore
 addParam("blacklist","Ore Blacklist", "string", nil, oreQuarry, "oreQuarryBlacklistName")
+
+
+--for flatBedrock
+if flatBedrock then
+  inverted = true
+end
 
 --Auto Startup functions
 if autoResume and not restoreFoundSwitch then --Don't do for restore because would overwrite renamed thing. Can't edit mid-run because no shell in restarted
@@ -1618,7 +1626,9 @@ if not restoreFoundSwitch then --Regularly
   --Check if it is a mining turtle
   if not isMiningTurtle then
     local a, b = turtle.dig()
-    if a then mined = mined + 1; isMiningTurtle = true
+    if a then 
+      mined = mined + 1
+      isMiningTurtle = true
     elseif b == "Nothing to dig with" then 
       print("This is not a mining turtle. To make a mining turtle, craft me together with a diamond pickaxe")
       error("",0)
@@ -1632,7 +1642,15 @@ if not restoreFoundSwitch then --Regularly
     eventAdd("down") --Add a bunch of down events to get to where it needs to be.
   end
   runAllEvents()
-  if not(y == 1 or y == 2) then down() end --Go down. If y is one or two, it doesn't need to do this.
+  if flatBedrock then
+    while down() do
+      startDown = startDown + 1
+    end
+    up() --It has hit bedrock, now go back up one for proper 3 wide mining
+    startDown = startDown - 2 --Minus 3 because go up 1 and last down fails and goes down
+  elseif not(y == 1 or y == 2) then
+    down() --Go down to align properly. If y is one or two, it doesn't need to do this.
+  end
 else --restore found
   if not(layersDone == layers and not doDigDown) then digDown() end
   if not(layersDone == layers and not doDigUp) then digUp() end  --Get blocks missed before stopped

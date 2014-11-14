@@ -126,6 +126,7 @@ Things for 3.5.6:
   -flatBedrock [y/N]
     would have the turtle mine down to the flat bedrock layer.
     The Direwolf20 packs have had flat bedrock and the 1.7.10 version of his pack has diamonds concentrated a touch lower than default, so I hear. Also, Dark Iron tends to be down in the bedrock layers.)
+    Note: Must test if invert works with startDown
   -enderRefuel [y/N]
     would have the turtle place an enderchest full of fuel, pull fuel from the ender chest and refuel itself, return the extra fuel back to the enderchest, break the chest, and resume.
   
