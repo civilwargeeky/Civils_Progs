@@ -176,6 +176,8 @@ local tArgs = {...}
       xPos,yPos,zPos,facing,percent,mined,moved,relxPos, rowCheck, connected, isInPath, layersDone, attacked, startY, chestFull, gotoDest, atChest, fuelLevel, numDropOffs, allowedItems, compareSlots, dumpSlots, selectedSlot, extraDropItems, oldOreQuarry
     = 0,   1,   1,   0,     0,      0,    0,    1,       true   ,  false,     true,     1,          0,        0,      false,     "",       false,   0,         0,           {},             {},           {},      1,            false,          false
     
+local statusString
+    
 for i=1, 16 do --Initializing various inventory management tables
   allowedItems[i] = 0 --Number of items allowed in slot when dropping items
   dumpSlots[i] = false --Does this slot contain junk items?
@@ -794,7 +796,7 @@ function biometrics(isAtBedrock)
     openSlots = getNumOpenSlots(), mined = mined, moved = moved,
     chestFull = chestFull, isAtChest = (xPos == 0 and yPos == 1 and zPos == 1),
     isGoingToNextLayer = (gotoDest == "layerStart"), foundBedrock = foundBedrock,
-    fuel = checkFuel(), volume = volume,
+    fuel = checkFuel(), volume = volume, status = statusString,
     }
   sendMessage(channels.send, channels.receive, toSend)
   id = os.startTimer(0.1)
@@ -815,11 +817,13 @@ function biometrics(isAtBedrock)
   end
   if message == "pause" then
     print("\nTurtle is paused. Send 'resume' or press any character to resume")
+    statusString = "Paused"
     repeat
       sleep(1) --The turtle sends out periodic messages, which will clear the receiver's queue and send a message (if it exists)
       sendMessage(channels.send, channels.receive, toSend) --This may be a bit overkill, sending the whole message again, but whatever.
       local event, idCheck, confirm, _, message, distance = os.pullEvent()
     until (event == "modem_message" and confirm == channels.receive and (message.message == "resume" or message.message = "unpause" or message.message == "pause")) or (event == "char")
+    statusString = nil
   end
   
 end
@@ -1407,7 +1411,8 @@ end
 function goto(x,z,y, toFace, destination)
   --Will first go to desired z pos, then x pos, y pos varies
   x = x or 1; y = y or 1; z = z or 1; toFace = toFace or facing
-  gotoDest = destination or "" --This is used by biometrics
+  gotoDest = destination or "" --This is used by biometrics.
+  statusString = "Going somewhere"
   --Possible destinations: layerStart, quarryStart
   if yPos > y then --Will go up first if below position
     while yPos~=y do up() end
@@ -1430,6 +1435,7 @@ function goto(x,z,y, toFace, destination)
   turnTo(toFace)
   saveProgress()
   gotoDest = ""
+  statusString = nil
 end
 function getNumOpenSlots()
   local toRet = 0

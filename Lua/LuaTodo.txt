@@ -128,7 +128,6 @@ Things for 3.5.6:
     The Direwolf20 packs have had flat bedrock and the 1.7.10 version of his pack has diamonds concentrated a touch lower than default, so I hear. Also, Dark Iron tends to be down in the bedrock layers.)
   -enderRefuel [y/N]
     would have the turtle place an enderchest full of fuel, pull fuel from the ender chest and refuel itself, return the extra fuel back to the enderchest, break the chest, and resume.
-  The turtle should send a "status" field through rednet that would say like "paused" and stuff. The screen would just print it if it could.
   
 Things for 3.5.7:
   Organize all the things! Everything is so messy right now...
