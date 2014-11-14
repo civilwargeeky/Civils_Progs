@@ -1,4 +1,4 @@
---Quarry Receiver Version 3.5.5
+--Quarry Receiver Version 3.5.6
 --Made by Civilwargeeky
 --[[
 Recent Changes:
@@ -122,6 +122,7 @@ $$Parameters!
 -colorEditor: makes the main screen a color editor that just prints the current colors. Good for theme making
 current typeColors: title, subtitle, pos, dim, extra, error, info, inverse, command, help, background
 $$Parameters!
+-modem {side}: Sets the modem side to side
 
 -v/-verbose: turns on debug
 

@@ -1,5 +1,5 @@
 --Civilwargeeky's Quarry Program--
-  VERSION = "3.5.5"
+  VERSION = "3.5.6"
 --[[ 
 Recent Changes:
   New Ore Quarry System
