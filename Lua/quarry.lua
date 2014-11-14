@@ -1466,7 +1466,7 @@ function midRunRefuel(i)
   local singleFuel
   if checkFuel() - firstCheck > 0 then singleFuel = checkFuel() - firstCheck else singleFuel = math.huge end --If fuel is 0, we want it to be huge so the below will result in 0 being taken
   --Refuel      The lesser of   max allowable or         remaining fuel space         /    either inf or a single fuel (which can be 0)
-  turtle.refuel(math.min(numToRefuel-1, math.ceil((checkFuelLimit-checkFuel()) / singleFuel))) --The refueling part of the the doRefuel option
+  turtle.refuel(math.min(numToRefuel-1, math.ceil((checkFuelLimit()-checkFuel()) / singleFuel))) --The refueling part of the the doRefuel option
   return false --Turtle can still be fueled
 end
   
