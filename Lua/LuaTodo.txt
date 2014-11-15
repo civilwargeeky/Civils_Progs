@@ -129,11 +129,13 @@ Things for 3.5.6:
     Note: Must test if invert works with startDown
   -enderRefuel [y/N]
     would have the turtle place an enderchest full of fuel, pull fuel from the ender chest and refuel itself, return the extra fuel back to the enderchest, break the chest, and resume.
+  Add in support for dumpCompareItems with new oreQuarry as well
   
 Things for 3.5.7:
   Organize all the things! Everything is so messy right now...
   Find out why turtle movement percent is slightly off
   In quarry tArgs, make a way to take out key value pairs in all forms (?)
+  Idea for using inverted function with absolutes: Param for ignoreInverted. (Check detect functions) This allows much easier plugging in for other people
   
 Things to add for quarry version 3.6.0 (After rednet update and shell is done):
   Add support for mods. Like open peripheral chest finding.

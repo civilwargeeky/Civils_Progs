@@ -44,6 +44,7 @@ flatBedrock = false --If true, will go down to bedrock to set startDown [Default
 startDown = 0 --How many blocks to start down from the top of the mine [Default 0]
 enderChestEnabled = false --Whether or not to use an ender chest [Default false]
 enderChestSlot = 16 --What slot to put the ender chest in [Default 16]
+goLeftNotRight = false --Quarry to left, not right (parameter is "left") [Default false]
 oreQuarry = false --Enables ore quarry functionality [Default false]
 oreQuarryBlacklistName = "oreQuarryBlacklist.txt" --This is the file that will be parsed for item names [Default "oreQuarryBlacklist"]
 dumpCompareItems = true --If ore quarry, the turtle will dump items compared to (like cobblestone) [Default true]
@@ -95,6 +96,7 @@ Welcome!: Welcome to quarry help. Below are help entries for all parameters. Exa
 -extraDropItems: [force] If oreQuarry then this will prompt the user for extra items to drop, but not compare to (like cobblestone)
 -dumpCompareItems: [t/f] If oreQuarry and this is true, the turtle will dump off compare blocks instead of storing them in a chest
 -oldOreQuarry: [t/f] If you are using new CC versions, you can use this to use the old oreQuarry.
+-left: [t/f] If true, turtle will quarry to the left instead of the right
 -maxTries: [number] This is the number of times the turtle will try to dig before deciding its run into bedrock.
 -logging: [t/f] If true, will record information about its mining run in a folder at the end of the mining run
 -doBackup: [t/f] If false, will not back up important information and cannot restore, but will not make an annoying file (Actually I don't really know why anyone would use this...)
@@ -381,6 +383,7 @@ if restoreFoundSwitch then
           ------------------------------------------------FIX THIS
           end
           local a, b = copyTable(gpsStartPos), copyTable(gpsSecondPos) --For convenience
+          local flag = true --So we can account for left quarry
           if b[3] - a[3] == -1 then--If went north (-Z)
             a[1] = a[1] - 1 --Shift x one to west to create a "zero"
             xPos, zPos = -currLoc[3] + a[3], currLoc[1] + -a[1]
@@ -394,9 +397,13 @@ if restoreFoundSwitch then
             a[3] = a[3] + 1 --Shift z down one to south to create a "zero"
             xPos, zPos = -currLoc[1] + a[1], -currLoc[3] + a[3]
           else
+            flag = false
             print("Improper Coordinates")
             print("GPS Locate Failed, Using Standard Methods")        ----Maybe clean this up a bit to use flags instead.
-          end  
+          end
+          if flag and goLeftNotRight then --This accounts for left quarry (barred to left only because there might be errors in a regular, causing neg/0
+            zPos = math.abs(zPos-1) + 1
+          end
         end
         print("X Pos: ",xPos)
         print("Y Pos: ",yPos)
@@ -444,9 +451,10 @@ elseif not (tArgs["-default"] or restoreFoundSwitch) then
 end
 --Params: parameter/variable name, display name, type, force prompt, boolean condition, variable name override
 --Invert
-addParam("invert", "Inverted","boolean", true, nil, "inverted")
 addParam("flatBedrock","Go to bedrock", "boolean")
-addParam("startDown","Start Down","number 1-256", not flatBedrock)
+addParam("invert", "Inverted","boolean", true, not flatBedrock, "inverted") --Not flat bedrock, because invert will be set to false
+addParam("startDown","Start Down","number 1-256", nil, not flatBedrock)
+addParam("left","Left Quarry","boolean", nil, nil, "goLeftNotRight")
 --Inventory
 addParam("chest", "Chest Drop Side", "side front", nil, nil, "dropSide")
 addParam("enderChest","Ender Chest Enabled","boolean special", nil, nil, "enderChestEnabled") --This will accept anything (including numbers) thats not "f" or "n"
@@ -497,12 +505,13 @@ addParam("blacklist","Ore Blacklist", "string", nil, oreQuarry, "oreQuarryBlackl
 
 --for flatBedrock
 if flatBedrock then
-  inverted = true
+  inverted = false
 end
 
 --Auto Startup functions
 if autoResume and not restoreFoundSwitch then --Don't do for restore because would overwrite renamed thing. Can't edit mid-run because no shell in restarted
   if fs.exists(startupName) then
+    if fs.exists(startupRename) then fs.delete(startupRename) end
     fs.move(startupName, startupRename)
   end
   local file = fs.open(startupName,"w")
@@ -828,7 +837,7 @@ function biometrics(isAtBedrock)
     statusString = "Paused"
     repeat
       local event, idCheck, confirm, _, message, distance = os.pullEvent()
-    until (event == "modem_message" and confirm == channels.receive and (message.message == "resume" or message.message = "unpause" or message.message == "pause")) or (event == "char")
+    until (event == "modem_message" and confirm == channels.receive and (message.message == "resume" or message.message == "unpause" or message.message == "pause")) or (event == "char")
     statusString = nil
   end
   
@@ -1129,11 +1138,11 @@ end
 
 
 
-function digUp(doAdd)--Regular functions :) I switch definitions for optimization (I think)
-  return dig(doAdd, turtle.digUp, turtle.inspectUp)
+function digUp(doAdd, ignoreInspect)--Regular functions :) I switch definitions for optimization (I think)
+  return dig(doAdd, turtle.digUp, (not ignoreInspect and turtle.inspectUp) or nil)
 end
-function digDown(doAdd)
-  return dig(doAdd, turtle.digDown, turtle.inspectDown)
+function digDown(doAdd, ignoreInspect)
+  return dig(doAdd, turtle.digDown, (not ignoreInspect and turtle.inspectDown) or nil)
 end
 if inverted then --If inverted, switch the options
   digUp, digDown = digDown, digUp
@@ -1183,49 +1192,50 @@ function forward(doAdd)
   end
   return false
 end
-function up(sneak)
-  sneak = sneak or 1
-  if inverted and sneak == 1 then
-    down(-1)
-  else
-    while not turtle.up() do --Absolute dig, not relative
-      if not dig(true, turtle.digUp) then
-        attackUp()
-        sleep(0.5)
-      end
-    end
-    yPos = yPos - sneak --Oh! I feel so clever
-  end                   --This works because inverted :)
-  saveProgress()
-  biometrics()
-end
-function down(sneak)
-  sneak = sneak or 1
+function verticalMove(moveFunc, yDiff, digFunc, attackFunc)
   local count = 0
-  if inverted and sneak == 1 then
-    up(-1)
-  else
-    while not turtle.down() do
+  while not moveFunc() do
+    if not digFunc(true, true) then --True True is doAdd, and ignoreInspect
+      attackFunc()
+      sleep(0.5)
       count = count + 1
-      if not dig(true, turtle.digDown) then --This is absolute dig down, not relative
-        attackDown()
-        sleep(0.2)
-      end
-      if count > 20 then bedrock() end
+      if count > maxTries then bedrock() end
     end
-    yPos = yPos + sneak
   end
+  yPos = yDiff + yPos
   saveProgress()
   biometrics()
+  return true
 end
-function right(num)
-  num = num or 1
-  for i=1, num do facing = coterminal(facing+1); saveProgress(); turtle.turnRight() end
+function up(ignoreInvert)
+  if inverted and not ignoreInvert then verticalMove(turtle.down, -1, digDown, attackDown) --This is if inverted
+  else verticalMove(turtle.up, -1, digUp, attackUp) end --Regular
 end
-function left(num)
-  num = num or 1
-  for i=1, num do facing = coterminal(facing-1); saveProgress(); turtle.turnLeft() end
+function down(ignoreInvert)
+  if inverted and not ignoreInvert then verticalMove(turtle.up, 1, digUp, attackUp)
+  else verticalMove(turtle.down, 1, digDown, attackDown) end
 end
+
+   
+  function right(num)
+    num = num or 1
+    for i=1, num do 
+      facing = coterminal(facing+1)
+      saveProgress()
+      if not goLeftNotRight then turtle.turnRight() --Normally
+      else turtle.turnLeft() end --Left Quarry
+    end
+  end
+  function left(num)
+    num = num or 1
+    for i=1, num do 
+    facing = coterminal(facing-1)
+    saveProgress()
+    if not goLeftNotRight then turtle.turnLeft() --Normally
+    else turtle.turnRight() end --Left Quarry
+  end
+  end
+  
 function attack(doAdd, func)
   doAdd = doAdd or true
   func = func or turtle.attack
@@ -1256,12 +1266,12 @@ function detect(func)
   func = func or turtle.detect
   return func()
 end
-function detectUp()
-  if inverted then return detect(turtle.detectDown)
+function detectUp(ignoreInvert)
+  if inverted and not ignoreInvert then return detect(turtle.detectDown)
   else return detect(turtle.detectUp) end
 end
-function detectDown()
-  if inverted then return detect(turtle.detectUp)
+function detectDown(ignoreInvert)
+  if inverted and not ignoreInvert then return detect(turtle.detectUp)
   else return detect(turtle.detectDown) end
 end
 
@@ -1641,11 +1651,14 @@ if not restoreFoundSwitch then --Regularly
   end
   runAllEvents()
   if flatBedrock then
-    while down() do
+    while (detectDown() and digDown(false)) or not detectDown() do --None of these functions are non-invert protected because inverse always false here
+      down()
       startDown = startDown + 1
     end
-    up() --It has hit bedrock, now go back up one for proper 3 wide mining
-    startDown = startDown - 2 --Minus 3 because go up 1 and last down fails and goes down
+    startDown = startDown - y + 1
+    for i=1, y-2 do
+      up() --It has hit bedrock, now go back up for proper 3 wide mining
+    end
   elseif not(y == 1 or y == 2) then
     down() --Go down to align properly. If y is one or two, it doesn't need to do this.
   end
