@@ -40,6 +40,7 @@ gpsTimeout = 3 --The number of seconds the program will wait to get GPS coords. 
 logging = true --Whether or not the turtle will log mining runs. [Default ...still deciding]
 logFolder = "Quarry_Logs" --What folder the turtle will store logs in [Default "Quarry_Logs"]
 logExtension = "" --The extension of the file (e.g. ".txt") [Default ""]
+initialDig = true --True speeds up quarry if there are more blocks than air, and vice versa [Default true]
 flatBedrock = false --If true, will go down to bedrock to set startDown [Default false]
 startDown = 0 --How many blocks to start down from the top of the mine [Default 0]
 enderChestEnabled = false --Whether or not to use an ender chest [Default false]
@@ -97,6 +98,7 @@ Welcome!: Welcome to quarry help. Below are help entries for all parameters. Exa
 -dumpCompareItems: [t/f] If oreQuarry and this is true, the turtle will dump off compare blocks instead of storing them in a chest
 -oldOreQuarry: [t/f] If you are using new CC versions, you can use this to use the old oreQuarry.
 -left: [t/f] If true, turtle will quarry to the left instead of the right
+-initialDig: [t/f] If true, turtle will be faster if more blocks than air
 -maxTries: [number] This is the number of times the turtle will try to dig before deciding its run into bedrock.
 -logging: [t/f] If true, will record information about its mining run in a folder at the end of the mining run
 -doBackup: [t/f] If false, will not back up important information and cannot restore, but will not make an annoying file (Actually I don't really know why anyone would use this...)
@@ -451,7 +453,7 @@ elseif not (tArgs["-default"] or restoreFoundSwitch) then
 end
 --Params: parameter/variable name, display name, type, force prompt, boolean condition, variable name override
 --Invert
-addParam("flatBedrock","Go to bedrock", "boolean")
+addParam("flatBedrock","Go to bedrock", "boolean") --Not done before GPS because GPS only runs on restart
 addParam("invert", "Inverted","boolean", true, not flatBedrock, "inverted") --Not flat bedrock, because invert will be set to false
 addParam("startDown","Start Down","number 1-256", nil, not flatBedrock)
 addParam("left","Left Quarry","boolean", nil, nil, "goLeftNotRight")
@@ -501,6 +503,8 @@ addParam("extraDropItems", "", "force", nil, oldOreQuarry) --Prompt for extra dr
 addParam("extraDumpItems", "", "force", nil, oldOreQuarry, "extraDropItems") --changed to Dump
 --New Ore
 addParam("blacklist","Ore Blacklist", "string", nil, oreQuarry, "oreQuarryBlacklistName")
+--Performance
+addParam("initialDig","Initial Dig", "boolean")
 
 
 --for flatBedrock
@@ -1319,6 +1323,7 @@ function mine(doDigDown, doDigUp, outOfPath,doCheckInv) -- Basic Move Forward
     end
   end
   local count = 0
+  if initialDig then dig() end  --This speeds up the quarry by a decent amount if there are more mineable blocks than air
   while not forward(not outOfPath) do
     sleep(0) --Calls coroutine.yield to prevent errors
     count = count + 1
