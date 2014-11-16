@@ -131,6 +131,7 @@ Things for 3.5.6:
     would have the turtle place an enderchest full of fuel, pull fuel from the ender chest and refuel itself, return the extra fuel back to the enderchest, break the chest, and resume.
   Add in support for dumpCompareItems with new oreQuarry as well
   Implement a table for "exclusion slots" that don' get dropped, so like tab[16] = "enderchest" and vice versa. This will be easy to add any enderchests or maybe torch slots
+
   
 Things for 3.5.7:
   Organize all the things! Everything is so messy right now...
