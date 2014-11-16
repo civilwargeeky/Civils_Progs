@@ -38,6 +38,8 @@
   Fixed bug where turtle would error with auto-restart if rename file already exists
   Accounts for left quarry in GPS location (untested)
   Modified dig, up, down, and detect functions
+  Improved startup file, if quarry save doesn't exist, will delete self as well. This is just an added safeguard.
+  Added torch to default blacklist
   Cool Ideas from elektronemulo
   New Parameters:
     -flatBedrock [t/f]: The turtle will initially dig down to bedrock (or possibly a mob) and set startDown from that

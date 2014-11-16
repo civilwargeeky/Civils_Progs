@@ -522,27 +522,34 @@ if autoResume and not restoreFoundSwitch then --Don't do for restore because wou
 print("Now Resuming Quarry")
 print("Press any key to quit. You have 5 seconds.")
 sleep(1)
-local event
-for i=5,1,-1 do
-  print(i)
-  os.startTimer(1)
-  event = os.pullEvent()
-  if event ~= "timer" then break end
-end
-if event == "timer" then
-  os.run({},"]]..shell.getRunningProgram()..[[","-resume")
-else
+function deleteStuff()
   fs.delete("]]..startupName..[[")
   if fs.exists("]]..startupRename..[[") then
     fs.move("]]..startupRename.."\",\""..startupName..[[")
   end
+end
+local event
+if fs.exists("]]..saveFile..[[") then
+  for i=5,1,-1 do
+    print(i)
+    os.startTimer(1)
+    event = os.pullEvent()
+    if event ~= "timer" then break end
+  end
+  if event == "timer" then
+    os.run({},"]]..shell.getRunningProgram()..[[","-resume")
+  else
+    deleteStuff()
+  end
+else
+  deleteStuff()
 end
   ]])
   file.close()
 end
 --oreQuarry blacklist
 local blacklist = { "minecraft:air",  "minecraft:bedrock", "minecraft:cobblestone", "minecraft:dirt", "minecraft:ice", "minecraft:ladder", "minecraft:netherrack", "minecraft:sand", "minecraft:sandstone",
-  "minecraft:snow", "minecraft:snow_layer", "minecraft:stone", "minecraft:gravel", "minecraft:grass" }
+  "minecraft:snow", "minecraft:snow_layer", "minecraft:stone", "minecraft:gravel", "minecraft:grass", "minecraft:torch" }
 for a,b in pairs(blacklist) do
   blacklist[b], blacklist[b] = true, nil --Switch
 end
