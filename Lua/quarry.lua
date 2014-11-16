@@ -8,6 +8,7 @@ Recent Changes:
 civilTable = nil; _G.civilTable = {}; setmetatable(civilTable, {__index = _G}); setfenv(1,civilTable)
 originalDay = os.day() --Used in logging
 numResumed = 0 --Number of times turtle has been resumed
+local mcm = peripheral.find("Miny Chunky Module") or {}
 -------Defaults for Arguments----------
 --Arguments assignable by text
 x,y,z = 3,3,3 --These are just in case tonumber fails
@@ -618,7 +619,11 @@ end
 if enderChestEnabled then
     if restoreFoundSwitch and turtle.getItemCount(enderChestSlot) == 0 then --If the turtle was stopped while dropping off items.
       select(enderChestSlot)
-      turtle.dig()
+      if mcm.dig then
+        mcm.dig()
+      else
+        turtle.dig()
+      end
       select(1)
     end
   promptEnderChest()
@@ -1016,7 +1021,7 @@ end
 --Mining functions
 function dig(doAdd, func, inspectFunc)
   if doAdd == nil then doAdd = true end
-  func = func or turtle.dig
+  func = func or mcm.dig or turtle.dig
   local function retTab(tab) if type(tab) == "table" then return tab end end --Please ignore the stupid one-line trickery. I felt special writing that. (Unless it breaks, then its cool)
   if not oreQuarry or not inspectFunc or not blacklist[(retTab(({inspectFunc()})[2]) or {name = "none"}).name] then --Will stop at first false, last part won't run if one of first are false
    if func() then
@@ -1034,10 +1039,10 @@ end
 
 
 function digUp(doAdd)--Regular functions :) I switch definitions for optimization (I think)
-  return dig(doAdd, turtle.digUp, turtle.inspectUp)
+  return dig(doAdd, mcm.digUp or turtle.digUp, turtle.inspectUp)
 end
 function digDown(doAdd)
-  return dig(doAdd, turtle.digDown, turtle.inspectDown)
+  return dig(doAdd, mcm.digDown or turtle.digDown, turtle.inspectDown)
 end
 if inverted then --If inverted, switch the options
   digUp, digDown = digDown, digUp
@@ -1054,8 +1059,8 @@ function smartDig(digUp, digDown) --This function is used only in mine when oreQ
     if blockBelow and turtle.compareDown() then blockBelow = false end
   end
   table.insert(compareSlots, 1, table.remove(compareSlots, index)) --This is so the last selected slot is the first slot checked, saving a turtle.select call
-  if blockAbove then dig(true, turtle.digUp) end
-  if blockBelow then dig(true, turtle.digDown) end
+  if blockAbove then dig(true, mcm.digUp or turtle.digUp) end
+  if blockBelow then dig(true, mcm.digDown or turtle.digDown) end
 end
 
 function setRowCheckFromPos()
@@ -1092,7 +1097,7 @@ function up(sneak)
     down(-1)
   else
     while not turtle.up() do --Absolute dig, not relative
-      if not dig(true, turtle.digUp) then
+      if not dig(true, mcm.digUp or turtle.digUp) then
         attackUp()
         sleep(0.5)
       end
@@ -1110,7 +1115,7 @@ function down(sneak)
   else
     while not turtle.down() do
       count = count + 1
-      if not dig(true, turtle.digDown) then --This is absolute dig down, not relative
+      if not dig(true, mcm.digDown or turtle.digDown) then --This is absolute dig down, not relative
         attackDown()
         sleep(0.2)
       end
@@ -1521,11 +1526,15 @@ local doDigDown, doDigUp = (lastHeight ~= 1), (lastHeight == 0) --Used in lastHe
 if not restoreFoundSwitch then --Regularly
   --Check if it is a mining turtle
   if not isMiningTurtle then
-    local a, b = turtle.dig()
-    if a then mined = mined + 1; isMiningTurtle = true
-    elseif b == "Nothing to dig with" then 
-      print("This is not a mining turtle. To make a mining turtle, craft me together with a diamond pickaxe")
-      error("",0)
+    if not mcm.dig then
+      local a, b = turtle.dig()
+      if a then mined = mined + 1; isMiningTurtle = true
+      elseif b == "Nothing to dig with" then 
+        print("This is not a mining turtle. To make a mining turtle, craft me together with a diamond pickaxe")
+        error("",0)
+      end
+    else
+      isMiningTurtle = true --It has an mcm, of course its a mining turtle
     end
   end
   mine(false,false,true) --Get into quarry by going forward one
