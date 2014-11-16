@@ -42,7 +42,6 @@
   New Parameters:
     -flatBedrock [t/f]: The turtle will initially dig down to bedrock (or possibly a mob) and set startDown from that
     -left [t/f]: The turtle will quarry to the left instead of the right
-    -initialDig [t/f]: If true, turtle will get a moderate performance boost if more blocks than air, and vice-versa
   
     
 
