@@ -90,6 +90,7 @@ Welcome!: Welcome to quarry help. Below are help entries for all parameters. Exa
 -excessFuel: [number] How much the turtle will fuel to max (limited by turtle in most cases)
 -chest: [side] This specifies what side the chest at the end will be on. You can say "top", "bottom", "front", "left", or "right"
 -enderChest: This one is special. If you use "-enderChest true" then it will use an enderChest in the default slot. However, you can also do "-enderChest [slot]" then it will take the ender chest from whatever slot you tell it to. Like 7... or 14... or whatever.
+-fuelChest: See the above, but for a fueling chest
 -GPS: [force] If you use "-GPS" and there is a GPS network, then the turtle will record its first two positions to precisly calculate its position if it has to restart. This will only take two GPS readings
 -sendChannel: [number] This is what channel your turtle will send rednet messages on
 -receiveChannel: [number] This is what channel your turtle will receive rednet messages on
@@ -202,7 +203,7 @@ end
 function resetDumpSlots()
     for i=1, inventoryMax do
       if oldOreQuarry then
-        if turtle.getItemCount(i) > 0 and i~= enderChestSlot then
+        if turtle.getItemCount(i) > 0 and i~= specialSlots.enderChest then
           dumpSlots[i] = true
         else
           dumpSlots[i] = false
@@ -211,7 +212,7 @@ function resetDumpSlots()
         dumpSlots[i] = false
       end
     end
-    if not oldOreQuarry and enderChestSlot == 1 then
+    if not oldOreQuarry and specialSlots.enderChest == 1 then
       dumpSlots[2] = true
     elseif not oldOreQuarry then
       dumpSlots[1] = true
@@ -476,8 +477,12 @@ addParam("left","Left Quarry","boolean", nil, nil, "goLeftNotRight")
 addParam("chest", "Chest Drop Side", "side front", nil, nil, "dropSide")
 addParam("enderChest","Ender Chest Enabled","boolean special", nil, nil, "enderChestEnabled") --This will accept anything (including numbers) thats not "f" or "n"
 addParam("enderChest", "Ender Chest Slot", "number 1-16", nil, nil, "enderChestSlot") --This will get the number slot if given
-if not enderChestEnabled then enderChestSlot = 0 end --This makes everything better
-newSpecialSlot("enderChest",enderChestSlot) --This allows for easy checking and getting
+newSpecialSlot("enderChest",enderChestEnabled and enderChestSlot or 0) --This allows for easy checking and getting --This makes everything better (0)
+addParam("fuelChest","Fuel Chest Enabled","boolean special", nil, nil, "fuelChestEnabled") --See above notes
+addParam("fuelChest", "Fuel Chest Slot", "number 1-16", nil, nil, "fuelChestSlot")
+if enderChestEnabled and fuelChestEnabled and not newSpecialSlot("fuelChest", fuelChestEnabled and fuelChestSlot or 0) then --Same as above but compact, also error checking
+  error("Error while parsing parameters, fuel chest slot cannot be the same as ender chest slot",0)
+end
 --Rednet
 addParam("rednet", "Rednet Enabled","boolean",true, supportsRednet, "rednetEnabled")
 addParam("gps", "GPS Location Services", "force", nil, (not restoreFoundSwitch) and supportsRednet, "gpsEnabled" ) --Has these triggers so that does not record position if restarted.
@@ -651,7 +656,7 @@ do --Because many local variables unneeded elsewhere
 end
 
 if neededFuel+checkFuel() > checkFuelLimit() then--Checks for if refueling goes over turtle fuel limit
-  if not (doRefuel) then
+  if not (doRefuel or fuelChestEnabled) then
     screen()
     print("Turtle cannot hold enough fuel\n")
     print("Options: \n1. Select a smaller size (press q) \n2. Enable Mid-Run Refueling (any other key)")
@@ -722,24 +727,30 @@ if doCheckFuel and checkFuel() < neededFuel then
   select(1)
 end
 --Ender Chest Obtaining
-function promptEnderChest()
-  while turtle.getItemCount(enderChestSlot) ~= 1 do
+function promptSpecialSlot(specialSlot, name)
+  while turtle.getItemCount(specialSlots[specialSlot]) ~= 1 do
     screen(1,1)
-    print("You have decided to use an Ender Chest!")
-    print("Please place one Ender Chest in slot ",enderChestSlot)
+    print("You have decided to use a ",name,"!")
+    print("Please place one ",name," in slot ",specialSlots[specialSlot])
     sleep(1)
   end
-  print("Ender Chest in slot ",enderChestSlot, " checks out")
+  print(name," in slot ",specialSlots[specialSlot], " checks out")
+end
+function checkSpecialSlot(specialSlot, name)
+ if restoreFoundSwitch and turtle.getItemCount(specialSlots[specialSlot]) == 0 then --If the turtle was stopped while dropping off items.
+    select(specialSlots[specialSlot])
+    turtle.dig()
+    select(1)
+  end
+  promptSpecialSlot(specialSlot, name)
+  allowedItems[specialSlots[specialSlot]] = 1
+  sleep(2)
 end
 if enderChestEnabled then
-    if restoreFoundSwitch and turtle.getItemCount(enderChestSlot) == 0 then --If the turtle was stopped while dropping off items.
-      select(enderChestSlot)
-      turtle.dig()
-      select(1)
-    end
-  promptEnderChest()
-  allowedItems[enderChestSlot] = 64
-  sleep(2)
+  checkSpecialSlot("enderChest","Ender Chest")
+end
+if fuelChestEnabled then
+  checkSpecialSlot("fuelChest","Fuel Chest")
 end
 --Fuel Chest Obtaining
 
@@ -747,7 +758,7 @@ end
 if oldOreQuarry then
   if not restoreFoundSwitch then --We don't want to reset compare blocks every restart
     local counter = 0
-    for i=1, inventoryMax do if turtle.getItemCount(i) > 0 and i ~= enderChestSlot then counter = counter+1 end end --If the slot has items, but isn't enderChest slot if it is enabled
+    for i=1, inventoryMax do if turtle.getItemCount(i) > 0 and i ~= specialSlots.enderChest then counter = counter+1 end end --If the slot has items, but isn't enderChest slot if it is enabled
 
     screen(1,1)
     print("You have selected an Ore Quarry!")
@@ -762,7 +773,7 @@ if oldOreQuarry then
     end
     for i=1, inventoryMax do
       if turtle.getItemCount(i) > 0 then
-        if i ~= enderChestSlot then
+        if i ~= specialSlots.enderChest then
           table.insert(compareSlots, i) --Compare slots are ones compared to while mining. Conditions are because we Don't want to compare to enderChest
           allowedItems[i] = 1 --Blacklist is for dropping off items. The number is maximum items allowed in slot when dropping off
           dumpSlots[i] = true --We also want to ignore all excess of these items, like dirt
@@ -793,7 +804,7 @@ if oldOreQuarry then
   end
 else
   dumpCompareItems = false --If not an ore quarry, this should definitely be false
-  if enderChestSlot == 1 then
+  if specialSlots.enderChest == 1 then
     dumpSlots[2] = true
   else
     dumpSlots[1] = true
@@ -1060,7 +1071,7 @@ function getChangedSlots(tab1, tab2) --Returns a table of changed slots. Format 
 end
 function getFirstChanged(tab1, tab2) --Just a wrapper. Probably not needed
   local a = getChangedSlots(tab1,tab2)
-  return a[1][1]
+  return (a[1] or {"none"})[1]
 end
 
 function getRep(which, list) --Gets a representative slot of a type. Expectation is a sequential table of types
@@ -1136,7 +1147,7 @@ function count(add) --Done any time inventory dropped and at end, true=add, fals
   end
     
     for i=1,inventoryMax do
-      if i == enderChestSlot then --Do nothing!
+      if i == specialSlots.enderChest then --Do nothing!
       elseif slot[i][1] == 1 then totals.cobble = totals.cobble + (slot[i][2] * mod)
       elseif slot[i][1] == 2 then totals.fuel = totals.fuel + (slot[i][2] * mod)
       elseif slot[i][1] == 3 then totals.other = totals.other + (slot[i][2] * mod) end
@@ -1313,7 +1324,19 @@ function mine(doDigDown, doDigUp, outOfPath,doCheckInv) -- Basic Move Forward
   isInPath = (not outOfPath) --For rednet
   if not outOfPath and (checkFuel() <= xPos + zPos + yPos + 5) then --If the turtle can just barely get back to the start, we need to get it there. We don't want this to activate coming back though...
     local continueEvac = true --This turns false if more fuel is acquired
-    if doRefuel then --Attempt an emergency refueling
+    if fuelChestEnabled and countUsedSlots < inventoryMax then --This is pretty much the only place that this will be used
+      eventAdd("turnLeft")
+      eventAdd("turnLeft")
+      eventAdd("select",specialSlots.fuelChest)
+      eventAdd("turtle.place")
+      eventAdd("enderRefuel")
+      eventAdd("select",specialSlots.fuelChest)
+      eventAdd("dig",false)
+      eventAdd("select",1)
+      eventAdd("turnLeft")
+      eventAdd("turnLeft")
+      
+    elseif doRefuel then --Attempt an emergency refueling
       screen()
       print("Attempting an emergency refuel")
       print("Fuel Level:    ",checkFuel())
@@ -1509,8 +1532,9 @@ local function waitDrop(slot, allowed, whereDrop) --This will just drop, but wai
   end
 end
 
-function midRunRefuel(i)
-  local numToRefuel = turtle.getItemCount(i)-allowedItems[i]
+function midRunRefuel(i, allowed)
+  allowed = allowed or allowedItems[i]
+  local numToRefuel = turtle.getItemCount(i)-allowed
   if checkFuel() >= checkFuelLimit() then return true end --If it doesn't need fuel, then signal to not take more
   local firstCheck = checkFuel()
   if numToRefuel > 0 then turtle.refuel(1) end --This is so we can see how many fuel we need.
@@ -1520,6 +1544,24 @@ function midRunRefuel(i)
   turtle.refuel(math.min(numToRefuel-1, math.ceil((checkFuelLimit()-checkFuel()) / singleFuel))) --The refueling part of the the doRefuel option
   return false --Turtle can still be fueled
 end
+
+function enderRefuel() --Assumes a) An enderchest is in front of it b) It needs fuel
+  local slot
+  for a,b in ipairs(getSlotsTable()) do
+    if b == 0 then slot = a; break end
+  end
+  if not slot then return end --No room for fueling
+  select(slot)
+  repeat
+    sleep(0.5)
+    local tab = getSlotsTable()
+    turtle.suck()
+  until getFirstChanged(tab,getSlotsTable())
+    
+  
+
+end
+
   
 function drop(side, final)
   side = sides[side] or "front"
@@ -1580,14 +1622,14 @@ function dropOff() --Not local because called in mine()
       eventAdd("goto", 1, 1, currY, 0)
       eventAdd("goto", currX,currZ,currY,currFacing)
     else --If using an enderChest
-      if turtle.getItemCount(enderChestSlot) ~= 1 then eventAdd("promptEnderChest()") end
+      if turtle.getItemCount(specialSlots.enderChest) ~= 1 then eventAdd("promptSpecialSlot('enderChest','Ender Chest')") end
       eventAdd("turnTo",currFacing-2)
       eventAdd("dig",false)
-      eventAdd("select",enderChestSlot)
+      eventAdd("select",specialSlots.enderChest)
       eventAdd("turtle.place")
       eventAdd("drop","front",false)
       eventAdd("turnTo",currFacing-2)
-      eventAdd("select", enderChestSlot)
+      eventAdd("select", specialSlots.enderChest)
       eventAdd("dig",false)
       eventAdd("turnTo",currFacing)
       eventAdd("select(1)")
@@ -1606,7 +1648,7 @@ function endingProcedure() --Used both at the end and in "biometrics"
     if dropSide == "right" then eventAdd("turnTo(1)") end --Turn to proper drop side
     if dropSide == "left" then eventAdd("turnTo(3)") end
     eventAdd("dig(false)") --This gets rid of a block in front of the turtle.
-    eventAdd("select",enderChestSlot)
+    eventAdd("select",specialSlots.enderChest)
     eventAdd("turtle.place")
     eventAdd("select(1)")
   end
