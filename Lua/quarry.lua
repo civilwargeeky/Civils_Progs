@@ -28,6 +28,7 @@ doCheckFuel = true --Perform fuel check [Default true]
 doRefuel = false --Whenever it comes to start location will attempt to refuel from inventory [Default false]
 keepOpen = 1 --How many inventory slots it will attempt to keep open at all times [Default 1]
 fuelSafety = "moderate" --How much fuel it will ask for: safe, moderate, and loose [Default moderate]
+excessFuelAmount = math.huge --How much fuel the turtle will get maximum. Limited by turtle.getFuelLimit in recent CC [Default math.huge]
 saveFile = "Civil_Quarry_Restore" --Where it saves restore data [Default "Civil_Quarry_Restore"]
 autoResume = true --If true, turtle will auto-restart when loaded. [Default true]
 startupRename = "oldStartup.quarry" --What the startup is temporarily renamed to [Default "oldStartup.quarry"]
@@ -48,6 +49,7 @@ goLeftNotRight = false --Quarry to left, not right (parameter is "left") [Defaul
 oreQuarry = false --Enables ore quarry functionality [Default false]
 oreQuarryBlacklistName = "oreQuarryBlacklist.txt" --This is the file that will be parsed for item names [Default "oreQuarryBlacklist"]
 dumpCompareItems = true --If ore quarry, the turtle will dump items compared to (like cobblestone) [Default true]
+inventoryMax = 16 --The max number of slots in the turtle inventory [Default 16] (Not assignable by parameter)
 --Standard number slots for fuel (you shouldn't care)
 fuelTable = { --Will add in this amount of fuel to requirement.
 safe = 1000,
@@ -85,6 +87,7 @@ Welcome!: Welcome to quarry help. Below are help entries for all parameters. Exa
 -doRefuel: [t/f] If true, the turtle will refuel itself with coal and planks it finds on its mining run
 -doCheckFuel: [t/f] If you for some reason don't want the program to check fuel usage, set to false. This is honestly a hold-over from when the refueling algorithm was awful...
 -uniqueExtras: [number] The expected number of slots filled with low-stacking items like ore. Higher numbers request more fuel.
+-excessFuel: [number] How much the turtle will fuel to max (limited by turtle in most cases)
 -chest: [side] This specifies what side the chest at the end will be on. You can say "top", "bottom", "front", "left", or "right"
 -enderChest: This one is special. If you use "-enderChest true" then it will use an enderChest in the default slot. However, you can also do "-enderChest [slot]" then it will take the ender chest from whatever slot you tell it to. Like 7... or 14... or whatever.
 -GPS: [force] If you use "-GPS" and there is a GPS network, then the turtle will record its first two positions to precisly calculate its position if it has to restart. This will only take two GPS readings
@@ -175,20 +178,29 @@ else
 end
 
 local tArgs = {...}
---Pre-defining variables
-      xPos,yPos,zPos,facing,percent,mined,moved,relxPos, rowCheck, connected, isInPath, layersDone, attacked, startY, chestFull, gotoDest, atChest, fuelLevel, numDropOffs, allowedItems, compareSlots, dumpSlots, selectedSlot, extraDropItems, oldOreQuarry
-    = 0,   1,   1,   0,     0,      0,    0,    1,       true   ,  false,     true,     1,          0,        0,      false,     "",       false,   0,         0,           {},             {},           {},      1,            false,          false
+--Pre-defining variables that need to be saved
+      xPos,yPos,zPos,facing,percent,mined,moved,relxPos, rowCheck, connected, isInPath, layersDone, attacked, startY, chestFull, gotoDest, atChest, fuelLevel, numDropOffs, allowedItems, compareSlots, dumpSlots, selectedSlot, extraDropItems, oldOreQuarry, specialSlots
+    = 0,   1,   1,   0,     0,      0,    0,    1,       true   ,  false,     true,     1,          0,        0,      false,     "",       false,   0,         0,           {},             {},           {},      1,            false,          false,        {}
     
 local statusString
-    
-for i=1, 16 do --Initializing various inventory management tables
+
+--Initializing various inventory management tables
+for i=1, inventoryMax do 
   allowedItems[i] = 0 --Number of items allowed in slot when dropping items
   dumpSlots[i] = false --Does this slot contain junk items?
 end --compareSlots is a table of the compare slots, not all slots with a condition
 totals = {cobble = 0, fuel = 0, other = 0} -- Total for display (cannot go inside function), this goes up here because many functions use it
 
+local function newSpecialSlot(index, value)
+  value = tonumber(value) or 0 --We only want numerical indexes
+  if specialSlots[value] then return false end --Can't overwrite other slots
+  specialSlots[index] = value
+  specialSlots[value] = index
+  return true
+end
+
 function resetDumpSlots()
-    for i=1, 16 do
+    for i=1, inventoryMax do
       if oldOreQuarry then
         if turtle.getItemCount(i) > 0 and i~= enderChestSlot then
           dumpSlots[i] = true
@@ -215,11 +227,16 @@ local foundBedrock = false
 
 local checkFuel, checkFuelLimit
 if turtle then --Function inits
-  checkFuel, checkFuelLimit = turtle.getFuelLevel, turtle.getFuelLimit
+  checkFuel = turtle.getFuelLevel
   if turtle.getFuelLevel() == "unlimited" then --Fuel is disabled --Unlimited screws up my calculations
     checkFuel = function() return math.huge end --Infinite Fuel
   end --There is no "else" because it will already return the regular getFuel
-  if not turtle.getFuelLimit or turtle.getFuelLimit() == "unlimited" then --If the function doesn't exist 
+  if turtle.getFuelLimit then
+    checkFuelLimit = function() return math.min(turtle.getFuelLimit(), excessFuelAmount) end --Return the limiting one
+  else
+    checkFuelLimit = function() return excessFuelAmount end --If the function doesn't exist 
+  end
+  if turtle.getFuelLimit() == "unlimited" then 
     checkFuelLimit = function() return math.huge end
   end
   
@@ -228,7 +245,7 @@ end
 
 
 function select(slot)
-  if slot ~= selectedSlot then
+  if slot ~= selectedSlot and slot > 0 and slot < inventoryMax then
     selectedSlot = slot
     return turtle.select(slot), selectedSlot
   end
@@ -460,6 +477,7 @@ addParam("chest", "Chest Drop Side", "side front", nil, nil, "dropSide")
 addParam("enderChest","Ender Chest Enabled","boolean special", nil, nil, "enderChestEnabled") --This will accept anything (including numbers) thats not "f" or "n"
 addParam("enderChest", "Ender Chest Slot", "number 1-16", nil, nil, "enderChestSlot") --This will get the number slot if given
 if not enderChestEnabled then enderChestSlot = 0 end --This makes everything better
+newSpecialSlot("enderChest",enderChestSlot) --This allows for easy checking and getting
 --Rednet
 addParam("rednet", "Rednet Enabled","boolean",true, supportsRednet, "rednetEnabled")
 addParam("gps", "GPS Location Services", "force", nil, (not restoreFoundSwitch) and supportsRednet, "gpsEnabled" ) --Has these triggers so that does not record position if restarted.
@@ -474,6 +492,7 @@ addParam("fingerprint","Sending Fingerprint", "string", false, supportsRednet, "
 addParam("uniqueExtras","Unique Items", "number 0-15")
 addParam("doRefuel", "Refuel from Inventory","boolean", nil, checkFuel() ~= math.huge) --math.huge due to my changes
 addParam("doCheckFuel", "Check Fuel", "boolean", nil, checkFuel() ~= math.huge)
+addParam("maxFuel", "Max Fuel", "number 1-999999999", nil, checkFuel() ~= math.huge)
 --Logging
 addParam("logging", "Logging", "boolean")
 addParam("logFolder", "Log Folder", "string")
@@ -632,7 +651,7 @@ do --Because many local variables unneeded elsewhere
 end
 
 if neededFuel+checkFuel() > checkFuelLimit() then--Checks for if refueling goes over turtle fuel limit
-  if not doRefuel then
+  if not (doRefuel) then
     screen()
     print("Turtle cannot hold enough fuel\n")
     print("Options: \n1. Select a smaller size (press q) \n2. Enable Mid-Run Refueling (any other key)")
@@ -695,7 +714,7 @@ if doCheckFuel and checkFuel() < neededFuel then
     until (oneFuel or 0) > 0 --Not an if to prevent errors if fuel taken out prematurely.
     neededFuelItems = math.ceil((neededFuel - checkFuel()) / oneFuel)
     turtle.refuel(roundTo(neededFuelItems, 64)) --Change because can only think about 64 at once.
-    if turtle.getItemCount(roundTo(currSlot + 1, 16)) == 0 then --Resets if no more fuel
+    if turtle.getItemCount(roundTo(currSlot + 1, inventoryMax)) == 0 then --Resets if no more fuel
       currSlot = 0
     end
     neededFuelItems = math.ceil((neededFuel - checkFuel()) / oneFuel) --This line is not repeated uselessly, it's for the display function
@@ -722,11 +741,13 @@ if enderChestEnabled then
   allowedItems[enderChestSlot] = 64
   sleep(2)
 end
+--Fuel Chest Obtaining
+
 --Setting which slots are marked as compare slots
 if oldOreQuarry then
   if not restoreFoundSwitch then --We don't want to reset compare blocks every restart
     local counter = 0
-    for i=1, 16 do if turtle.getItemCount(i) > 0 and i ~= enderChestSlot then counter = counter+1 end end --If the slot has items, but isn't enderChest slot if it is enabled
+    for i=1, inventoryMax do if turtle.getItemCount(i) > 0 and i ~= enderChestSlot then counter = counter+1 end end --If the slot has items, but isn't enderChest slot if it is enabled
 
     screen(1,1)
     print("You have selected an Ore Quarry!")
@@ -739,7 +760,7 @@ if oldOreQuarry then
       print("Registering slots as compare slots")
       sleep(1)
     end
-    for i=1, 16 do
+    for i=1, inventoryMax do
       if turtle.getItemCount(i) > 0 then
         if i ~= enderChestSlot then
           table.insert(compareSlots, i) --Compare slots are ones compared to while mining. Conditions are because we Don't want to compare to enderChest
@@ -753,7 +774,7 @@ if oldOreQuarry then
       print("Put in extra drop items now\n")
       print("Press Enter when done")
       repeat until ({os.pullEvent("key")})[2] == 28 --Should wait for enter key to be pressed
-      for i=1,16 do
+      for i=1,inventoryMax do
         if not dumpSlots[i] and turtle.getItemCount(i) > 0 then --I don't want to modify from above, so I check it hasn't been assigned.
           dumpSlots[i] = true
           allowedItems[i] = 1
@@ -761,7 +782,7 @@ if oldOreQuarry then
       end
     end
     --This is could go very wrong if this isn't here
-    if #compareSlots >= 16-keepOpen then screen(1,1); error("You have more quarry compare items than keep open slots, the turtle will continuously come back to start. Please fix.",0) end
+    if #compareSlots >= inventoryMax-keepOpen then screen(1,1); error("You have more quarry compare items than keep open slots, the turtle will continuously come back to start. Please fix.",0) end
   end
   local counter = 0
   for a, b in pairs(compareSlots) do if  turtle.getItemCount(b) > 0 then counter = counter + 1 end end
@@ -1003,10 +1024,10 @@ function logMiningRun(textExtension, extras) --Logging mining runs
 end
 --Inventory related functions
 function isFull(slots) --Checks if there are more than "slots" used inventory slots.
-  slots = slots or 16
+  slots = slots or inventoryMax
   local numUsed = 0
   sleep(0)
-  for i=1, 16 do
+  for i=1, inventoryMax do
     if turtle.getItemCount(i) > 0 then numUsed = numUsed + 1 end
   end
   if numUsed > slots then
@@ -1016,7 +1037,7 @@ function isFull(slots) --Checks if there are more than "slots" used inventory sl
 end
 function countUsedSlots() --Returns number of slots with items in them, as well as a table of item counts
   local toRet, toRetTab = 0, {}
-  for i=1, 16 do
+  for i=1, inventoryMax do
     local a = turtle.getItemCount(i)
     if a > 0 then toRet = toRet + 1 end
     table.insert(toRetTab, a)
@@ -1050,7 +1071,7 @@ function getRep(which, list) --Gets a representative slot of a type. Expectation
 end
 function assignTypes(types, count) --The parameters allow a preexisting table to be used, like a table from the original compareSlots...
   types, count = types or {1}, count or 1 --Table of types and current highest type
-  for i=1, 16 do
+  for i=1, inventoryMax do
     if turtle.getItemCount(i) > 0 then 
       select(i)
       for k=1, count do
@@ -1090,7 +1111,7 @@ function count(add) --Done any time inventory dropped and at end, true=add, fals
   if add then mod = 1 end
   if add == false then mod = 0 end
   slot = {}        --1: Filler 2: Fuel 3:Other --[1] is type, [2] is number
-  for i=1, 16 do   
+  for i=1, inventoryMax do   
     slot[i] = {}
     slot[i][2] = turtle.getItemCount(i)
   end
@@ -1114,7 +1135,7 @@ function count(add) --Done any time inventory dropped and at end, true=add, fals
     end
   end
     
-    for i=1,16 do
+    for i=1,inventoryMax do
       if i == enderChestSlot then --Do nothing!
       elseif slot[i][1] == 1 then totals.cobble = totals.cobble + (slot[i][2] * mod)
       elseif slot[i][1] == 2 then totals.fuel = totals.fuel + (slot[i][2] * mod)
@@ -1301,7 +1322,7 @@ function mine(doDigDown, doDigUp, outOfPath,doCheckInv) -- Basic Move Forward
       count(false) --Do not add count, but categorize
       local fuelSwitch, initialFuel = false, checkFuel() --Fuel switch so we don't go over limit (in emergency...)
       print("Going through available fuel slots")
-      for i=1, 16 do
+      for i=1, inventoryMax do
         if fuelSwitch then break end
         if turtle.getItemCount(i) > 0 and slot[i][1] == 2 then --If there are items and type 2 (fuel)
           select(i)
@@ -1369,7 +1390,7 @@ function mine(doDigDown, doDigUp, outOfPath,doCheckInv) -- Basic Move Forward
   percent = math.ceil(moved/moveVolume*100)
   updateDisplay()
   if doCheckInv and careAboutResources then
-    if isFull(16-keepOpen) then dropOff() end
+    if isFull(inventoryMax-keepOpen) then dropOff() end
   end
   biometrics()
 end
@@ -1463,7 +1484,7 @@ function goto(x,z,y, toFace, destination)
 end
 function getNumOpenSlots()
   local toRet = 0
-  for i=1, 16 do
+  for i=1, inventoryMax do
     if turtle.getItemCount(i) == 0 then
       toRet = toRet + 1
     end
@@ -1522,7 +1543,7 @@ function drop(side, final)
   chestFull = false
   
   local fuelSwitch = false --If doRefuel, this can switch so it won't overfuel
-  for i=1,16 do
+  for i=1,inventoryMax do
     --if final then allowedItems[i] = 0 end --0 items allowed in all slots if final ----It is already set to 1, so just remove comment if want change
     if turtle.getItemCount(i) > 0 then --Saves time, stops bugs
       if slot[i][1] == 1 and dumpCompareItems then turnTo(dropFacing) --Turn around to drop junk, not store it. dumpComapareItems is global config
