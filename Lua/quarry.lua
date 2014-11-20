@@ -1708,7 +1708,7 @@ if not restoreFoundSwitch then --Regularly
     if a then 
       mined = mined + 1
       isMiningTurtle = true
-    elseif b == "Nothing to dig with" then 
+    elseif b == "Nothing to dig with" or b == "No tool to dig with" then 
       print("This is not a mining turtle. To make a mining turtle, craft me together with a diamond pickaxe")
       error("",0)
     end
