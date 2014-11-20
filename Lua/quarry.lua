@@ -90,7 +90,7 @@ Welcome!: Welcome to quarry help. Below are help entries for all parameters. Exa
 -excessFuel: [number] How much the turtle will fuel to max (limited by turtle in most cases)
 -chest: [side] This specifies what side the chest at the end will be on. You can say "top", "bottom", "front", "left", or "right"
 -enderChest: This one is special. If you use "-enderChest true" then it will use an enderChest in the default slot. However, you can also do "-enderChest [slot]" then it will take the ender chest from whatever slot you tell it to. Like 7... or 14... or whatever.
--fuelChest: See the above, but for a fueling chest
+-fuelChest: See the above, but for a fueling chest. Reccommend use with -maxFuel and -doCheckFuel false
 -GPS: [force] If you use "-GPS" and there is a GPS network, then the turtle will record its first two positions to precisly calculate its position if it has to restart. This will only take two GPS readings
 -sendChannel: [number] This is what channel your turtle will send rednet messages on
 -receiveChannel: [number] This is what channel your turtle will receive rednet messages on
@@ -1147,7 +1147,7 @@ function count(add) --Done any time inventory dropped and at end, true=add, fals
   end
     
     for i=1,inventoryMax do
-      if i == specialSlots.enderChest then --Do nothing!
+      if not specialSlots[i] then --Do nothing!
       elseif slot[i][1] == 1 then totals.cobble = totals.cobble + (slot[i][2] * mod)
       elseif slot[i][1] == 2 then totals.fuel = totals.fuel + (slot[i][2] * mod)
       elseif slot[i][1] == 3 then totals.other = totals.other + (slot[i][2] * mod) end
@@ -1325,17 +1325,41 @@ function mine(doDigDown, doDigUp, outOfPath,doCheckInv) -- Basic Move Forward
   if not outOfPath and (checkFuel() <= xPos + zPos + yPos + 5) then --If the turtle can just barely get back to the start, we need to get it there. We don't want this to activate coming back though...
     local continueEvac = true --This turns false if more fuel is acquired
     if fuelChestEnabled and countUsedSlots < inventoryMax then --This is pretty much the only place that this will be used
-      eventAdd("turnLeft")
-      eventAdd("turnLeft")
-      eventAdd("select",specialSlots.fuelChest)
-      eventAdd("turtle.place")
-      eventAdd("enderRefuel")
-      eventAdd("select",specialSlots.fuelChest)
-      eventAdd("dig",false)
-      eventAdd("select",1)
-      eventAdd("turnLeft")
-      eventAdd("turnLeft")
-      
+      if not fuelChestPhase then --Since I want to do things with return of enderRefuel, I will just make a special system
+        fuelChestPhase = 0 --Global variable will be saved
+        fuelChestProperFacing = facing
+      end
+      if fuelChestPhase == 0 then
+        turnTo(coterminal(fuelChestProperFacing+2))
+        dig(false)
+        fuelChestPhase = 1
+        saveProgress()
+      end
+      if fuelChestPhase == 1 then
+        select(specialSlots.fuelChest)
+        turtle.place()
+        fuelChestPhase = 2
+        saveProgress()
+      end
+      if fuelChestPhase = 2 then
+        if not enderRefuel() then --Returns false if slots are full
+          select(specialSlots.fuelChest)
+          turtle.drop() --Somehow stuff got in here...
+        end
+        fuelChestPhase = 3
+        saveProgress()
+      end
+      if fuelChestPhase = 3 then
+        select(specialSlots.fuelChest)
+        dig(false)
+        select(1)
+        fuelChestPhase = 4
+        saveProgress()
+      end
+      if fuelChestPhase = 4 then
+        turnLeft()
+        turnLeft()
+      end
     elseif doRefuel then --Attempt an emergency refueling
       screen()
       print("Attempting an emergency refuel")
@@ -1550,16 +1574,18 @@ function enderRefuel() --Assumes a) An enderchest is in front of it b) It needs 
   for a,b in ipairs(getSlotsTable()) do
     if b == 0 then slot = a; break end
   end
-  if not slot then return end --No room for fueling
+  if not slot then return false end --No room for fueling
   select(slot)
   repeat
-    sleep(0.5)
-    local tab = getSlotsTable()
-    turtle.suck()
-  until getFirstChanged(tab,getSlotsTable())
-    
-  
-
+    while not turtle.suck() do
+      sleep(0.5)
+      statusString = "No Fuel in Ender Chest"
+      biometrics() --Let user know that fuel chest is empty
+    end
+    statusString = nil
+  until midRunRefuel(slot, 0) --Returns true when should not refuel any more
+  if not turtle.drop() then turtle.dropDown() end --If cannot put fuel back, just drop it, full fuel chest = user has too much fuel already
+  return true -- :D
 end
 
   
