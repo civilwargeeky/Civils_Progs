@@ -3,6 +3,12 @@ Maybe have a "master" and "slave" function on the quarry shell so that you could
  to individual turtles and view their progress through the quarry receiver.
 To use keyboard shortcuts, set var = os.startTimer(num), then in event loop, check if timer is removed. Functions checking for a key will check if the var exists
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
+Ladders Ideas:
+1. Turtle goes all the way to bottom, places ladders on the way back up
+2. Turtle goes all the way to bottom, back one, then places ladders. These should be on the wall directly behind it
+
+
+-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 
 Quarry Receiver x.x.x (matches current quarry):
   --Known Issues:
