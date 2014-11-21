@@ -1097,7 +1097,13 @@ function assignTypes(types, count) --The parameters allow a preexisting table to
         count = count + 1
         types[i] = count
       end
-      if oreQuarry then getItemDetails and stuff end --This needs to be finished, don't forget!
+      if oreQuarry then
+        if blacklist[turtle.getItemDetail().name] then
+          dumpSlots[i] = true
+        else
+          dumpSlots[i] = false
+        end
+      end
     end
   end
   select(1)
