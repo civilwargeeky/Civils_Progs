@@ -44,6 +44,7 @@
   Added in a new option: inventoryMax. Not assignable by parameters, but if anyone still uses 1.2.5, this might work (a little late, but still, why not?)
   Added "specialSlots" table to easily check if a slot should not be dropped. Still need to implement it
   max fuel turtle can hold now respects doCheckFuel
+  dumpCompareItems works with new oreQuarry
   Cool Ideas from elektronemulo
   New Parameters:
     -flatBedrock [t/f]: The turtle will initially dig down to bedrock (or possibly a mob) and set startDown from that

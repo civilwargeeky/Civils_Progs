@@ -807,7 +807,7 @@ if oldOreQuarry then
     print("You have an ore quarry without any compare slots. Continue? y/n")
     if ({os.pullEvent("char")})[2] ~= "y" then error("",0) end
   end
-else
+elseif not oreQuarry then --This was screwing up dumpCompareItems
   dumpCompareItems = false --If not an ore quarry, this should definitely be false
   if specialSlots.enderChest == 1 then
     dumpSlots[2] = true
@@ -1150,7 +1150,7 @@ function count(add) --Done any time inventory dropped and at end, true=add, fals
   for i=1, numTypes do
     if (select(getRep(i, rawTypes)) or true) and turtle.refuel(0) then --Selects the rep slot, checks if it is fuel
       iterate(i, rawTypes, 2) --This type is fuel
-    elseif dumpSlots[getRep(i,initialTypes)] then --If the rep of this slot is a dump item. This is initial types so that the rep is in dump slots
+    elseif dumpSlots[getRep(i,(oreQuarry and rawTypes) or initialTypes)] then --If the rep of this slot is a dump item. This is initial types so that the rep is in dump slots. rawTypes if oreQuarry to get newly assigned dumps
       iterate(i, rawTypes, 1) --This type is cobble/filler
     else
       iterate(i, rawTypes, 3) --This type is other
