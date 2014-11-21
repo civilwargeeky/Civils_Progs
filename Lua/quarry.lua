@@ -45,6 +45,8 @@ flatBedrock = false --If true, will go down to bedrock to set startDown [Default
 startDown = 0 --How many blocks to start down from the top of the mine [Default 0]
 enderChestEnabled = false --Whether or not to use an ender chest [Default false]
 enderChestSlot = 16 --What slot to put the ender chest in [Default 16]
+fuelChestEnabled = false --Whether or not to use a fuel chest [Default false]
+fuelChestSlot = 15 --What slot to put the fuel chest in [Default 15]
 goLeftNotRight = false --Quarry to left, not right (parameter is "left") [Default false]
 oreQuarry = false --Enables ore quarry functionality [Default false]
 oreQuarryBlacklistName = "oreQuarryBlacklist.txt" --This is the file that will be parsed for item names [Default "oreQuarryBlacklist"]
@@ -87,7 +89,7 @@ Welcome!: Welcome to quarry help. Below are help entries for all parameters. Exa
 -doRefuel: [t/f] If true, the turtle will refuel itself with coal and planks it finds on its mining run
 -doCheckFuel: [t/f] If you for some reason don't want the program to check fuel usage, set to false. This is honestly a hold-over from when the refueling algorithm was awful...
 -uniqueExtras: [number] The expected number of slots filled with low-stacking items like ore. Higher numbers request more fuel.
--excessFuel: [number] How much the turtle will fuel to max (limited by turtle in most cases)
+-maxFuel: [number] How much the turtle will fuel to max (limited by turtle in most cases)
 -chest: [side] This specifies what side the chest at the end will be on. You can say "top", "bottom", "front", "left", or "right"
 -enderChest: This one is special. If you use "-enderChest true" then it will use an enderChest in the default slot. However, you can also do "-enderChest [slot]" then it will take the ender chest from whatever slot you tell it to. Like 7... or 14... or whatever.
 -fuelChest: See the above, but for a fueling chest. Reccommend use with -maxFuel and -doCheckFuel false
@@ -246,7 +248,7 @@ end
 
 
 function select(slot)
-  if slot ~= selectedSlot and slot > 0 and slot < inventoryMax then
+  if slot ~= selectedSlot and slot > 0 and slot <= inventoryMax then
     selectedSlot = slot
     return turtle.select(slot), selectedSlot
   end
@@ -480,8 +482,9 @@ addParam("enderChest", "Ender Chest Slot", "number 1-16", nil, nil, "enderChestS
 newSpecialSlot("enderChest",enderChestEnabled and enderChestSlot or 0) --This allows for easy checking and getting --This makes everything better (0)
 addParam("fuelChest","Fuel Chest Enabled","boolean special", nil, nil, "fuelChestEnabled") --See above notes
 addParam("fuelChest", "Fuel Chest Slot", "number 1-16", nil, nil, "fuelChestSlot")
-if enderChestEnabled and fuelChestEnabled and not newSpecialSlot("fuelChest", fuelChestEnabled and fuelChestSlot or 0) then --Same as above but compact, also error checking
-  error("Error while parsing parameters, fuel chest slot cannot be the same as ender chest slot",0)
+newSpecialSlot("fuelChest", fuelChestEnabled and fuelChestSlot or 0)
+if (enderChestEnabled and fuelChestEnabled) and (enderChestSlot == fuelChestSlot) then
+  error("Warning: Ender Chest Slot and Fuel Chest Slot cannot be the same",0)
 end
 --Rednet
 addParam("rednet", "Rednet Enabled","boolean",true, supportsRednet, "rednetEnabled")
@@ -497,7 +500,7 @@ addParam("fingerprint","Sending Fingerprint", "string", false, supportsRednet, "
 addParam("uniqueExtras","Unique Items", "number 0-15")
 addParam("doRefuel", "Refuel from Inventory","boolean", nil, checkFuel() ~= math.huge) --math.huge due to my changes
 addParam("doCheckFuel", "Check Fuel", "boolean", nil, checkFuel() ~= math.huge)
-addParam("maxFuel", "Max Fuel", "number 1-999999999", nil, checkFuel() ~= math.huge)
+addParam("maxFuel", "Max Fuel", "number 1-999999999", nil, checkFuel() ~= math.huge, "excessFuelAmount")
 --Logging
 addParam("logging", "Logging", "boolean")
 addParam("logFolder", "Log Folder", "string")
@@ -538,7 +541,7 @@ if autoResume and not restoreFoundSwitch then --Don't do for restore because wou
     if fs.exists(startupRename) then fs.delete(startupRename) end
     fs.move(startupName, startupRename)
   end
-  local file = fs.open(startupName,"w")
+  local file = fs.open(startupName,"w") --Startup File
   file.writeLine( --The below is on the left because spacing
 [[
 --This is an auto-generated startup
@@ -558,14 +561,16 @@ if fs.exists("]]..saveFile..[[") then
     print(i)
     os.startTimer(1)
     event = os.pullEvent()
-    if event ~= "timer" then break end
+    if event == "key" then break end
   end
   if event == "timer" then
     os.run({},"]]..shell.getRunningProgram()..[[","-resume")
   else
+
     deleteStuff()
   end
 else
+  print("Never mind, no save file found")
   deleteStuff()
 end
   ]])
@@ -655,7 +660,7 @@ do --Because many local variables unneeded elsewhere
   neededFuel = neededFuel + fuelTable[fuelSafety] --For safety
 end
 
-if neededFuel+checkFuel() > checkFuelLimit() then--Checks for if refueling goes over turtle fuel limit
+if neededFuel+checkFuel() > checkFuelLimit() and doCheckFuel then--Checks for if refueling goes over turtle fuel limit
   if not (doRefuel or fuelChestEnabled) then
     screen()
     print("Turtle cannot hold enough fuel\n")
@@ -1198,7 +1203,7 @@ function smartDig(doDigUp, doDigDown) --This function is used only in mine when 
     if blockAbove and turtle.compareUp() then blockAbove = false end
     if blockBelow and turtle.compareDown() then blockBelow = false end
   end
-  table.insert(compareSlots, 1, table.remove(compareSlots, index)) --This is so the last selected slot is the first slot checked, saving a turtle.select call
+  table.insert(compareSlots, 1, table.remove(compareSlots, index)) --This is so the last selected slot is the first slot checked, saving a select call
   if blockAbove then dig(true, turtle.digUp) end
   if blockBelow then dig(true, turtle.digDown) end
 end
@@ -1324,7 +1329,7 @@ function mine(doDigDown, doDigUp, outOfPath,doCheckInv) -- Basic Move Forward
   isInPath = (not outOfPath) --For rednet
   if not outOfPath and (checkFuel() <= xPos + zPos + yPos + 5) then --If the turtle can just barely get back to the start, we need to get it there. We don't want this to activate coming back though...
     local continueEvac = true --This turns false if more fuel is acquired
-    if fuelChestEnabled and countUsedSlots < inventoryMax then --This is pretty much the only place that this will be used
+    if fuelChestEnabled then --This is pretty much the only place that this will be used
       if not fuelChestPhase then --Since I want to do things with return of enderRefuel, I will just make a special system
         fuelChestPhase = 0 --Global variable will be saved
         fuelChestProperFacing = facing
@@ -1341,7 +1346,7 @@ function mine(doDigDown, doDigUp, outOfPath,doCheckInv) -- Basic Move Forward
         fuelChestPhase = 2
         saveProgress()
       end
-      if fuelChestPhase = 2 then
+      if fuelChestPhase == 2 then
         if not enderRefuel() then --Returns false if slots are full
           select(specialSlots.fuelChest)
           turtle.drop() --Somehow stuff got in here...
@@ -1349,16 +1354,18 @@ function mine(doDigDown, doDigUp, outOfPath,doCheckInv) -- Basic Move Forward
         fuelChestPhase = 3
         saveProgress()
       end
-      if fuelChestPhase = 3 then
+      if fuelChestPhase == 3 then
         select(specialSlots.fuelChest)
         dig(false)
         select(1)
         fuelChestPhase = 4
         saveProgress()
       end
-      if fuelChestPhase = 4 then
-        turnLeft()
-        turnLeft()
+      if fuelChestPhase == 4 then
+        turnTo(fuelChestProperFacing)
+        fuelChestProperFacing = nil --Getting rid of saved values
+        fuelChestPhase = nil
+        continueEvac = false
       end
     elseif doRefuel then --Attempt an emergency refueling
       screen()
@@ -1389,7 +1396,7 @@ function mine(doDigDown, doDigUp, outOfPath,doCheckInv) -- Basic Move Forward
     if continueEvac then
       eventClear() --Clear any annoying events for evac
       endingProcedure() --End the program
-      print("Turtle ran low on fuel so was brought back to start for you :)\n\nTo resume where you left off, use '-startDown "..tostring(y-2).."' when you start")
+      print("Turtle ran low on fuel so was brought back to start for you :)\n\nTo resume where you left off, use '-startDown "..tostring(yPos-1).."' when you start")
       error("",0)
     end
   end
@@ -1566,6 +1573,7 @@ function midRunRefuel(i, allowed)
   if checkFuel() - firstCheck > 0 then singleFuel = checkFuel() - firstCheck else singleFuel = math.huge end --If fuel is 0, we want it to be huge so the below will result in 0 being taken
   --Refuel      The lesser of   max allowable or         remaining fuel space         /    either inf or a single fuel (which can be 0)
   turtle.refuel(math.min(numToRefuel-1, math.ceil((checkFuelLimit()-checkFuel()) / singleFuel))) --The refueling part of the the doRefuel option
+  if checkFuel() >= checkFuelLimit() then return true end --Do not need any more fuel
   return false --Turtle can still be fueled
 end
 
@@ -1577,10 +1585,15 @@ function enderRefuel() --Assumes a) An enderchest is in front of it b) It needs 
   if not slot then return false end --No room for fueling
   select(slot)
   repeat
+    print("Required Fuel: ",excessFuelAmount)
+    print("Current Fuel: ",checkFuel())
+    local tries = 0
     while not turtle.suck() do
-      sleep(0.5)
+      sleep(1)
       statusString = "No Fuel in Ender Chest"
       biometrics() --Let user know that fuel chest is empty
+      print(statusString,". Try: ",tries)
+      tries = tries + 1
     end
     statusString = nil
   until midRunRefuel(slot, 0) --Returns true when should not refuel any more
