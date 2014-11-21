@@ -1088,7 +1088,7 @@ end
 function assignTypes(types, count) --The parameters allow a preexisting table to be used, like a table from the original compareSlots...
   types, count = types or {1}, count or 1 --Table of types and current highest type
   for i=1, inventoryMax do
-    if turtle.getItemCount(i) > 0 then 
+    if turtle.getItemCount(i) > 0 and not specialSlots[i] then --Not special slots so we don't count ender chests
       select(i)
       for k=1, count do
         if turtle.compareTo(getRep(k, types)) then types[i] = k end
@@ -1097,7 +1097,7 @@ function assignTypes(types, count) --The parameters allow a preexisting table to
         count = count + 1
         types[i] = count
       end
-      
+      if oreQuarry then getItemDetails and stuff end --This needs to be finished, don't forget!
     end
   end
   select(1)
@@ -1151,12 +1151,12 @@ function count(add) --Done any time inventory dropped and at end, true=add, fals
     end
   end
     
-    for i=1,inventoryMax do
-      if not specialSlots[i] then --Do nothing!
-      elseif slot[i][1] == 1 then totals.cobble = totals.cobble + (slot[i][2] * mod)
-      elseif slot[i][1] == 2 then totals.fuel = totals.fuel + (slot[i][2] * mod)
-      elseif slot[i][1] == 3 then totals.other = totals.other + (slot[i][2] * mod) end
-    end
+  for i=1,inventoryMax do
+    if specialSlots[i] then --Do nothing!
+    elseif slot[i][1] == 1 then totals.cobble = totals.cobble + (slot[i][2] * mod)
+    elseif slot[i][1] == 2 then totals.fuel = totals.fuel + (slot[i][2] * mod)
+    elseif slot[i][1] == 3 then totals.other = totals.other + (slot[i][2] * mod) end
+  end
 
   select(1)
 end
