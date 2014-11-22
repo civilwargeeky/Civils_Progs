@@ -537,7 +537,7 @@ if flatBedrock then
 end
 
 --Auto Startup functions
-if autoResume and not restoreFoundSwitch then --Don't do for restore because would overwrite renamed thing. Can't edit mid-run because no shell in restarted
+local function doAutoResumeStuff()
   if fs.exists(startupName) then
     if fs.exists(startupRename) then fs.delete(startupRename) end
     fs.move(startupName, startupRename)
@@ -577,6 +577,9 @@ end
   ]])
   file.close()
 end
+if autoResume and not restoreFoundSwitch then --Don't do for restore because would overwrite renamed thing. Can't edit mid-run because no shell in restarted
+  doAutoResumeStuff()
+end
 --oreQuarry blacklist
 local blacklist = { "minecraft:air",  "minecraft:bedrock", "minecraft:cobblestone", "minecraft:dirt", "minecraft:ice", "minecraft:ladder", "minecraft:netherrack", "minecraft:sand", "minecraft:sandstone",
   "minecraft:snow", "minecraft:snow_layer", "minecraft:stone", "minecraft:gravel", "minecraft:grass", "minecraft:torch" }
@@ -609,6 +612,7 @@ if addParam("atChest", "Is at Chest", "force") then --This sets position to 0,1,
   end
   if ((neededLayer-2)/3) % 2 == 1 then neededLayer = neededLayer - 3 end --Because with weird end of row, just go to last basic row
   xPos, zPos, yPos, facing, rowCheck, layersDone = 0,1,1, 0, true, math.ceil(neededLayer/3)
+  doAutoResumeStuff() --This was probably deleted when they hit a key to launch with -atChest
   events = {{"goto",1,1,neededLayer, 0}}
 end
 
