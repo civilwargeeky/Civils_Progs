@@ -182,8 +182,8 @@ end
 
 local tArgs = {...}
 --Pre-defining variables that need to be saved
-      xPos,yPos,zPos,facing,percent,mined,moved,relxPos, rowCheck, connected, isInPath, layersDone, attacked, startY, chestFull, gotoDest, atChest, fuelLevel, numDropOffs, allowedItems, compareSlots, dumpSlots, selectedSlot, extraDropItems, oldOreQuarry, specialSlots
-    = 0,   1,   1,   0,     0,      0,    0,    1,       true   ,  false,     true,     1,          0,        0,      false,     "",       false,   0,         0,           {},             {},           {},      1,            false,          false,        {}
+      xPos,yPos,zPos,facing,percent,mined,moved,relxPos, rowCheck, connected, isInPath, layersDone, attacked, startY, chestFull, gotoDest, atChest, fuelLevel, numDropOffs, allowedItems, compareSlots, dumpSlots, selectedSlot, extraDropItems, oldOreQuarry, specialSlots, relzPos
+    = 0,   1,   1,   0,     0,      0,    0,    1,       true   ,  false,     true,     1,          0,        0,      false,     "",       false,   0,         0,           {},             {},           {},      1,            false,          false,        {},           0
     
 local statusString
 
@@ -500,6 +500,7 @@ addParam("fingerprint","Sending Fingerprint", "string", false, supportsRednet, "
 addParam("uniqueExtras","Unique Items", "number 0-15")
 addParam("doRefuel", "Refuel from Inventory","boolean", nil, checkFuel() ~= math.huge) --math.huge due to my changes
 addParam("doCheckFuel", "Check Fuel", "boolean", nil, checkFuel() ~= math.huge)
+excessFuelAmount = excessFuelAmount or math.huge --Math.huge apparently doesn't save properly
 addParam("maxFuel", "Max Fuel", "number 1-999999999", nil, checkFuel() ~= math.huge, "excessFuelAmount")
 --Logging
 addParam("logging", "Logging", "boolean")
@@ -1215,10 +1216,22 @@ function smartDig(doDigUp, doDigDown) --This function is used only in mine when 
 end
 
 function setRowCheckFromPos()
-  rowCheck = (zPos % 2 == 1) --It will turn right at odd rows
+  rowCheck = (relzPos % 2 == 1) --It will turn right at odd rows
 end
 function relxCalc()
-  if rowCheck then relxPos = xPos else relxPos = (x-xPos)+1 end
+  if layersDone % 2 == 1 then
+    relzPos = zPos
+  else
+    relzPos = (z-zPos) + 1
+  end
+  if relzPos % 2 == 1 then 
+    relxPos = xPos 
+  else 
+    relxPos = (x-xPos)+1 
+  end
+  if layersDone % 2 == 0 and z % 2 == 1 then
+    relxPos = (x-relxPos)+1
+  end
 end
 function forward(doAdd)
   if doAdd == nil then doAdd = true end
@@ -1257,34 +1270,34 @@ function verticalMove(moveFunc, yDiff, digFunc, attackFunc)
   biometrics()
   return true
 end
-function up(ignoreInvert)
-  if inverted and not ignoreInvert then verticalMove(turtle.down, -1, digDown, attackDown) --This is if inverted
+function up(ignoreInvert) --As of now, ignoreInvert only changes the movement function as others account for invert
+  if inverted and not ignoreInvert then verticalMove(turtle.down, -1, digUp, attackUp) --This is if inverted --digUp because the up and down were made relative
   else verticalMove(turtle.up, -1, digUp, attackUp) end --Regular
 end
 function down(ignoreInvert)
-  if inverted and not ignoreInvert then verticalMove(turtle.up, 1, digUp, attackUp)
+  if inverted and not ignoreInvert then verticalMove(turtle.up, 1, digDown, attackDown) --digDown because the up and down were made relative, same for attack
   else verticalMove(turtle.down, 1, digDown, attackDown) end
 end
 
    
-  function right(num)
-    num = num or 1
-    for i=1, num do 
-      facing = coterminal(facing+1)
-      saveProgress()
-      if not goLeftNotRight then turtle.turnRight() --Normally
-      else turtle.turnLeft() end --Left Quarry
-    end
-  end
-  function left(num)
-    num = num or 1
-    for i=1, num do 
-    facing = coterminal(facing-1)
+function right(num)
+  num = num or 1
+  for i=1, num do 
+    facing = coterminal(facing+1)
     saveProgress()
-    if not goLeftNotRight then turtle.turnLeft() --Normally
-    else turtle.turnRight() end --Left Quarry
+    if not goLeftNotRight then turtle.turnRight() --Normally
+    else turtle.turnLeft() end --Left Quarry
   end
-  end
+end
+function left(num)
+  num = num or 1
+  for i=1, num do 
+  facing = coterminal(facing-1)
+  saveProgress()
+  if not goLeftNotRight then turtle.turnLeft() --Normally
+  else turtle.turnRight() end --Left Quarry
+end
+end
   
 function attack(doAdd, func)
   doAdd = doAdd or true
@@ -1728,7 +1741,7 @@ function bedrock()
 end
 
 function endOfRowTurn(startZ, wasFacing, mineFunctionTable)
-local halfFacing = 1
+local halfFacing = ((layersDone % 2 == 1) and 1) or 3
 local toFace = coterminal(wasFacing + 2) --Opposite side
 if zPos == startZ then
   if facing ~= halfFacing then turnTo(halfFacing) end
@@ -1789,13 +1802,13 @@ local lastLayer = layersDone == layers --If this is the last layer
 local secondToLastLayer = (layersDone + 1) == layers --This is a check for going down at the end of a layer.
 moved = moved + 1 --To account for the first position in row as "moved"
 if not(layersDone == layers and not doDigDown) then digDown() end --This is because it doesn't mine first block in layer
-if not restoreFoundSwitch then rowCheck = true end
+if not restoreFoundSwitch and layersDone % 2 == 1 then rowCheck = true end
 relxCalc()
-while zPos <= z do -------------Width----------
+while relzPos <= z do -------------Width----------
 while relxPos < x do ------------Length---------
 mine(not lastLayer or (doDigDown and lastLayer), not lastLayer or (doDigUp and lastLayer)) --This will be the idiom that I use for the mine function
 end ---------------Length End-------
-if zPos ~= z then --If not on last row of section
+if relzPos ~= z then --If not on last row of section
   local func
   if rowCheck == true then --Switching to next row
   func = "right"; rowCheck = false; else func = false; rowCheck = true end --Which way to turn
@@ -1804,11 +1817,15 @@ if zPos ~= z then --If not on last row of section
 else break
 end
 end ---------------Width End--------
-eventAdd("goto",1,1,yPos,0, "layerStart") --Goto start of layer
+if layersDone % 2 == 0 then --Will only go back to start on non-even layers
+  eventAdd("goto",1,1,yPos,0, "layerStart") --Goto start of layer
+else
+  eventAdd("turnTo",coterminal(facing-2))
+end
 if not lastLayer then --If there is another layer
   for i=1, 2+fromBoolean(not(lastHeight~=0 and secondToLastLayer)) do eventAdd("down()") end --The fromBoolean stuff means that if lastheight is 1 and last and layer, will only go down two
 end
-eventAdd("setRowCheckFromPos")
+--eventAdd("setRowCheckFromPos")
 eventAdd("relxCalc")
 layersDone = layersDone + 1
 restoreFoundSwitch = false --This is done so that rowCheck works properly upon restore
