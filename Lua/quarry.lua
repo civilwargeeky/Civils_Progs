@@ -1270,13 +1270,11 @@ function verticalMove(moveFunc, yDiff, digFunc, attackFunc)
   biometrics()
   return true
 end
-function up(ignoreInvert) --As of now, ignoreInvert only changes the movement function as others account for invert
-  if inverted and not ignoreInvert then verticalMove(turtle.down, -1, digUp, attackUp) --This is if inverted --digUp because the up and down were made relative
-  else verticalMove(turtle.up, -1, digUp, attackUp) end --Regular
+function up() --Uses other function if inverted
+  verticalMove(inverted and turtle.down or turtle.up, -1, digUp, attackUp) --Other functions deal with invert already
 end
-function down(ignoreInvert)
-  if inverted and not ignoreInvert then verticalMove(turtle.up, 1, digDown, attackDown) --digDown because the up and down were made relative, same for attack
-  else verticalMove(turtle.down, 1, digDown, attackDown) end
+function down()
+  verticalMove(inverted and turtle.up or turtle.down, 1, digDown, attackDown)
 end
 
    
