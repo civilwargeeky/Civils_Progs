@@ -46,6 +46,8 @@
   max fuel turtle can hold now respects doCheckFuel
   dumpCompareItems works with new oreQuarry
   TURTLE NO LONGER GOES BACK TO START AT END OF EVERY ROW
+  Fixed bedrock function
+  Fixed bug in rednet pausing
   Cool Ideas from elektronemulo
   New Parameters:
     -flatBedrock [t/f]: The turtle will initially dig down to bedrock (or possibly a mob) and set startDown from that
