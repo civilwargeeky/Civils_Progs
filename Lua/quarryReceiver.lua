@@ -319,15 +319,17 @@ for a, b in pairs(colors) do --This is so commands color commands can be entered
   colors[a:lower()] = b
 end
 
+local requiredColors = {"title", "subtitle", "pos", "dim", "extra", "error", "info", "inverse", "command", "help", "background"}
+
 local function checkColor(name, text, back) --Checks if a given color works
   local flag = false
   for a, b in ipairs(requiredColors) do
     if b == name then
-      flag == true
+      flag = true
       break
     end
   end
-  if not flag or not colors[text] or not colors[back] then return false end
+  if not flag or not (tonumber(text) or colors[text]) or not (tonumber(back) or colors[back]) then return false end
   return true
 end
   
@@ -336,17 +338,15 @@ local themes = {} --Loaded themes, gives each one a names
 local function newTheme(name)
   name = name:lower() or "none"
   local self = {name = name}
-  self.addColor = function(self, name, text, back) --Background is optional. Will not change if nil
-    if not checkColor(name, text, back or "black") then debug("Color check failed: ",name," ",text," ",back); return self end --Back or black because optional
-    name = name or "none"
-    self[name] = {text = text, background = back}
+  self.addColor = function(self, colorName, text, back) --Background is optional. Will not change if nil
+    if not checkColor(colorName, text, back or "black") then debug("Color check failed: ",name," ",text," ",back); return self end --Back or black because optional
+    colorName = colorName or "none"
+    self[colorName] = {text = text, background = back}
     return self --Allows for chaining :)
   end
   themes[name] = self
   return self
 end
-
-local requiredColors = {"title", "subtitle", "pos", "dim", "extra", "error", "info", "inverse", "command", "help", "background"}
 
 local function parseTheme(file)
   local addedTheme = newTheme(file:match("^.-\n") or "newTheme") --Initializes the new theme to the first line
@@ -515,7 +515,7 @@ screenClass.new = function(side, receive, themeFile)
     label = "Quarry Bot",
     id = 1, 
     percent = 0,
-    relxPos = 0,
+    xPos = 0,
     zPos = 0,
     layersDone = 0,
     x = 0,
@@ -556,9 +556,11 @@ screenClass.remove = function(tab) --Cleanup function
   tab:say("Removed", tab.theme.info, 1) --Let everyone know whats up
   screenClass.screens[tab.id] = {side = "REMOVED"} --Not nil because screw up len()
   screenClass.sides[tab.side] = nil
-  screenClass.channels[tab.receive] = nil
-  if modem and modem.isOpen(tab.receive) then
-    modem.close(tab.receive)
+  if tab.receive then --may not have a channel
+    screenClass.channels[tab.receive] = nil 
+    if modem and modem.isOpen(tab.receive) then
+      modem.close(tab.receive)
+    end
   end
 end
 
@@ -702,7 +704,7 @@ screenClass.updateNormal = function(self) --This is the normal updateDisplay fun
       self:tryAdd(center(str(message.percent).."%", self.dim[1]), theme.pos, true, false) --I want it to be centered on 1x1
       
       self:tryAdd("--Pos--", theme.subtitle, false, true, true)
-      self:tryAdd("X:"..alignR(str(message.relxPos), 5), theme.pos, true)
+      self:tryAdd("X:"..alignR(str(message.xPos), 5), theme.pos, true)
       self:tryAdd("Z:"..alignR(str(message.zPos), 5), theme.pos , true)
       self:tryAdd("Y:"..alignR(str(message.layersDone), 5), theme.pos , true)
       
@@ -738,7 +740,7 @@ screenClass.updateNormal = function(self) --This is the normal updateDisplay fun
       self:tryAdd(str(message.percent).."% Complete", theme.pos , true) --This can be an example. Print (receivedMessage).percent in blue on all different screen sizes
       
       self:tryAdd("-------Pos--------", theme.subtitle, false, true, true)
-      self:tryAdd("X Coordinate:"..alignR(str(message.relxPos), 5), theme.pos, true)
+      self:tryAdd("X Coordinate:"..alignR(str(message.xPos), 5), theme.pos, true)
       self:tryAdd("Z Coordinate:"..alignR(str(message.zPos), 5), theme.pos , true)
       self:tryAdd("On Layer:"..alignR(str(message.layersDone), 9), theme.pos , true)
       
@@ -771,7 +773,7 @@ screenClass.updateNormal = function(self) --This is the normal updateDisplay fun
       
       local var1 = math.max(#str(message.x), #str(message.z), #str(message.layers))
       local var2 = (self.dim[1]-6-var1+3)/3
-      self:tryAdd("Pos: "..alignR(" X:"..alignR(str(message.relxPos),var1),var2)..alignR(" Z:"..alignR(str(message.zPos),var1),var2)..alignR(" Y:"..alignR(str(message.layersDone),var1),var2), theme.pos, true)
+      self:tryAdd("Pos: "..alignR(" X:"..alignR(str(message.xPos),var1),var2)..alignR(" Z:"..alignR(str(message.zPos),var1),var2)..alignR(" Y:"..alignR(str(message.layersDone),var1),var2), theme.pos, true)
       self:tryAdd("Size:"..alignR(" X:"..alignR(str(message.x),var1),var2)..alignR(" Z:"..alignR(str(message.z),var1),var2)..alignR(" Y:"..alignR(str(message.layers),var1),var2), theme.dim, true)
       self:tryAdd("Volume: "..str(message.volume), theme.dim, false, true, true)
       self:tryAdd("",{}, false, false, true)
@@ -972,10 +974,25 @@ while not initModem() do
 end
 debug("Modem successfully connected!")
 
+local function autoDetect(channels)
+  if type(channels) ~= "table" then channels = {} end
+  local tab = peripheral.getNames()
+  local index = 1
+  for i=1, #tab do
+    if peripheral.getType(tab[i]) == "monitor" and not screenClass.sides[tab[i]] then
+      screenClass.new(tab[i], channels[index]) --You can specify a list of channels in "auto" parameter
+      index = index+1
+    end
+  end
+end
 
 --Init Computer Screen Object (was defined at top)
 computer = screenClass.new("computer", parameters.receivechannel and parameters.receivechannel[1])--This sets channel, checking if parameter exists
 
+if parameters.auto then --This must go after computer declaration so computer ID is 1
+  autoDetect(parameters.auto)
+  parameters.station = true
+end
 
 computer.displayCommand = function(self)
   local sideString = ((defaultSide and " (") or "")..(defaultSide or "")..((defaultSide and ")") or "")
@@ -1003,7 +1020,9 @@ if parameters.station then --This will set the screen update to display stats on
     for i=1, self.dim[1] do line = line.."-" end
     self:tryAdd(line, self.theme.title, false, true, true)
     for a,b in ipairs(screenClass.screens) do
-      self:tryAdd(" "..alignL(b.id,part-1).."| "..alignL(b.side,part).."| "..alignL(b.receive, part).."| "..alignL(b.theme.name,part), self.theme.info, false, true, true) --Prints info about all screens
+      if b.side ~= "REMOVED" then
+        self:tryAdd(" "..alignL(b.id,part-1).."| "..alignL(b.side,part).."| "..alignL(b.receive, part).."| "..alignL(b.theme.name,part), self.theme.info, false, true, true) --Prints info about all screens
+      end
     end
     self:displayCommand()
   end
@@ -1056,20 +1075,6 @@ for i=1, #parameters do --Do actions for parameters that can be used multiple ti
 end
 
 for a,b in pairs(screenClass.sides) do debug(a) end
-
-local function autoDetect(channels)
-  if type(channels) ~= "table" then channels = {} end
-  local tab = peripheral.getNames()
-  local index = 1
-  for i=1, #tab do
-    if peripheral.getType(tab[i]) == "monitor" and not screenClass.sides[tab[i]] then
-      screenClass.new(tab[i], channels[index]) --You can specify a list of channels in "auto" parameter
-      index = index+1
-    end
-  end
-end
-if parameters.auto then autoDetect(parameters.auto) end
-
 
 --==FINAL CHECKS==
 
@@ -1218,7 +1223,7 @@ while continue do
       elseif key == "down" then
         commandString = "" --If key down, clear
       elseif #key == 1 then
-        commandString = commandString..keyMap[key]
+        commandString = commandString..key
       end
     --ALL THE COMMANDS
     else --If we are submitting a command
@@ -1232,7 +1237,13 @@ while continue do
         local commandType = validCommands[command]
         if commandType == 1 or commandType == 3 then --If the command requires a "side" like transmitting commands, versus setting a default
           if defaultSide then table.insert(args, 2, defaultSide) end
-          local screen = screenClass.sides[args[2]]
+          local screen 
+          local test = screenClass.screens[tonumber(args[2])]
+          if test and test.side ~= "REMOVED" then --This way we can specify IDs as well
+            screen = test
+          else
+            screen = screenClass.sides[args[2]]
+          end
           if screen then --If the side exists
             if command == "command" and screen.send then --If sending command to the turtle
               screen.queuedMessage = table.concat(args," ", 3) --Tells message handler to send appropriate message

@@ -71,10 +71,13 @@
   Slightly changed key handling
   Added support for directly copying pastebin themes into code
   
---Version 3.5.6
+--Version 3.6.0
   Command sending is now per-screen, not global. Prevents issues where messages send in wrong order
   Up key now loads previous command
   Down key now clears command line
+  Using the -auto command automatically sets the computer as a station
+  Fixed remove command
+  All sided commands now accept screen IDs as well as side names
   New Parameter:
     -modem: sets the side that the modem is on
 

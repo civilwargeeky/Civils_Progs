@@ -858,7 +858,7 @@ end
 function biometrics(isAtBedrock)
   if not rednetEnabled then return end --This function won't work if rednet not enabled :P
   local toSend = { label = os.getComputerLabel() or "No Label", id = os.getComputerID(),
-    percent = percent, relxPos = relxPos, zPos = zPos, xPos = xPos, yPos = yPos,
+    percent = percent, zPos = relzPos, xPos = relxPos, yPos = yPos,
     layersDone = layersDone, x = x, z = z, layers = layers,
     openSlots = getNumOpenSlots(), mined = mined, moved = moved,
     chestFull = chestFull, isAtChest = (xPos == 0 and yPos == 1 and zPos == 1),
