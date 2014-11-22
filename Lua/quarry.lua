@@ -1725,12 +1725,15 @@ function bedrock()
   if checkFuel() == 0 then error("No Fuel",0) end
   local origin = {x = xPos, y = yPos, z = zPos}
   print("Bedrock Detected")
-  if turtle.detectUp() then
+  if turtle.detectUp() and not turtle.digUp() then
     print("Block Above")
     local var
     if facing == 0 then var = 2 elseif facing == 2 then var = 0 else error("Was facing left or right on bedrock") end
     goto(xPos,zPos,yPos,var)
     for i=1, relxPos do mine(false, false); end
+  else
+    up() --Go up two to avoid any bedrock. 
+    up()
   end
   eventClear() --Get rid of any excess events that may be run. Don't want that.
   endingProcedure()
