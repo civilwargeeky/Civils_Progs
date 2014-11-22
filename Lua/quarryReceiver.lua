@@ -1,4 +1,4 @@
---Quarry Receiver Version 3.5.6
+--Quarry Receiver Version 3.6.0
 --Made by Civilwargeeky
 --[[
 Recent Changes:

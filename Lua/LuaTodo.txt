@@ -121,32 +121,21 @@ Random future thoughts: Maybe make more seamless. Have an arg/option to make cal
 
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 
-Quarry Version 3.5.6:
+Quarry Version 3.6.0:
   General Ideas:
     maybe look for multiple "-forcePrompt setting" parameters, and each time one is found, 
 add it to a table. When you do addParam function, check if on force prompt table, then prompt if so.
     To look for multiple of the same command, check quarryReceiver: just loop through all commands
     Maybe in future, option to place torches on walls efficiently
-    
-Things for 3.5.6:
-
   
-Things for 3.5.7:
+Things for 3.6.1:
   Organize all the things! Everything is so messy right now...
   Find out why turtle movement percent is slightly off
   In quarry tArgs, make a way to take out key value pairs in all forms (?)
-  Idea for using inverted function with absolutes: Param for ignoreInverted. (Check detect functions) This allows much easier plugging in for other people
+  Idea for using inverted function with absolutes: Param for ignoreInverted. (Check detect functions) This allows much easier plugging in for other people (Make all main functions relative)
   
-Things to add for quarry version 3.6.0 (After rednet update and shell is done):
+Things to add for quarry version 3.6.2:
   Add support for mods. Like open peripheral chest finding.
-  Improve end of layer logic. You should be able to just have it stop at the end of the layer and go down three with minimal hassle.
-  Fix up and down functions. They may work, and they may be clever, but they are really dumb.
-  Maybe have a "-autoResume" or "-autoRestore" parameter with string argument of what to rename other original startup to
-    Better idea: You take existing save file (if it exists?) and say "if exists saveFile then run quarry else do rest of original startup end" so we don't replace the file, but add to it.
-        Then, when done, just remove what you added
-    Better yet!: Just add "if exists savefile then os.run("quarry -resume") end --Rest of program here" to the start of file. Then rest of startup continues when quarry done.
-  Maybe have separate "goDown" and "goUp" parameters
-    Or: Maybe just have an "offset" variable that could be positive or negative. -40 would go down 40 before it starts the quarry. Inverted or no.
   Maybe have an option to change the home position. Like at 1,1,1 instead of 0,1,1. You could just replace all the "goto 1,1,1 goto 0,1,1" with a "go home" command
   
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-

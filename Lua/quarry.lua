@@ -1,16 +1,16 @@
 --Civilwargeeky's Quarry Program--
-  VERSION = "3.5.6"
+  VERSION = "3.6.0"
 --[[ 
 Recent Changes:
   New Ore Quarry System
-  Completely redid the system of dropping items off
-  Improved session restoring for those using fuel
   Added New Rednet Support
+  Quarry no longer goes to start at end of row!
+  Turtle can go left!
   New Arguments!
-    -oreQuarry [t/f] This will start an oreQuarry :D
-    -dumpCompareItems [t/f] If true, the oreQuarry will drop off junk compare items
-    -extraDropItems [force] Tells the oreQuarry that you want to have extra drop-off items, like cobblestone
-    -atChest [force] Using this with -resume will tell the turtle that it is at its chest, and needs to go back to where it was
+  -flatBedrock [t/f]: The turtle will initially dig down to bedrock (or possibly a mob) and set startDown from that
+  -left [t/f]: The turtle will quarry to the left instead of the right
+  -maxFuel [number]: The number the turtle will stop fueling at. Basically just sets checkFuelLimit to this number
+  -fuelChest [nothing or slot number]: Prompts for a chest with fuel it. This will be used if the turtle runs out of fuel. Recommended with maxfuel and doCheckFuel false
 ]]
 --Defining things
 civilTable = nil; _G.civilTable = {}; setmetatable(civilTable, {__index = getfenv()}); setfenv(1,civilTable)
@@ -607,6 +607,7 @@ if addParam("atChest", "Is at Chest", "force") then --This sets position to 0,1,
     sleep(4)
     neededLayer = 2
   end
+  if ((neededLayer-2)/3) % 2 == 1 then neededLayer = neededLayer - 3 end --Because with weird end of row, just go to last basic row
   xPos, zPos, yPos, facing, rowCheck, layersDone = 0,1,1, 0, true, math.ceil(neededLayer/3)
   events = {{"goto",1,1,neededLayer, 0}}
 end
@@ -1215,9 +1216,6 @@ function smartDig(doDigUp, doDigDown) --This function is used only in mine when 
   if blockBelow then dig(true, turtle.digDown) end
 end
 
-function setRowCheckFromPos()
-  rowCheck = (relzPos % 2 == 1) --It will turn right at odd rows
-end
 function relxCalc()
   if layersDone % 2 == 1 then
     relzPos = zPos
@@ -1481,7 +1479,6 @@ function checkSanity()
     if xPos < 0 then goto(1, zPos, yPos, 0) end
     if zPos > z then goto(xPos, z, yPos, 3) end
     if zPos < 0 then goto(xPos, 1, yPos, 1) end
-    setRowCheckFromPos() --Row check right (maybe left later)
     relxCalc() --Get relxPos properly
     eventClear()
     
@@ -1823,7 +1820,6 @@ end
 if not lastLayer then --If there is another layer
   for i=1, 2+fromBoolean(not(lastHeight~=0 and secondToLastLayer)) do eventAdd("down()") end --The fromBoolean stuff means that if lastheight is 1 and last and layer, will only go down two
 end
---eventAdd("setRowCheckFromPos")
 eventAdd("relxCalc")
 layersDone = layersDone + 1
 restoreFoundSwitch = false --This is done so that rowCheck works properly upon restore
