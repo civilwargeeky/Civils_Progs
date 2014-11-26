@@ -758,7 +758,9 @@ screenClass.updateNormal = function(self) --This is the normal updateDisplay fun
       self:tryAdd("Used Slots:"..alignR(str(16-message.openSlots),7), theme.extra, false, false, true)
       self:tryAdd("Blocks Mined:"..alignR(str(message.mined), 5), theme.extra, false, false, true)
       self:tryAdd("Spaces Moved:"..alignR(str(message.moved), 5), theme.extra, false, false, true)
-      self:tryAdd(message.status, theme.info, false, false, true)
+      if message.status then
+        self:tryAdd(message.status, theme.info, false, false, true)
+      end
       if message.chestFull then
         self:tryAdd("Chest Full, Fix It", theme.error, false, true, true)
       end
