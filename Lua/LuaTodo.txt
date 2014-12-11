@@ -133,6 +133,7 @@ Things for 3.6.1:
   Find out why turtle movement percent is slightly off
   In quarry tArgs, make a way to take out key value pairs in all forms (?)
   Idea for using inverted function with absolutes: Param for ignoreInverted. (Check detect functions) This allows much easier plugging in for other people (Make all main functions relative)
+  Add param for counting each individual item. So maybe send back a report of literally everything the turtle collected.
   
 Things to add for quarry version 3.6.2:
   Add support for mods. Like open peripheral chest finding.
