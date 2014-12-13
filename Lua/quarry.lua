@@ -236,12 +236,13 @@ if turtle then --Function inits
   end --There is no "else" because it will already return the regular getFuel
   if turtle.getFuelLimit then
     checkFuelLimit = function() return math.min(turtle.getFuelLimit(), excessFuelAmount) end --Return the limiting one
+    if turtle.getFuelLimit() == "unlimited" then 
+      checkFuelLimit = function() return math.huge end
+    end
   else
     checkFuelLimit = function() return excessFuelAmount end --If the function doesn't exist 
   end
-  if turtle.getFuelLimit() == "unlimited" then 
-    checkFuelLimit = function() return math.huge end
-  end
+
   
   turtle.select(1) --To ensure this is correct
 end
