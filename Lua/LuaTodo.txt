@@ -48,6 +48,20 @@ running pre-designated quarries (so like, load a set of parameters that you make
 and possibly doing multiple quarries/rooms/however you use its in a row (quarry, go left 60, quarry). 
 So that will be cool."
 
+Idea: Shell will automatically install quarry the first time run on turtle, and receiver the first time run on a computer
+
+Maybe also it could download a few simple param things that I provide.
+
+Idea for updates: It could download a set pastebin for "checksums" of all my programs. Then go through all of them. You could also have a "standard" pastebin to check and a "dev" pastebin
+ You could possibly write yourself a python script to interact with the pastebin API and make the file for you when do a git commit.
+ Maybe add entries for all the old programs as well so users can revert (?)
+
+Another idea: Have users able to upload quarry param things to pastebin, like they could select a group of them to upload at once
+ they could then download these later. They would be serialized as like a table or something.
+ Each param thing would also be given a unique id to facilitate renaming them.
+
+Also the param thing maker wizard should go through all the "addParam" functions in addition to a couple special ones that are set. So it would look for "enderchest", but would already have "manualPos" or "x"
+
 
 Menu Plans (w/ sub menu):
   Run Default Quarry
@@ -125,6 +139,7 @@ Quarry Version 3.6.0:
   General Ideas:
     maybe look for multiple "-forcePrompt setting" parameters, and each time one is found, 
 add it to a table. When you do addParam function, check if on force prompt table, then prompt if so.
+    Better Idea! In the addparam function just call a "isForcePrompt" function that loops through args to check if user said "-forcePrompt left" etc. Really simple.
     To look for multiple of the same command, check quarryReceiver: just loop through all commands
     Maybe in future, option to place torches on walls efficiently
   
