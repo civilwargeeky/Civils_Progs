@@ -1267,7 +1267,7 @@ function verticalMove(moveFunc, yDiff, digFunc, attackFunc)
       attackFunc()
       sleep(0.5)
       count = count + 1
-      if count > maxTries then bedrock() end
+      if count > maxTries and yPos > (startY-7) then bedrock() end
     end
   end
   yPos = yDiff + yPos

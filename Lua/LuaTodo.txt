@@ -62,6 +62,12 @@ Another idea: Have users able to upload quarry param things to pastebin, like th
 
 Also the param thing maker wizard should go through all the "addParam" functions in addition to a couple special ones that are set. So it would look for "enderchest", but would already have "manualPos" or "x"
 
+Cool idea for menus:
+Have a "Settings" Page where you could change the install directory, and what you call each program. There will be a cool file browser
+The file browser will be a menu, and you can have a "fileBrowser" function that takes an argument of a compareFunction. The function will only add to list of files if compare is true.
+There will also be a param for directory or file. If directory, there will be a first option which is select current. For file, you just press enter on the file.
+There will be off to the right (aligned) a "<DIR>" or "-FILE-" to indicate this. The title will say file browser and the description will be the current path.
+All the menus will be linked together when the function is called. The function will also have a starting path, and you have a "go up" option at the bottom unless you are at root.
 
 Menu Plans (w/ sub menu):
   Run Default Quarry
