@@ -1,0 +1,28 @@
+#KSP Surface Distance Calculator
+#This will find the distance between two points, tell you the angle you need to set, and tell you about how long it takes to get there (at a given speed)
+#Get your numbers from a mod like SCANSAT
+
+class radii:
+  kerbin = 600000
+  
+longitudeRange = 180
+latitudeRange = 90
+
+def coterm(num, range):
+  num = abs(num)
+  return num-(num//range)*range
+  
+def toKM(rad, deg, max):
+  return (2*3.1415926 * rad) * (deg/(2*max))
+
+def main():
+  print("Welcome to the distance and time calculator!")
+  answer = []
+  while len(answer) < 5:
+    print("What is your position? Answer like '108 33 N 17 5 W'")
+    answer = input("> ")
+    answer = answer.split(" ")
+  posY = (coterm(int(answer[0]),latitudeRange) + coterm(int(answer[1]),60)/60) * (answer[2][0].lower() == "n" and 1 or -1)
+  posX = (coterm(int(answer[3]),longitudeRange) + coterm(int(answer[4]),60)/60) * (answer[5][0].lower() == "e" and 1 or -1)
+  
+  kmY = toKM(radii.kerbin,posY,latitudeRange)
