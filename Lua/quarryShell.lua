@@ -21,32 +21,45 @@ These will be registered in a config file specific to this program.]]
 --Changing global namespace to avoid conflicts
 globalTable = nil; _G.globalTable = {}; setmetatable(globalTable, {__index = getfenv(1)}); setfenv(1,globalTable)
 
+cwd = "quarryResources" --Current Working Directory
 local fileNames = {
-  workingDirectory = "", --For debug
-  workingDirectory = "quarryResources",
   menuAPI = "menuAPI.lua",
 }
-local gettingMenu = {
-  version = "1.0.1",
-  pastebin = "4ptKaSQp",
+local updateInfo = {
+  menu = {
+    version = "1.0.1",
+    pastebin = "4ptKaSQp",
+  },
+  
 }
---Setting directory
-if not fs.isDir(fileNames.workingDirectory) then
-  fs.makeDir(fileNames.workingDirectory)
+--Setting directory and directory functions
+if not fs.isDir(cwd) then
+  fs.makeDir(cwd)
 end
-shell.setDir(fileNames.workingDirectory)
+local function setDir(dir)
+  cwd = dir
+end
 local function addDir(file, dir)
-  return (dir or shell.dir()) .. "/"..file
+  return (dir or cwd) .. "/"..file
 end
-
+for a,b in pairs(fileNames) do --All file names are absolutes
+  if not b:match("/") then
+    fileNames[a] = addDir(b)
+  end
+end
 
 --Screen and Debug functions
-local doPrintDebug = true --For debugging messages
+local doDebug = true --For debugging messages
 local function clearSet(x,y) term.clear(); term.setCursorPos(x or 1, y or 1) end
 local function debug(...)
-  if doPrintDebug then
+  if doDebug then
     return print(...)
   end
+end
+local function printPause(t, ...)
+  print("")
+  print(...)
+  sleep(t)
 end
 
 --Program functions
@@ -54,7 +67,6 @@ local function exit(noClear)
   if not noClear then
     clearSet()
   end
-  shell.setDir("")
   error("",0)
 end
 local function copyTab(tab)
@@ -64,14 +76,18 @@ local function copyTab(tab)
   end
   return toRet
 end
+function pastebin(code, fileName)
+  return shell.run("pastebin get "..code.." "..fileName)
+end
+
 --Acquiring menu api
 local requiresDownload = false
-if not fs.exists(addDir(fileNames.menuAPI)) then
+if not fs.exists(fileNames.menuAPI) then
   requiresDownload = true
 else
   debug("API exists")
-  local file = fs.open(addDir(fileNames.menuAPI),"r")
-  if not file or file.readAll():match("Version (%d+%.%d+%.%d+)") ~= gettingMenu.version then --If we don't have the proper version, redownload stuff
+  local file = fs.open(fileNames.menuAPI,"r")
+  if not file or file.readAll():match("Version (%d+%.%d+%.%d+)") ~= updateInfo.menu.version then --If we don't have the proper version, redownload stuff
     debug("Improper API Version, downloading latest")
     requiresDownload = true
   end
@@ -84,9 +100,9 @@ if requiresDownload then
     print("HTTP API not enabled. For this program to work, go to my pastebin and download the menu api as ",fileNames.menuAPI)
     exit(true)
   end
-  if fs.exists(addDir(fileNames.menuAPI)) then fs.delete(addDir(fileNames.menuAPI)) end
-  shell.run("pastebin get ",gettingMenu.pastebin," ",fileNames.menuAPI) --No addDir because pastebin puts in working directory
-  if not fs.exists(addDir(fileNames.menuAPI)) then --If pastebin get failed
+  if fs.exists(fileNames.menuAPI) then fs.delete(fileNames.menuAPI) end
+  pastebin(updateInfo.menu.pastebin, fileNames.menuAPI)
+  if not fs.exists(fileNames.menuAPI) then --If pastebin get failed
     print("API Failed to download.")
     print("Sorry, but this program cannot work without it. Try again later")
     exit(true)
@@ -96,45 +112,46 @@ end
 
 --Loading API
 local menu = {}
-os.run(menu, addDir(fileNames.menuAPI))
+os.run(menu, fileNames.menuAPI)
 if menu.menu then debug("Menu API loaded successfully") end
+
 
 --Menu Item Class
 local menuItem = {} --For class
+menuItem.meta = {__index = menuItem}
 function menuItem:new(text, ...)
   toRet = {text = text}
   action = {...}
-  if action[1] == "return" then
+  if action[1] == "return" then --This signals the handler to go to the menuList's parent
     toRet.action = "return"
-  elseif type(action[1]) == "table" then
+  elseif type(action[1]) == "table" then --This means the action is a menuList
     toRet.child = action[1]
   elseif #action > 0 then --We want to allow for nil actions, in case of table and linking later
-    toRet.action = action
+    toRet.action = action --Really cool bit: If we try adding a function that doesn't exist, the table length is nil because the function is nil. Therefore it doesn't error, it just fails to run :)
   end
-  setmetatable(toRet, self)
-  self.__index = self
+  setmetatable(toRet, menuItem.meta)
   return toRet
 end
 function menuItem:run()
   if type(self.action) ~= "table" then return end
   local tab = copyTab(self.action)
-  return table.remove(tab, 1)(unpack(tab))
+  return table.remove(tab, 1)(unpack(tab)) --This runs the first element using all the others
 end
 --Menu List Class
 local menuList = {} --For class
+menuList.meta = {__index = menuList}
 function menuList:new(title, description)
   toRet = {title = title, description = desctiption, class = "menuList"} --Class is to see if elements of a menu contain menus
-  setmetatable(toRet, self)
-  self.__index = self
+  setmetatable(toRet, menuList.meta)
   return toRet
 end
-function menuList:link(tab, index) self[index or #self].child = tab; tab.parent = self return tab end
+function menuList:link(tab, index) self[index or #self].child = tab; tab.parent = self return tab end --This links a menu element to a new menu. This is not in menuItem for brevity reasons
 function menuList:addElement(...) 
   local tab = {...}
   if type(tab[1]) ~= "table" then
-    table.insert(self, menuItem:new(...))
+    table.insert(self, menuItem:new(...)) --If we are making a new menuItem
   else
-    table.insert(self, tab[1])
+    table.insert(self, tab[1]) --If the menuItem already exists
   end
   return self
 end
@@ -142,11 +159,68 @@ function menuList:addBack(text) self:addElement(menuItem:new(text or "Back", "re
 function menuList:setTemp() menuList.temp = self; return self end --This is so you can break a chain, then come back to it
 
 
+------MAIN PROGRAM FUNCTIONS------
+local configuration = {}
+function configuration.parseString(text)
+  local toRet = {}
+  for a in text:gmatch("%W+") do
+    toRet[#toRet+1] = a
+  end
+  toRet[1] = "-"..toRet[1]
+  return toRet
+end
+function configuration.parseFile(fileName)
+  local file = fs.open(fileName,"r")
+  local text = file.readAll()
+  file.close()
+  local toRet = {}
+  for line in text:gmatch("[^\n]+") do
+    toRet[#toRet+1] = parseString(line)
+  end
+  return toRet --Returns a table of tables that can be parsed later
+end
+function configuration.makeString(config)
+  local toRet = ""
+  for i=1,#config do
+    for j=1, #config[i] do
+      toRet = toRet..config[i][j].." "
+    end
+  end
+  return toRet
+end
+
+local quarry = {}
+function quarry.run(config)
+  shell.run(fileNames.quarry.." "..configuration.makeString(config))
+  exit()
+end
+
+  
+local register = {}
+function register.addPath(fileType, path)
+  fileNames[fileType] = path
+  --Save file
+end
+
 
 
 --Defining main menu tree
-local main = menuList:new("Welcome to Quarry Shell")
-main:addElement("Option 1"):link(menuList:new("Inner Test"))
+local mainMenu = menuList:new("Welcome to Quarry Shell")
+mainMenu:addElement("Quarry"):link(menuList:new("Quarry Configurations"))
+  :addElement("Run Configuration")
+  :addElement("New Configuration")
+  :addElement("Edit Configuration")
+  :addElement("Delete Configurations")
+  :addElement("Delete all Configurations"):link(menuList:new("Are You Sure?"))
+    :addElement("Yes")
+    :addBack("No").parent
+  :addBack()
+mainMenu:addBack("Exit")
+
+
+
+local test = menuList:new("Welcome to Quarry Shell")
+test:addElement("Option 1"):link(menuList:new("Inner Test"))
   :addElement("Sub 1", printPause,3, "Works!")
   :addElement("Sub 2"):link(menuList:new("Far Out"))
     :addElement("Way far out man")
@@ -161,14 +235,14 @@ main:addElement("Option 1"):link(menuList:new("Inner Test"))
     menuList.temp
     :addBack().parent
   :addBack()
-main:addElement("Option 2")
-main:addBack("Exit")
+test:addElement("Option 2")
+test:addBack("Exit")
 
-local currentTab = main
+local currentTab = mainMenu
 while true do
   local text, index = menu.menu(currentTab.title, currentTab.description or "", currentTab, false)
   local selection = currentTab[index]
-  if not selection.action then --Assume it has a child
+  if not selection.action then --Assume it has a child. If no action it has a menu
     if selection.child then
       local parent = currentTab
       currentTab = selection.child
