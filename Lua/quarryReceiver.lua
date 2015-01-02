@@ -1,4 +1,4 @@
---Quarry Receiver Version 3.6.0
+--Quarry Receiver Version 3.6.1
 --Made by Civilwargeeky
 --[[
 Recent Changes:
@@ -7,8 +7,9 @@ Recent Changes:
 
 
 --Config
-local doDebug = false --For testing purposes
+local doDebug = true --For testing purposes
 local ySizes = 3 --There are 3 different Y Screen Sizes right now
+local quadEnabled = false --This is for the quadrotors mod by Lyqyd
 
 --Initializing Program-Wide Variables
 local expectedMessage = "Civil's Quarry" --Expected initial message
@@ -22,6 +23,9 @@ local modemSide --User can specify a modem side, but it is not necessary
 local modem --This will be the table for the modem
 local computer --The main screen is special. It gets defined first :3
 local continue = true --This keeps the main while loop going
+local quadDirection = "north"
+local quadDirections = {n = "north", s = "south", e = "east", w = "west"}
+local quadBase, computerLocation
 local tArgs = {...}
 --These two are used by controller in main loop
 local commandString = "" --This will be a command string sent to turtle. This var is stored for display
@@ -565,6 +569,21 @@ screenClass.remove = function(tab) --Cleanup function
 end
 
 --Init Functions
+screenClass.setChannel = function(self, channel)
+  self.send = nil --No matter what, send channel should be reset
+  if self.receive then
+    screenClass.channels[self.receive] = nil
+    if modem and modem.isOpen(tab.receive) then
+      modem.close(tab.receive)
+    end
+  end
+  if type(channel) == "number" then
+    self.receive = channel
+    screenClass.channels[self.receive] = self
+    if modem and not modem.isOpen(channel) then modem.open(channel) end
+  end
+end
+
 screenClass.setSize = function(self) --Sets screen size
   if self.side ~= "computer" and not self.term then self.term = peripheral.wrap(self.side) end
   if not self.term.getSize() then --If peripheral is having problems/not there. Don't go further than term, otherwise index nil (maybe?)
@@ -689,6 +708,8 @@ screenClass.updateNormal = function(self) --This is the normal updateDisplay fun
   local message, theme = self.rec, self.theme
   
   if not self.isDone then --Normally
+    
+      
     if self.size[1] == 1 then --Small Width Monitor
       if not self:tryAdd(message.label, theme.title, false, false, true) then --This will be a title, basically
         self:tryAdd("Quarry!", theme.title, false, false, true)
@@ -909,6 +930,53 @@ local function transmit(send, receive, message, legacy, fingerprint)
   end
 end
 
+--QuadRotor
+local function launchQuad(message)
+  if quadEnabled and message.emergencyLocation then --This means the turtle is out of fuel. Also that it sent its two initial positions
+    local movement = {}
+    local function add(what) table.insert(movement,what) end
+    add(quadDirection) --Get to the fuel chest
+    add("suck")
+    add(quadDirection) --So it can properly go down/up first
+    local function go(dest, orig, firstMove) --Goes to a place. firstMove because I'm lazy. Its for getting away from computer. If false, its the second move so go one above turtle. If nothing then nothing
+      local distX, distY, distZ = dest[1]-orig[1], dest[2]-orig[2], dest[3]-orig[3]
+      if firstMove then
+        distX = distX - 3 * (quadDirection == "east" and 1 or (quadDirection == "west" and -1 or 0))
+        distZ = distZ - 3 * (quadDirection == "south" and 1 or (quadDirection == "north" and -1 or 0))
+        distY = distY - 1 --Because the quad is a block above the first thing
+      elseif firstMove == false then
+        local num = 2
+        if message.layersDone  <= 1 then
+          num = 1
+        end
+        distY = distY + num * (distY < 0 and 1 or -1) --This is to be above the turtle and accounts for invert
+      end
+      add((distY > 0 and "up" or "down").." "..tostring(math.abs(distY)))
+      add((distX > 0 and "east" or "west").." "..tostring(math.abs(distX))) 
+      add((distZ > 0 and "south" or "north").." "..tostring(math.abs(distZ)))
+      if firstMove == false and message.layersDone > 1 then
+        add(distY < 0 and "down" or "up") --This is so it goes into the turtle's proper layer (invert may or may not work, actually)
+      end
+    end
+    debug("Location Types")
+    debug(computerLocation)
+    debug(message.firstPos)
+    debug(message.secondPos)
+    debug(message.emergencyLocation)
+    go(message.firstPos, computerLocation, true) --Get to original position of turtle
+    go(message.secondPos,message.firstPos) --Get into quarry
+    go(message.emergencyLocation, message.secondPos, false)
+    
+    add("drop")
+    add("return")
+    for a,b in pairs(movement) do
+      debug(a,"   ",b)
+    end
+    quadBase.flyQuad(movement) --Note, if there are no quadrotors, nothing will happen and the turtle will sit forever
+    
+  end
+end
+
 --==SET UP==
 clearScreen()
 print("Welcome to Quarry Receiver!")
@@ -925,6 +993,7 @@ Parameters:
   -station
   -auto --Prompts for all sides, or you can supply a list of receive channels for random assignment!
   -colorEditor
+  -quad [cardinal direction] --This looks for a quadrotor from the quadrotors mod. The direction is of the fuel chest.
 ]]
 
 --tArgs init
@@ -963,6 +1032,22 @@ if parameters.modem then
   modemSide = parameters.modem[1]
 end
 
+if parameters.quad then
+  if not parameters.quad[1] then parameters.quad[1] = "direction doesn't exist" end
+  local dir = parameters.quad[1]:lower():sub(1,1)
+  if quadDirections[dir] then
+    quadEnabled = true
+    quadDirection = quadDirections[dir]
+  else
+    clearScreen()
+    print("Please specify the cardinal direction your quad station is in")
+    print("Make sure you have a quad station on one side with a chest behind it, forming a line")
+    print("Like this: [computer] [station] [fuel chest]")
+    print("The program will now terminate")
+    error("",0)
+  end
+end
+
 --Init Modem
 while not initModem() do
   clearScreen()
@@ -988,6 +1073,34 @@ local function autoDetect(channels)
   end
 end
 
+--Init QuadRotor Station
+if quadEnabled then
+  local flag
+  while not flag do
+    for a,b in ipairs({"front","back","left","right","top"}) do
+      if peripheral.isPresent(b) and peripheral.getType(b) == "quadbase" then
+        quadBase = peripheral.wrap(b)
+      end
+    end
+    clearScreen()
+    if not quadBase then
+      print("No QuadRotor Base Attached, please attach one")
+    elseif quadBase.getQuadCount() == 0 then
+      print("Please install at least one QuadRotor in the base")
+    else
+      flag = true
+      debug("QuadBase successfully connected!")
+    end
+    if not gps.locate(5) then
+      flag = false
+      print("No GPS lock. Please make a GPS network to use quadrotors")
+    else
+      computerLocation = {gps.locate(5)}
+      debug("GPS Location Acquired")
+    end
+  end
+end
+
 --Init Computer Screen Object (was defined at top)
 computer = screenClass.new("computer", parameters.receivechannel and parameters.receivechannel[1])--This sets channel, checking if parameter exists
 
@@ -1007,11 +1120,7 @@ end
 --Technically, you could have any screen be the station, but oh well.
 --Initializing the computer screen
 if parameters.station then --This will set the screen update to display stats on all other monitors. For now it does little
-  if computer.receive then
-    screenClass.receiveChannels[computer.receive] = nil --Because it doesn't have a channel
-  end
-  computer.receive = nil --So it doesn't receive messages
-  computer.send = nil
+  computer:setChannel() --So it doesn't receive messages
   computer.isStation = true --For updating
     
   computer.updateNormal = function(self)--This gets set in setSize
@@ -1032,11 +1141,7 @@ if parameters.station then --This will set the screen update to display stats on
   computer.setBrokenDisplay = computer.init
 elseif parameters.coloreditor then
 
-  if computer.receive then --This part copied from above
-    screenClass.receiveChannels[computer.receive] = nil --Because it doesn't have a channel
-  end
-  computer.receive = nil --So it doesn't receive messages
-  computer.send = nil
+  computer:setChannel() --So it doesn't receive messages
   computer.isStation = true --So we can't assign a channel
   
   computer.updateNormal = function(self) --This is only for editing colors
@@ -1070,8 +1175,15 @@ computer:setSize() --Update changes made to display functions
 for i=1, #parameters do --Do actions for parameters that can be used multiple times
   local command, args = parameters[i][1], parameters[i] --For ease
   if command == "screen" then
-    local a = screenClass.new(args[2], args[3], args[4])
-    debug(type(a))
+    if not screenClass.sides[args[2]] then --Because this screwed up the computer
+      local a = screenClass.new(args[2], args[3], args[4])
+      debug(type(a))
+    else
+      debug("Overwriting existing screen settings for '",args[2],"'")
+      local a = screenClass.sides[args[2]]
+      a:setChannel(tonumber(args[3]))
+      a:setTheme(args[4])
+    end
   end
   
 end
@@ -1083,8 +1195,9 @@ for a,b in pairs(screenClass.sides) do debug(a) end
 --Updating all screen for first time and making sure channels are open
 for a, b in pairs(screenClass.sides) do
   if b.receive then --Because may not have channel
-    if not modem.isOpen(b.receive) then modem.open(b.receive) end
+    if not modem.isOpen(b.receive) then modem.open(b.receive); debug("Opening channel ",b.receive) end
   end
+  b:setSize()
   b:updateDisplay()--Finish initialization process
   b:reset()
   b:pushScreenUpdates()
@@ -1139,10 +1252,10 @@ while continue do
     if not screen.send then --This is the handshake
       debug("\nChecking handshake. Received: ",par4)
       local flag = false
-      if par4 == expectedMessage then
+      if par4 == expectedMessage then --Legacy quarries don't accept receiver dropping in mid-run
         screen.legacy = true --Accepts serialized tables
         flag = true
-      elseif type(par4) == "table" and par4.message == expectedMessage and par4.fingerprint == expectedFingerprint then
+      elseif type(par4) == "table" and par4.fingerprint == expectedFingerprint then --Don't care about expected message, allows us to start receiver mid-run, fingerprint should be pretty specific
         screen.legacy = false
         flag = true
       end
@@ -1206,6 +1319,8 @@ while continue do
       end
       
     end
+    
+    launchQuad(screen.rec) --Launch the Quad!
     
     screen:updateDisplay() --isDone is queried inside this
     screen:reset(screen.theme.background)

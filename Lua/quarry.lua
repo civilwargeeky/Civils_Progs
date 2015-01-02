@@ -1,5 +1,5 @@
 --Civilwargeeky's Quarry Program--
-  VERSION = "3.6.0"
+  VERSION = "3.6.1"
 --[[ 
 Recent Changes:
   New Ore Quarry System
@@ -52,6 +52,8 @@ oreQuarry = false --Enables ore quarry functionality [Default false]
 oreQuarryBlacklistName = "oreQuarryBlacklist.txt" --This is the file that will be parsed for item names [Default "oreQuarryBlacklist"]
 dumpCompareItems = true --If ore quarry, the turtle will dump items compared to (like cobblestone) [Default true]
 inventoryMax = 16 --The max number of slots in the turtle inventory [Default 16] (Not assignable by parameter)
+quadEnabled = false --Whether or not to request a quadRotor when out of fuel [Default false]
+quadTimeout = 60 * 5 --How long the turtle will wait for a quadRotor [Default 5 minutes]
 --Standard number slots for fuel (you shouldn't care)
 fuelTable = { --Will add in this amount of fuel to requirement.
 safe = 1000,
@@ -94,6 +96,8 @@ Welcome!: Welcome to quarry help. Below are help entries for all parameters. Exa
 -enderChest: This one is special. If you use "-enderChest true" then it will use an enderChest in the default slot. However, you can also do "-enderChest [slot]" then it will take the ender chest from whatever slot you tell it to. Like 7... or 14... or whatever.
 -fuelChest: See the above, but for a fueling chest. Reccommend use with -maxFuel and -doCheckFuel false
 -GPS: [force] If you use "-GPS" and there is a GPS network, then the turtle will record its first two positions to precisly calculate its position if it has to restart. This will only take two GPS readings
+-quad: [t/f] This forces the use of GPS. Make sure you have a network set up. This will request to be refueled by a quadrotor from Lyqyd's mod if the turtle is out of fuel
+-quadTimeout: [number] The amount of time the turtle will wait for a quadRotor
 -sendChannel: [number] This is what channel your turtle will send rednet messages on
 -receiveChannel: [number] This is what channel your turtle will receive rednet messages on
 -startY: [current Y coord] Randomly encountering bedrock? This is the parameter for you! Just give it what y coordinate you are at right now. If it is not within bedrock range, it will never say it found bedrock
@@ -151,6 +155,7 @@ Internal Config:
   You can also use this if there are settings that you don't like the default value of.
 ]]
 
+--NOTE: BIOS 114 MEANS YOU FORGOT A COLON
 --Parsing help for display
 --[[The way the help table works:
 All help indexes are numbered. There is a help[i].title that contains the title,
@@ -220,7 +225,6 @@ function resetDumpSlots()
       dumpSlots[1] = true
     end
 end
-        
 
 local function copyTable(tab) local toRet = {}; for a, b in pairs(tab) do toRet[a] = b end; return toRet end --This goes up here because it is a basic utility
 
@@ -300,10 +304,7 @@ function addParam(name, displayText, formatString, forcePrompt, trigger, variabl
   end
   if not (givenValue or toRet) then return end --Don't do anything if you aren't given anything. Leave it as default, except for "force"
   if formatType == "boolean" then --All the format strings will be basically be put through a switch statement
-    toRet = givenValue:sub(1,1):lower() == "y" or givenValue:sub(1,1):lower() == "t" --Accepts true or yes
-    if formatString == "boolean special" then 
-      toRet = givenValue:sub(1,1):lower() ~= "n" and givenValue:sub(1,1):lower() ~= "f" --Accepts anything but false or no
-    end
+    toRet = givenValue:sub(1,1):lower() ~= "n" and givenValue:sub(1,1):lower() ~= "f" --Accepts anything but false or no
   elseif formatType == "string" then
     toRet = givenValue:match("^[%w%.]+") --Basically anything not a space or control character etc
   elseif formatType == "number" then
@@ -489,14 +490,20 @@ if (enderChestEnabled and fuelChestEnabled) and (enderChestSlot == fuelChestSlot
 end
 --Rednet
 addParam("rednet", "Rednet Enabled","boolean",true, supportsRednet, "rednetEnabled")
+addParam("sendChannel", "Rednet Send Channel", "number 1-65535", false, supportsRednet, "channels.send")
+addParam("receiveChannel","Rednet Receive Channel", "number 1-65535", false, supportsRednet, "channels.receive")
+addParam("fingerprint","Sending Fingerprint", "string", false, supportsRednet, "channels.fingerprint")
+--Quad Rotor --Must be before GPS
+if addParam("quad", "Quad Rotor Enabled","boolean",nil, rednetEnabled, "quadEnabled") then --This returns true if param found :3
+  gpsEnabled = true
+end
+addParam("quadTimeout","Quad Rotor Timeout","number 1-1000000", nil, quadEnabled) --The amount of time to wait for a quadRotor
+--GPS
 addParam("gps", "GPS Location Services", "force", nil, (not restoreFoundSwitch) and supportsRednet, "gpsEnabled" ) --Has these triggers so that does not record position if restarted.
 if gpsEnabled and not restoreFoundSwitch then
   gpsStartPos = {gps.locate(gpsTimeout)} --Stores position in array
   gpsEnabled = #gpsStartPos > 0 --Checks if location received properly. If not, position is not saved
 end
-addParam("sendChannel", "Rednet Send Channel", "number 1-65535", false, supportsRednet, "channels.send")
-addParam("receiveChannel","Rednet Receive Channel", "number 1-65535", false, supportsRednet, "channels.receive")
-addParam("fingerprint","Sending Fingerprint", "string", false, supportsRednet, "channels.fingerprint")
 --Fuel
 addParam("uniqueExtras","Unique Items", "number 0-15")
 addParam("doRefuel", "Refuel from Inventory","boolean", nil, checkFuel() ~= math.huge) --math.huge due to my changes
@@ -530,6 +537,7 @@ addParam("extraDropItems", "", "force", nil, oldOreQuarry) --Prompt for extra dr
 addParam("extraDumpItems", "", "force", nil, oldOreQuarry, "extraDropItems") --changed to Dump
 --New Ore
 addParam("blacklist","Ore Blacklist", "string", nil, oreQuarry, "oreQuarryBlacklistName")
+--Mod Related
 
 
 --for flatBedrock
@@ -856,7 +864,7 @@ if rednetEnabled then
   print("Connection Confirmed!")
   sleep(1.5)
 end
-function biometrics(isAtBedrock)
+function biometrics(isAtBedrock, requestQuad)
   if not rednetEnabled then return end --This function won't work if rednet not enabled :P
   local toSend = { label = os.getComputerLabel() or "No Label", id = os.getComputerID(),
     percent = percent, zPos = relzPos, xPos = relxPos, yPos = yPos,
@@ -866,6 +874,16 @@ function biometrics(isAtBedrock)
     isGoingToNextLayer = (gotoDest == "layerStart"), foundBedrock = foundBedrock,
     fuel = checkFuel(), volume = volume, status = statusString,
     }
+  if requestQuad and isInPath then --If we are requesting a quadRotor to send help
+    if not gps.locate(gpsTimeout) then
+      print("\nOH NOES! Trying to reach quadrotor, but can't get GPS position!")
+      sleep(1)
+    else
+      toSend.firstPos = gpsStartPos
+      toSend.secondPos = gpsSecondPos
+      toSend.emergencyLocation = {gps.locate(gpsTimeout)}
+    end
+  end
   sendMessage(channels.send, channels.receive, toSend)
   id = os.startTimer(0.1)
   local event, received
@@ -892,6 +910,10 @@ function biometrics(isAtBedrock)
       local event, idCheck, confirm, _, message, distance = os.pullEvent()
     until (event == "modem_message" and confirm == channels.receive and (message.message == "resume" or message.message == "unpause" or message.message == "pause")) or (event == "char")
     statusString = nil
+  end
+  if message == "refuel" then
+    print("\nEngaging in emergency refueling")
+    emergencyRefuel()
   end
   
 end
@@ -1075,7 +1097,7 @@ function getSlotsTable() --Just get the table from above
 end
 function getChangedSlots(tab1, tab2) --Returns a table of changed slots. Format is {slotNumber, numberChanged}
   local toRet = {}
-  for i=1, min(#tab1, #tab2) do
+  for i=1, math.min(#tab1, #tab2) do
     diff = math.abs(tab2[i]-tab1[i])
     if diff > 0 then
       table.insert(toRet, {i, diff})
@@ -1195,6 +1217,95 @@ function dig(doAdd, mineFunc, inspectFunc) --Note, turtle will not bother compar
   return true --This only runs if oreQuarry but item not in blacklist
 end
 
+--Refuel Functions
+function emergencyRefuel()
+  local continueEvac = true --This turns false if more fuel is acquired
+  if fuelChestEnabled then --This is pretty much the only place that this will be used
+    if not fuelChestPhase then --Since I want to do things with return of enderRefuel, I will just make a special system. All of this is for backup safety.
+      fuelChestPhase = 0 --Global variable will be saved
+      fuelChestProperFacing = facing
+    end
+    if fuelChestPhase == 0 then
+      turnTo(coterminal(fuelChestProperFacing+2))
+      dig(false)
+      fuelChestPhase = 1
+      saveProgress()
+    end
+    if fuelChestPhase == 1 then
+      select(specialSlots.fuelChest)
+      turtle.place()
+      fuelChestPhase = 2
+      saveProgress()
+    end
+    if fuelChestPhase == 2 then
+      if not enderRefuel() then --Returns false if slots are full
+        select(specialSlots.fuelChest)
+        turtle.drop() --Somehow stuff got in here...
+      end
+      fuelChestPhase = 3
+      saveProgress()
+    end
+    if fuelChestPhase == 3 then
+      select(specialSlots.fuelChest)
+      dig(false)
+      select(1)
+      fuelChestPhase = 4
+      saveProgress()
+    end
+    if fuelChestPhase == 4 then
+      turnTo(fuelChestProperFacing)
+      fuelChestProperFacing = nil --Getting rid of saved values
+      fuelChestPhase = nil
+      continueEvac = false
+    end
+  elseif quadEnabled then --Ask for a quadRotor
+    screen()
+    print("Attempting an emergency Quad Rotor refuel")
+    print("The turtle will soon send a message, then wait ",quadTimeout," seconds before moving on")
+    print("Press any key to break timer")
+    biometrics(nil, true)
+    local timer, counter, event, id, counterID = os.startTimer(quadTimeout), 0
+    local startInventory = getSlotsTable()
+    repeat
+      if id == counterID then counter = counter + 1 end
+      counterID = os.startTimer(1)
+      screenLine(1,6)
+      print("Seconds elapsed: ",counter)
+      event, id = os.pullEvent() --Waits for a key or fuel or the timer
+    until (event == "timer" and id == timer) or event == "key" or event == "turtle_inventory"
+    if event == "turtle_inventory" then --If fuel was actually delivered
+      local slot = getFirstChanged(startInventory, getSlotsTable())
+      select(slot)
+      midRunRefuel(slot)
+    end        
+  elseif doRefuel then --Attempt an emergency refueling
+    screen()
+    print("Attempting an emergency refuel")
+    print("Fuel Level:    ",checkFuel())
+    print("Distance Back: ",(xPos+zPos+yPos+1))
+    print("Categorizing Items")
+    count(false) --Do not add count, but categorize
+    local fuelSwitch, initialFuel = false, checkFuel() --Fuel switch so we don't go over limit (in emergency...)
+    print("Going through available fuel slots")
+    for i=1, inventoryMax do
+      if fuelSwitch then break end
+      if turtle.getItemCount(i) > 0 and slot[i][1] == 2 then --If there are items and type 2 (fuel)
+        select(i)
+        fuelSwitch = midRunRefuel(i) --See above "function drop" for usage
+      end
+    end
+    select(1) --Cleanup
+    print("Done fueling")
+    if checkFuel() > initialFuel then 
+      continueEvac = false
+      print("Evac Aborted")
+    else
+      print("Evac is a go, returning to base")
+      sleep(1.5) --Pause for reading
+    end
+  end
+  return continueEvac
+end
 
 
 function digUp(doAdd, ignoreInspect)--Regular functions :) I switch definitions for optimization (I think)
@@ -1350,75 +1461,15 @@ function mine(doDigDown, doDigUp, outOfPath,doCheckInv) -- Basic Move Forward
   if outOfPath == nil then outOfPath = false end
   isInPath = (not outOfPath) --For rednet
   if not outOfPath and (checkFuel() <= xPos + zPos + yPos + 5) then --If the turtle can just barely get back to the start, we need to get it there. We don't want this to activate coming back though...
-    local continueEvac = true --This turns false if more fuel is acquired
-    if fuelChestEnabled then --This is pretty much the only place that this will be used
-      if not fuelChestPhase then --Since I want to do things with return of enderRefuel, I will just make a special system
-        fuelChestPhase = 0 --Global variable will be saved
-        fuelChestProperFacing = facing
-      end
-      if fuelChestPhase == 0 then
-        turnTo(coterminal(fuelChestProperFacing+2))
-        dig(false)
-        fuelChestPhase = 1
-        saveProgress()
-      end
-      if fuelChestPhase == 1 then
-        select(specialSlots.fuelChest)
-        turtle.place()
-        fuelChestPhase = 2
-        saveProgress()
-      end
-      if fuelChestPhase == 2 then
-        if not enderRefuel() then --Returns false if slots are full
-          select(specialSlots.fuelChest)
-          turtle.drop() --Somehow stuff got in here...
-        end
-        fuelChestPhase = 3
-        saveProgress()
-      end
-      if fuelChestPhase == 3 then
-        select(specialSlots.fuelChest)
-        dig(false)
-        select(1)
-        fuelChestPhase = 4
-        saveProgress()
-      end
-      if fuelChestPhase == 4 then
-        turnTo(fuelChestProperFacing)
-        fuelChestProperFacing = nil --Getting rid of saved values
-        fuelChestPhase = nil
-        continueEvac = false
-      end
-    elseif doRefuel then --Attempt an emergency refueling
-      screen()
-      print("Attempting an emergency refuel")
-      print("Fuel Level:    ",checkFuel())
-      print("Distance Back: ",(xPos+zPos+yPos+1))
-      print("Categorizing Items")
-      count(false) --Do not add count, but categorize
-      local fuelSwitch, initialFuel = false, checkFuel() --Fuel switch so we don't go over limit (in emergency...)
-      print("Going through available fuel slots")
-      for i=1, inventoryMax do
-        if fuelSwitch then break end
-        if turtle.getItemCount(i) > 0 and slot[i][1] == 2 then --If there are items and type 2 (fuel)
-          select(i)
-          fuelSwitch = midRunRefuel(i) --See above "function drop" for usage
-        end
-      end
-      select(1) --Cleanup
-      print("Done fueling")
-      if checkFuel() > initialFuel then 
-        continueEvac = false
-        print("Evac Aborted")
-      else
-        print("Evac is a go, returning to base")
-        sleep(1.5) --Pause for reading
-      end
+    local continueEvac = false --It will be set true unless at start
+    if xPos ~= 0 then
+      continueEvac = emergencyRefuel() --This is a huge list of things to do in an emergency
     end
     if continueEvac then
       eventClear() --Clear any annoying events for evac
+      local currPos = yPos
       endingProcedure() --End the program
-      print("Turtle ran low on fuel so was brought back to start for you :)\n\nTo resume where you left off, use '-startDown "..tostring(yPos-1).."' when you start")
+      print("Turtle ran low on fuel so was brought back to start for you :)\n\nTo resume where you left off, use '-startDown "..tostring(currPos-1).."' when you start")
       error("",0)
     end
   end
@@ -1436,8 +1487,8 @@ function mine(doDigDown, doDigUp, outOfPath,doCheckInv) -- Basic Move Forward
     end
     if count > maxTries then
       if checkFuel() == 0 then --Don't worry about inf fuel because I modified this function
-        saveProgress({doCheckFuel = true})
-        error("No more fuel",0)
+        saveProgress({doCheckFuel = true, doRefuel = true})
+        os.reboot()
       elseif yPos > (startY-7) and turtle.detect() then --If it is near bedrock
         bedrock()
       else --Otherwise just sleep for a bit to avoid sheeps
@@ -1528,7 +1579,7 @@ function turnTo(num)
     end
   end
 end
-function goto(x,z,y, toFace, destination)
+function goto(x,z,y, toFace, destination, updateStatus)
   --Will first go to desired z pos, then x pos, y pos varies
   x = x or 1; y = y or 1; z = z or 1; toFace = toFace or facing
   gotoDest = destination or "" --This is used by biometrics.

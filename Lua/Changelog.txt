@@ -1,39 +1,15 @@
 ====CHANGELOG====
  
 ----Quarry----
---Version 3.5.3 (first recorded)
-  In saveProgress, fixed that extras would not be followed by a newLine
-  In refuel, turtle now will go back start of inventory if item isn't fuel. Not pretty, but it will work OK
-  In refueling section, turtle will check if its fuel requirement goes over the turtle fuel limit
-  In refueling, slightly modified the way unique extras affect the fuel count. However now 15 unique extras asks about 3x as much fuel. Fun fact, as you increase volume at unique extras = 15, the percent increase between the new and old formulas approaches 327% :D
-  In refueling, removed useless locals
-  In refueling, accounted for the fact that turtle must come from the far edge of layer
-  In mid-run refueling, turtle will not fuel itself over the fuel limit.
-  In main mine function, added a check to see if turtle can get back to base with the fuel that it has. If it can barely do so, it will try to emergency refuel, or else return to base and error
-  If turtle runs low on fuel, comes back and errors.
-  Fixed turtle asking rednet enabled when there is no modem
-  Removed invCheckFreq parameter. I doubt anyone used it. It now just checks every 1
+--Version 3.6.1
+  New command: Refuel will do an emergency refuel by enderchest, quadrotor, or inventory (in that order)
+  Add QuadCopter to available modes of refueling
+  All boolean commands now only look for "n" or "f" to mark false, anything else is now true :)
+  If turtle dies due to lack of fuel without a method of refueling, it will turn doRefuel on for when it is restarted. Also it reboots itself.
+  New Parameters:
+    -quad [t/f]: Allows a quadcopter to come and refuel the turtle. Doesn't work without rednet
+    -quadTimeout [number]: The amount of time the turtle will wait for a quadcopter
   
---Version 3.5.4
-  Updated rednet sending for new protocol
-  Phased out turtle.getFuelLevel in favor of checkFuel
-  
---Version 3.5.5
-  Added new ore quarry to main program
-  Removed inverting doDigUp and doDigDown in mine function
-  digUp and digDown are now relative everywhere
-  Now autoresumes by default!
-  Fixed bug where turtle would loudly error when done
-  Fixed bug where turtle does not immediately select 1 after fueling
-  New parameters:
-    -blacklist: set the name of the oreQuarry blacklist file
-    -oldOreQuarry: forces use of old ore quarry, instead of new
-    -autoResume: saves a startup file to run quarry with resume
-    -autoRestart: same as above
-    -startupRename: changes what the startup file is renamed to
-    -startupName: the file to save the startup to (usually "startup" but I don't know what OSs may do)
-    -promptAll: feeling adventurous? This will prompt you for literally every parameter
-    
 --Version 3.6.0
   Added in command aliases, like "kill" and "quit" for "stop" and "unpause" and "pause" for "resume"
   Fixed bug where turtle would error with auto-restart if rename file already exists
@@ -54,24 +30,49 @@
     -left [t/f]: The turtle will quarry to the left instead of the right
     -maxFuel [number]: The number the turtle will stop fueling at. Basically just sets checkFuelLimit to this number
     -fuelChest [nothing or slot number]: Prompts for a chest with fuel it. This will be used if the turtle runs out of fuel. Recommended with maxfuel and doCheckFuel false
-  
-    
 
-    
-----Quarry Receiver----
---Version 3.5.4 (first recorded)
-  Modified rednet system to new protocols
-  Added in-program command line
-  So many new commands
-  So many new parameters
-  New theme system
-  Multiple screen supported and encouraged!
-  
 --Version 3.5.5
-  Added in seagle23's old theme as "seagle"
-  Added in proper help
-  Slightly changed key handling
-  Added support for directly copying pastebin themes into code
+  Added new ore quarry to main program
+  Removed inverting doDigUp and doDigDown in mine function
+  digUp and digDown are now relative everywhere
+  Now autoresumes by default!
+  Fixed bug where turtle would loudly error when done
+  Fixed bug where turtle does not immediately select 1 after fueling
+  New parameters:
+    -blacklist: set the name of the oreQuarry blacklist file
+    -oldOreQuarry: forces use of old ore quarry, instead of new
+    -autoResume: saves a startup file to run quarry with resume
+    -autoRestart: same as above
+    -startupRename: changes what the startup file is renamed to
+    -startupName: the file to save the startup to (usually "startup" but I don't know what OSs may do)
+    -promptAll: feeling adventurous? This will prompt you for literally every parameter
+    
+--Version 3.5.4
+  Updated rednet sending for new protocol
+  Phased out turtle.getFuelLevel in favor of checkFuel
+  
+--Version 3.5.3 (first recorded)
+  In saveProgress, fixed that extras would not be followed by a newLine
+  In refuel, turtle now will go back start of inventory if item isn't fuel. Not pretty, but it will work OK
+  In refueling section, turtle will check if its fuel requirement goes over the turtle fuel limit
+  In refueling, slightly modified the way unique extras affect the fuel count. However now 15 unique extras asks about 3x as much fuel. Fun fact, as you increase volume at unique extras = 15, the percent increase between the new and old formulas approaches 327% :D
+  In refueling, removed useless locals
+  In refueling, accounted for the fact that turtle must come from the far edge of layer
+  In mid-run refueling, turtle will not fuel itself over the fuel limit.
+  In main mine function, added a check to see if turtle can get back to base with the fuel that it has. If it can barely do so, it will try to emergency refuel, or else return to base and error
+  If turtle runs low on fuel, comes back and errors.
+  Fixed turtle asking rednet enabled when there is no modem
+  Removed invCheckFreq parameter. I doubt anyone used it. It now just checks every 1
+
+
+
+----Quarry Receiver----
+--Version 3.6.1
+  QuadRotors!
+  Changed so that receiver can drop in while turtle is going
+  Fixed bug where computer would glitch out if "-screen computer [number]" was used
+  New Parameter:
+    -quad [cardinal direction]: This is the direction your quadBase should be set up in with a chest past it filled with fuel. This works with multiple quadRotors at once
   
 --Version 3.6.0
   Command sending is now per-screen, not global. Prevents issues where messages send in wrong order
@@ -82,27 +83,41 @@
   All sided commands now accept screen IDs as well as side names
   New Parameter:
     -modem: sets the side that the modem is on
+  
+--Version 3.5.5
+  Added in seagle23's old theme as "seagle"
+  Added in proper help
+  Slightly changed key handling
+  Added support for directly copying pastebin themes into code
+  
+ --Version 3.5.4 (first recorded)
+  Modified rednet system to new protocols
+  Added in-program command line
+  So many new commands
+  So many new parameters
+  New theme system
+  Multiple screen supported and encouraged!
 
 
 
 ----Quarry Repeater----
---Version 1.0 (first release)
-  Everything is new :)
-  
---Version 1.0.1
-  Added "quarryReceiver" to expected fingerprints
-  
---Version 1.0.2
-  Fixed many bugs
-  Ping now works
-  
 --Version 1.0.3
   Thanks to DJF on the CC forums:
     Auto-Adds Reply Channels
     Remove channel function waits for proper char
     MC 1.5.2 Support
     Receiver won't add repeated channels
+    
+--Version 1.0.2
+  Fixed many bugs
+  Ping now works
   
+--Version 1.0.1
+  Added "quarryReceiver" to expected fingerprints
+  
+--Version 1.0 (first release)
+  Everything is new :)
+
   
   
 ----MenuAPI----

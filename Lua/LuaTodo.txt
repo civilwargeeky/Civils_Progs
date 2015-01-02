@@ -141,7 +141,7 @@ Random future thoughts: Maybe make more seamless. Have an arg/option to make cal
 
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 
-Quarry Version 3.6.0:
+Quarry Version 3.6.1:
   General Ideas:
     maybe look for multiple "-forcePrompt setting" parameters, and each time one is found, 
 add it to a table. When you do addParam function, check if on force prompt table, then prompt if so.
@@ -149,14 +149,14 @@ add it to a table. When you do addParam function, check if on force prompt table
     To look for multiple of the same command, check quarryReceiver: just loop through all commands
     Maybe in future, option to place torches on walls efficiently
   
-Things for 3.6.1:
+Things for 3.6.2:
   Organize all the things! Everything is so messy right now...
   Find out why turtle movement percent is slightly off
   In quarry tArgs, make a way to take out key value pairs in all forms (?)
   Idea for using inverted function with absolutes: Param for ignoreInverted. (Check detect functions) This allows much easier plugging in for other people (Make all main functions relative)
   Add param for counting each individual item. So maybe send back a report of literally everything the turtle collected.
   
-Things to add for quarry version 3.6.2:
+Things to add for quarry version 3.6.3:
   Add support for mods. Like open peripheral chest finding.
   Maybe have an option to change the home position. Like at 1,1,1 instead of 0,1,1. You could just replace all the "goto 1,1,1 goto 0,1,1" with a "go home" command
   
