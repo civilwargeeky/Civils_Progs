@@ -7,7 +7,7 @@ Recent Changes:
 
 
 --Config
-local doDebug = true --For testing purposes
+local doDebug = false --For testing purposes
 local ySizes = 3 --There are 3 different Y Screen Sizes right now
 local quadEnabled = false --This is for the quadrotors mod by Lyqyd
 
@@ -1093,7 +1093,7 @@ if quadEnabled then
     end
     if not gps.locate(5) then
       flag = false
-      print("No GPS lock. Please make a GPS network to use quadrotors")
+      error("No GPS lock. Please make a GPS network to use quadrotors")
     else
       computerLocation = {gps.locate(5)}
       debug("GPS Location Acquired")

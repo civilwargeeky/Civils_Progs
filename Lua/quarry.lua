@@ -503,6 +503,9 @@ addParam("gps", "GPS Location Services", "force", nil, (not restoreFoundSwitch) 
 if gpsEnabled and not restoreFoundSwitch then
   gpsStartPos = {gps.locate(gpsTimeout)} --Stores position in array
   gpsEnabled = #gpsStartPos > 0 --Checks if location received properly. If not, position is not saved
+  if quadEnabled and not gpsEnabled then
+    error("You have no GPS network. You may not use Quad Rotors",0)
+  end
 end
 --Fuel
 addParam("uniqueExtras","Unique Items", "number 0-15")
