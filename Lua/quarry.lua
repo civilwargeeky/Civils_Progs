@@ -302,7 +302,7 @@ function addParam(name, displayText, formatString, forcePrompt, trigger, variabl
   if formatType == "force" then --This is the one exception. Should return true if givenValue is nothing
     toRet = (tArgs["-"..toGetText] and true) or false --Will return true if param exists, otherwise false
   end
-  if not (givenValue or toRet) then return end --Don't do anything if you aren't given anything. Leave it as default, except for "force"
+  if not (givenValue or toRet) or (type(givenValue) == "string" and #givenValue == 0) then return end --Don't do anything if you aren't given anything. Leave it as default, except for "force"
   if formatType == "boolean" then --All the format strings will be basically be put through a switch statement
     toRet = givenValue:sub(1,1):lower() ~= "n" and givenValue:sub(1,1):lower() ~= "f" --Accepts anything but false or no
   elseif formatType == "string" then
