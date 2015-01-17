@@ -1,5 +1,5 @@
 --Civilwargeeky's Quarry Program--
-  VERSION = "3.6.1"
+  VERSION = "3.6.2"
 --[[ 
 Recent Changes:
   New Ore Quarry System
@@ -38,6 +38,7 @@ uniqueExtras = 8 --How many different items (besides cobble) the turtle expects.
 maxTries = 50 --How many times turtle will try to dig a block before it "counts" bedrock [Default 50]
 gpsEnabled = false -- If option is enabled, will attempt to find position via GPS api [Default false]
 gpsTimeout = 3 --The number of seconds the program will wait to get GPS coords. Not in arguments [Default 3]
+legacyRednet = false --Use this if playing 1.4.7
 logging = true --Whether or not the turtle will log mining runs. [Default ...still deciding]
 logFolder = "Quarry_Logs" --What folder the turtle will store logs in [Default "Quarry_Logs"]
 logExtension = "" --The extension of the file (e.g. ".txt") [Default ""]
@@ -100,6 +101,7 @@ Welcome!: Welcome to quarry help. Below are help entries for all parameters. Exa
 -quadTimeout: [number] The amount of time the turtle will wait for a quadRotor
 -sendChannel: [number] This is what channel your turtle will send rednet messages on
 -receiveChannel: [number] This is what channel your turtle will receive rednet messages on
+-legacyRednet: [t/f] Check true if using 1.4.7
 -startY: [current Y coord] Randomly encountering bedrock? This is the parameter for you! Just give it what y coordinate you are at right now. If it is not within bedrock range, it will never say it found bedrock
 -startupRename: [file name] What to rename any existing startup to.
 -startupName: [file name] What the turtle will save its startup file to.
@@ -493,6 +495,7 @@ addParam("rednet", "Rednet Enabled","boolean",true, supportsRednet, "rednetEnabl
 addParam("sendChannel", "Rednet Send Channel", "number 1-65535", false, supportsRednet, "channels.send")
 addParam("receiveChannel","Rednet Receive Channel", "number 1-65535", false, supportsRednet, "channels.receive")
 addParam("fingerprint","Sending Fingerprint", "string", false, supportsRednet, "channels.fingerprint")
+addParam("legacyRednet","Legacy Rednet","boolean", false, supportsRednet)
 --Quad Rotor --Must be before GPS
 if addParam("quad", "Quad Rotor Enabled","boolean",nil, rednetEnabled, "quadEnabled") then --This returns true if param found :3
   gpsEnabled = true
@@ -839,6 +842,10 @@ function newMessageID()
   return math.random(1,2000000000)
 end
 function sendMessage(send, receive, message)
+  if legacyRednet then
+    if type(message) == "table" then message = textutils.serialize(message) end
+    return modem.transmit(send, receive, message)
+  end
   return modem.transmit(send , receive, {fingerprint = channels.fingerprint, id = newMessageID(), message = message})
 end
 if rednetEnabled then
@@ -861,6 +868,9 @@ if rednetEnabled then
       repeat
         local event, idCheck, channel,_,locMessage, distance = os.pullEvent()
         if locMessage then message = locMessage end
+        if legacyRednet then --For that one guy that uses 1.4.7
+          message = {message = message}
+        end
       until (event == "timer" and idCheck == id) or (event == "modem_message" and channel == channels.receive and type(message) == "table")
     until message.message == channels.confirm
   connected = true
@@ -893,6 +903,9 @@ function biometrics(isAtBedrock, requestQuad)
   repeat
     local locEvent, idCheck, confirm, _, locMessage, distance = os.pullEvent()
     event, received = locEvent, locMessage or {message = ""}
+    if legacyRednet then
+      received = {message = received}
+    end
   until (event == "timer" and idCheck == id) or (event == "modem_message" and confirm == channels.receive and type(received) == "table")
   if event == "modem_message" then connected = true else connected = false end
   local message = received.message:lower()
@@ -995,6 +1008,10 @@ function display() --This is just the last screen that displays at the end
   if rednetEnabled then
     print("")
     print("Sent Stop Message")
+    if legacyRednet then --This was the traditional stopping signal
+      print("Sent Legacy Stop")
+      sendMessage(channels.send, channels.receive, "stop")
+    end
     local finalTable = {mined = mined, cobble = totals.cobble, fuelblocks = totals.fuel,
         other = totals.other, fuel = checkFuel(), isDone = true }
     sendMessage(channels.send,channels.receive, finalTable)

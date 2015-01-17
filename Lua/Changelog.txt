@@ -1,6 +1,11 @@
 ====CHANGELOG====
  
 ----Quarry----
+--Version 3.6.2
+  Allowed for 1.4.7 users to use rednet
+  New Parameters:
+    -legacyRednet [t/f]: Allows for 1.4.7 rednet
+
 --Version 3.6.1
   New command: Refuel will do an emergency refuel by enderchest, quadrotor, or inventory (in that order)
   Add QuadCopter to available modes of refueling
@@ -67,6 +72,9 @@
 
 
 ----Quarry Receiver----
+--Version 3.6.2
+  Fixed bugs for 1.4.7 users
+  
 --Version 3.6.1
   QuadRotors!
   Changed so that receiver can drop in while turtle is going

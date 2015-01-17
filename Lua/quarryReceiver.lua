@@ -1,4 +1,4 @@
---Quarry Receiver Version 3.6.1
+--Quarry Receiver Version 3.6.2
 --Made by Civilwargeeky
 --[[
 Recent Changes:
@@ -302,13 +302,15 @@ end
 
 local function initModem() --Sets up modem, returns true if modem exists
   if not testPeripheral(modem, "isWireless") then
-    if peripheral.getType(modemSide or "") == "modem" then
-      modem = peripheral.wrap(modemSide)    
-      if not modem.isWireless() then --Apparently this is a thing
-        modem = nil
-        return false
+    if modemSide then
+      if peripheral.getType(modemSide) == "modem" then
+        modem = peripheral.wrap(modemSide)    
+        if modem.isWireless and not modem.isWireless() then --Apparently this is a thing
+          modem = nil
+          return false
+        end
+        return true
       end
-      return true
     end
     if peripheral.find then
       modem = peripheral.find("modem", function(side, obj) return obj.isWireless() end)
