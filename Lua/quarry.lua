@@ -903,7 +903,7 @@ function biometrics(isAtBedrock, requestQuad)
   repeat
     local locEvent, idCheck, confirm, _, locMessage, distance = os.pullEvent()
     event, received = locEvent, locMessage or {message = ""}
-    if legacyRednet then
+    if legacyRednet and type(received) == "string" then
       received = {message = received}
     end
   until (event == "timer" and idCheck == id) or (event == "modem_message" and confirm == channels.receive and type(received) == "table")
