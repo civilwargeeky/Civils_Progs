@@ -148,7 +148,7 @@ Random future thoughts: Maybe make more seamless. Have an arg/option to make cal
 
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 
-Quarry Version 3.6.1:
+Quarry Version 3.6.3:
   General Ideas:
     maybe look for multiple "-forcePrompt setting" parameters, and each time one is found, 
 add it to a table. When you do addParam function, check if on force prompt table, then prompt if so.
@@ -156,18 +156,17 @@ add it to a table. When you do addParam function, check if on force prompt table
     To look for multiple of the same command, check quarryReceiver: just loop through all commands
     Maybe in future, option to place torches on walls efficiently
   
-Things for 3.6.2:
+Things for 3.6.3:
   Organize all the things! Everything is so messy right now...
   Find out why turtle movement percent is slightly off
-  In quarry tArgs, make a way to take out key value pairs in all forms (?)
   Idea for using inverted function with absolutes: Param for ignoreInverted. (Check detect functions) This allows much easier plugging in for other people (Make all main functions relative)
   Add param for counting each individual item. So maybe send back a report of literally everything the turtle collected.
-  For "-dumpCompareItems", have it so when it calls "dropItems" (or whatever), do a count(+), then drop all compare items, and do a count(-). If two or less stacks changed, go dump.
   Param "-overFuel" (or something). Expects a multiplier. So "-overFuel 3.5" would make the turtle ask for 3.5x more fuel, but only if it already needed fuel. This way, you can do lots of quarries before you need to fuel again.
   Possibly, do a "-file [fileName]" option to load params. This would take that function away from shell, and make it more of an organizer.
     Turtle would load file and a) Take each line as a full param or b) Basically do a python ".split("-")" on it to group parameters together.
+  Fix bedrock error so it tries going up first, then direction 0, then direction 2
   
-Things to add for quarry version 3.6.3:
+Things to add for quarry version 3.6.4:
   Add support for mods. Like open peripheral chest finding.
   Maybe have an option to change the home position. Like at 1,1,1 instead of 0,1,1. You could just replace all the "goto 1,1,1 goto 0,1,1" with a "go home" command
   

@@ -1,11 +1,10 @@
 --Civilwargeeky's Quarry Program--
-  VERSION = "3.6.2"
+  VERSION = "3.6.3"
 --[[ 
 Recent Changes:
-  New Ore Quarry System
-  Added New Rednet Support
   Quarry no longer goes to start at end of row!
   Turtle can go left!
+  QuadCopters! Check Lyqyd's thread
   New Arguments!
   -flatBedrock [t/f]: The turtle will initially dig down to bedrock (or possibly a mob) and set startDown from that
   -left [t/f]: The turtle will quarry to the left instead of the right
@@ -29,6 +28,7 @@ doRefuel = false --Whenever it comes to start location will attempt to refuel fr
 keepOpen = 1 --How many inventory slots it will attempt to keep open at all times [Default 1]
 fuelSafety = "moderate" --How much fuel it will ask for: safe, moderate, and loose [Default moderate]
 excessFuelAmount = math.huge --How much fuel the turtle will get maximum. Limited by turtle.getFuelLimit in recent CC [Default math.huge]
+fuelMultiplier = 1 --How much extra fuel turtle will ask for when it does need fuel [Default 1]
 saveFile = "Civil_Quarry_Restore" --Where it saves restore data [Default "Civil_Quarry_Restore"]
 autoResume = true --If true, turtle will auto-restart when loaded. [Default true]
 startupRename = "oldStartup.quarry" --What the startup is temporarily renamed to [Default "oldStartup.quarry"]
@@ -91,6 +91,8 @@ Welcome!: Welcome to quarry help. Below are help entries for all parameters. Exa
 -atChest: [force] This is for use with "-restore," this will tell the restarting turtle that it is at its home chest, so that if it had gotten lost, it now knows where it is.
 -doRefuel: [t/f] If true, the turtle will refuel itself with coal and planks it finds on its mining run
 -doCheckFuel: [t/f] If you for some reason don't want the program to check fuel usage, set to false. This is honestly a hold-over from when the refueling algorithm was awful...
+-overfuel: [number] When fuel is below required, fuel usage is multiplied by this. Large numbers permit more quarries without refueling
+-fuelMultiplier: [number] See overfuel
 -uniqueExtras: [number] The expected number of slots filled with low-stacking items like ore. Higher numbers request more fuel.
 -maxFuel: [number] How much the turtle will fuel to max (limited by turtle in most cases)
 -chest: [side] This specifies what side the chest at the end will be on. You can say "top", "bottom", "front", "left", or "right"
@@ -277,11 +279,13 @@ print("")
 local sides = {top = "top", right = "right", left = "left", bottom = "bottom", front = "front"} --Used to whitelist sides
 local changedT, tArgsWithUpper = {}, {}
 changedT.new = function(key, value) table.insert(changedT,{key, value}) end --Numeric list of lists
+changedT.remove = function() table.remove(changedT) end
 local function capitalize(text) return (string.upper(string.sub(text,1,1))..string.sub(text,2,-1)) end
 for i=1, #tArgs do tArgsWithUpper[i] = tArgs[i]; tArgsWithUpper[tArgsWithUpper[i]] = i; tArgs[i] = tArgs[i]:lower(); tArgs[tArgs[i]] = i end --My signature key-value pair system, now with upper
 
 local restoreFound, restoreFoundSwitch = false --Initializing so they are in scope
-function addParam(name, displayText, formatString, forcePrompt, trigger, variableOverride) --To anyone that doesn't understand this very well, probably not your best idea to go in here.
+function addParam(name, displayText, formatString, forcePrompt, trigger, variableOverride, variableExists) --To anyone that doesn't understand this very well, probably not your best idea to go in here.
+  if variableExists ~= false then variableExists = true end --Almost all params should have the variable exist. Some don't exist unless invoked
   if trigger == nil then trigger = true end --Defaults to being able to run
   if not trigger then return end --This is what the trigger is for. Will not run if trigger not there
   if restoreFoundSwitch or tArgs["-default"] then forcePrompt = false end --Don't want to prompt if these. Default is no variable because resuming
@@ -293,7 +297,7 @@ function addParam(name, displayText, formatString, forcePrompt, trigger, variabl
   local func = loadstring("return "..variable)
   setfenv(func,getfenv(1))
   local originalValue = assert(func)() --This is the default value, for checking to add to changed table
-  if originalValue == nil then error("From addParam, \""..variable.."\" returned nil",2) end --I may have gotten a wrong variable name
+  if originalValue == nil and variableExists then error("From addParam, \""..variable.."\" returned nil",2) end --I may have gotten a wrong variable name
   local givenValue, toRet --Initializing for use
   if tArgs["-"..toGetText] then
     givenValue = tArgsWithUpper[tArgs["-"..toGetText]+1] --This is the value after the desired parameter
@@ -364,6 +368,24 @@ if tArgs["help"] or tArgs["-help"] or tArgs["-?"] or tArgs["?"] then
   end
   error("",0)
 end
+--Loading custom parameter lists
+local function split(str, sep)
+  return str:gmatch(".*"..sep)
+end
+
+if addParam("file","Custom Parameters","string", false, nil, "parameterFile", false) and parameterFile then
+  if not fs.exists(parameterFile) then
+    print("WARNING: '"..parameterFile.."' DOES NOT EXIST. FILE NOT LOADED")
+    sleep(3)
+    changedT.remove()
+  else
+    local file = fs.open(parameterFile, "r")
+    local text = file.readAll()
+    file.close()
+  end
+end
+  
+
 
 --Saving
 addParam("doBackup", "Backup Save File", "boolean")
@@ -516,6 +538,8 @@ addParam("doRefuel", "Refuel from Inventory","boolean", nil, checkFuel() ~= math
 addParam("doCheckFuel", "Check Fuel", "boolean", nil, checkFuel() ~= math.huge)
 excessFuelAmount = excessFuelAmount or math.huge --Math.huge apparently doesn't save properly
 addParam("maxFuel", "Max Fuel", "number 1-999999999", nil, checkFuel() ~= math.huge, "excessFuelAmount")
+addParam("fuelMultiplier", "Fuel Multiplier", "number 1-9001", nil, checkFuel() ~= math.huge)
+addParam("overfuel", "Fuel Multiplier", "number 1-9001", nil, checkFuel() ~= math.huge, "fuelMultiplier")
 --Logging
 addParam("logging", "Logging", "boolean")
 addParam("logFolder", "Log Folder", "string")
@@ -697,8 +721,9 @@ end
     
     
 --Getting Fuel
-local hasRefueled --This is for oreQuarry prompting
+local hasRefueled --This is for oldOreQuarry prompting
 if doCheckFuel and checkFuel() < neededFuel then
+  neededFuel = math.min(neededFuel * fuelMultiplier, checkFuelLimit()-checkFuel()-1) --Does the same as above, but not verbose because optional
   hasRefueled = true
   print("Not enough fuel")
   print("Current: ",checkFuel()," Needed: ",neededFuel)
@@ -719,15 +744,16 @@ if doCheckFuel and checkFuel() < neededFuel then
   end
   local function updateScreen()
     output("Welcome to SmartFuel! Now Refueling...", 1,1)
-    output("Currently taking fuel from slot "..currSlot,1,2)
-    output("Current single fuel: "..tostring(oneFuel or 0),1,3)
+    output("Fuel Request Multiplier: "..tostring(fuelMultiplier).."x",1,2)
+    output("Currently taking fuel from slot "..currSlot,1,3)
+    output("Current single fuel: "..tostring(oneFuel or 0),1,4)
     output("Current estimate of needed fuel: ",1,4)
-    output("Single Items: "..math.ceil(neededFuelItems),4,5)
-    output("Stacks:       "..math.ceil(neededFuelItems / 64),4,6)
+    output("Single Items: "..math.ceil(neededFuelItems),4,6)
+    output("Stacks:       "..math.ceil(neededFuelItems / 64),4,7)
     output("Needed Fuel: "..tostring(neededFuel),1,12)
     output("Current Fuel: "..tostring(checkFuel()),1,13)
   end
-  while checkFuel() <= neededFuel do
+  while checkFuel() < neededFuel do
     currSlot = currSlot + 1
     select(currSlot)
     if currSlot ~= 1 and not turtle.refuel(0) then --If it's not the first slot, and not fuel, go back to start
@@ -1537,7 +1563,17 @@ function mine(doDigDown, doDigUp, outOfPath,doCheckInv) -- Basic Move Forward
   percent = math.ceil(moved/moveVolume*100)
   updateDisplay()
   if doCheckInv and careAboutResources then
-    if isFull(inventoryMax-keepOpen) then dropOff() end
+    if isFull(inventoryMax-keepOpen) then
+      if not ((oreQuarry or oldOreQuarry) and dumpCompareItems) then
+        dropOff()
+      else
+        local currInv = getSlotsTable()
+        drop(nil, false, true) --This also takes care of counting.
+        if #getChangedSlots(currInv, getSlotsTable()) <= 2 then --This is so if the inventory is full of useful stuff, it still has to drop it
+          dropOff()
+        end
+      end
+    end
   end
   biometrics()
 end
@@ -1694,7 +1730,7 @@ function enderRefuel() --Assumes a) An enderchest is in front of it b) It needs 
 end
 
   
-function drop(side, final)
+function drop(side, final, compareDump)
   side = sides[side] or "front"
   local dropFunc, detectFunc, dropFacing = turtle.drop, turtle.detect, facing+2
   if side == "top" then dropFunc, detectFunc = turtle.dropUp, turtle.detectUp end
@@ -1705,7 +1741,7 @@ function drop(side, final)
   
   count(true) --Count number of items before drop. True means add. This is before chest detect, because could be final
   
-  while not detectFunc() do 
+  while not compareDump and not detectFunc() do 
     if final then return end --If final, we don't need a chest to be placed, but there can be
     chestFull = true
     biometrics() --Let the user know there is a problem with chest
@@ -1727,13 +1763,13 @@ function drop(side, final)
         if not fuelSwitch then --Not in the conditional because we don't want to waitDrop excess fuel. Not a break so we can drop junk
           fuelSwitch = midRunRefuel(i)
         end
-      else 
+      elseif not compareDump or (compareDump and slot[i][1] == 1) then --This stops all wanted items from being dropped off in a compareDump
         waitDrop(i, allowedItems[i], dropFunc)
       end
     end
   end
   
-  if oldOreQuarry then count(nil) end--Subtract the items still there if oreQuarry
+  if oldOreQuarry or compareDump then count(nil) end--Subtract the items still there if oreQuarry
   resetDumpSlots() --So that slots gone aren't counted as dump slots next
   
   select(1) --For fanciness sake

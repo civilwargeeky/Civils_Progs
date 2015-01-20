@@ -1,6 +1,12 @@
 ====CHANGELOG====
  
 ----Quarry----
+--Version 3.6.3
+  Turtle will attempt to drop "junk" items in oreQuarry before moving to drop stuff off. If two or less stacks changed, will still do full drop
+  SmartFuel displays the current fuel multiplier
+  New Parameters:
+    -overfuel/fuelMultiplier [number]: This number is is what neededFuel is multiplied by when fuel is low.
+
 --Version 3.6.2
   Allowed for 1.4.7 users to use rednet
   New Parameters:
