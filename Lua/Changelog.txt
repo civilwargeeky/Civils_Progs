@@ -74,6 +74,7 @@
 ----Quarry Receiver----
 --Version 3.6.2
   Fixed bugs for 1.4.7 users
+  Added "-channel" parameter: same as "-receiveChannel"
   
 --Version 3.6.1
   QuadRotors!

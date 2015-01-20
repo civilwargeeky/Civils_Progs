@@ -110,7 +110,7 @@ Then you can say "SCREEN MONITOR_0" or whatever it says
 
 -help/help/-?/?/-usage/usage: That's this!
 
--receiveChannel {channel}: Sets the main screen's receive channel
+-receiveChannel/channel {channel}: Sets the main screen's receive channel
 
 -theme {name}: sets the "default" theme that screens use when they don't have a set theme
 
@@ -989,7 +989,7 @@ sleep(1)
 --[[
 Parameters:
   -help/-?/help/?
-  -receiveChannel [channel] --For only the main screen
+  -receiveChannel/channel [channel] --For only the main screen
   -theme --Sets a default theme
   -screen [side] [channel] [theme]
   -station
@@ -1104,7 +1104,7 @@ if quadEnabled then
 end
 
 --Init Computer Screen Object (was defined at top)
-computer = screenClass.new("computer", parameters.receivechannel and parameters.receivechannel[1])--This sets channel, checking if parameter exists
+computer = screenClass.new("computer", (parameters.receivechannel and parameters.receivechannel[1]) or (parameters.channel and parameters.channel[1]))--This sets channel, checking if parameter exists
 
 if parameters.auto then --This must go after computer declaration so computer ID is 1
   autoDetect(parameters.auto)
