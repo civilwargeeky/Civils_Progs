@@ -18,6 +18,7 @@ Quarry Receiver x.x.x (matches current quarry):
     Save file to restart with
     When a monitor receives final message, have an option for removing screen or restarting and waiting for another message
     Test if themes folder would actually work
+    If only one monitor is being used, computer is automatically a station.
     
   Ideas:
   1. All themes are in files in a "themes" folder.
@@ -42,6 +43,12 @@ Option: Either interactive editor or raw editor. Raw editor will just be a file 
 Technical idea:
   Definitely a standard menu design. Have different types and have menu functions for up, down, enter, back, selct index. This will make the menus really cool and seamless.
   So have a menu that interacts with different menu objects that can do different things if they are selected, clicked, etc.
+  
+Configuration Interface Idea:
+  Have main screen with all options, on the right is a smaller menu with "> run" selected, then above is "press ctrl to access menu", and below are "edit" "rename", and "delete"
+  
+Mixing Configs and Setups:
+  Configs could support a "#" operator and everything after would be a file to call and parameters. Then quarry could still load these and ignore lines started with "#"
 
 "Then I have a plan for making an installer that will perform various tasks like installing latest versions, 
 running pre-designated quarries (so like, load a set of parameters that you make in a file), reading quarry logs, 
@@ -155,6 +162,10 @@ Things for 3.6.2:
   In quarry tArgs, make a way to take out key value pairs in all forms (?)
   Idea for using inverted function with absolutes: Param for ignoreInverted. (Check detect functions) This allows much easier plugging in for other people (Make all main functions relative)
   Add param for counting each individual item. So maybe send back a report of literally everything the turtle collected.
+  For "-dumpCompareItems", have it so when it calls "dropItems" (or whatever), do a count(+), then drop all compare items, and do a count(-). If two or less stacks changed, go dump.
+  Param "-overFuel" (or something). Expects a multiplier. So "-overFuel 3.5" would make the turtle ask for 3.5x more fuel, but only if it already needed fuel. This way, you can do lots of quarries before you need to fuel again.
+  Possibly, do a "-file [fileName]" option to load params. This would take that function away from shell, and make it more of an organizer.
+    Turtle would load file and a) Take each line as a full param or b) Basically do a python ".split("-")" on it to group parameters together.
   
 Things to add for quarry version 3.6.3:
   Add support for mods. Like open peripheral chest finding.
