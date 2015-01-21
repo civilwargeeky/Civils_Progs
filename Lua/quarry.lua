@@ -1432,9 +1432,9 @@ function relxCalc()
     relxPos = (x-relxPos)+1
   end
 end
-function forward(doAdd)
+function horizontalMove(movement, posAdd, doAdd)
   if doAdd == nil then doAdd = true end
-  if turtle.forward() then
+  if movement() then
     if doAdd then
       moved = moved + 1
     end
@@ -1453,6 +1453,12 @@ function forward(doAdd)
     return true
   end
   return false
+end
+function forward(doAdd)
+  return horizontalMove(turtle.forward, 1, doAdd)
+end
+function back(doAdd)
+  return horizontalMove(turtle.back, -1, doAdd)
 end
 function verticalMove(moveFunc, yDiff, digFunc, attackFunc)
   local count = 0
@@ -1874,14 +1880,19 @@ function bedrock()
   print("Bedrock Detected")
   if turtle.detectUp() and not turtle.digUp() then
     print("Block Above")
-    local var
-    if facing == 0 then var = 2 elseif facing == 2 then var = 0 else error("Was facing left or right on bedrock") end
-    goto(xPos,zPos,yPos,var)
-    for i=1, relxPos do mine(false, false); end
-  else
-    up() --Go up two to avoid any bedrock. 
-    up()
+    turnTo(facing+2)
+    repeat
+      if not forward(false) then --Tries to go back out the way it came
+        if not attck() then --Just making sure not mob-blocked
+          if not dig() then --Now we know its bedrock
+            turnTo(facing+1) --Try going a different direction
+          end
+        end
+      end
+    until not turtle.detectUp() or turtle.digUp() --These should be absolute and we don't care about about counting resources here.
   end
+  up() --Go up two to avoid any bedrock. 
+  up()
   eventClear() --Get rid of any excess events that may be run. Don't want that.
   endingProcedure()
   print("\nFound bedrock at these coordinates: ")
