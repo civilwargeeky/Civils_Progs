@@ -161,8 +161,6 @@ Things for 3.6.3:
   Find out why turtle movement percent is slightly off
   Idea for using inverted function with absolutes: Param for ignoreInverted. (Check detect functions) This allows much easier plugging in for other people (Make all main functions relative)
   Add param for counting each individual item. So maybe send back a report of literally everything the turtle collected.
-  Possibly, do a "-file [fileName]" option to load params. This would take that function away from shell, and make it more of an organizer.
-    Turtle would load file and a) Take each line as a full param or b) Basically do a python ".split("-")" on it to group parameters together.
   Fix bedrock error so it tries going up first, then direction 0, then direction 2
   
 Things to add for quarry version 3.6.4:

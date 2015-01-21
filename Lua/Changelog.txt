@@ -4,8 +4,14 @@
 --Version 3.6.3
   Turtle will attempt to drop "junk" items in oreQuarry before moving to drop stuff off. If two or less stacks changed, will still do full drop
   SmartFuel displays the current fuel multiplier
+  Number parameters no longer silently convert negatives to positive, they just won't accept them
+  Implemented "float" type of parameter that just doesn't math.floor the number
+  String arguments now accept "/" (they can actually do file names in directories
+  Removed sleep(1) from autostartup file because it was annoying
   New Parameters:
     -overfuel/fuelMultiplier [number]: This number is is what neededFuel is multiplied by when fuel is low.
+    -version: This will display the current version number and end the program
+    -file [fileName]: This will load a custom configuration file (basically a list of parameters). "##" starts comment lines. In the future "#" will start programs to run (but only through shell)
 
 --Version 3.6.2
   Allowed for 1.4.7 users to use rednet

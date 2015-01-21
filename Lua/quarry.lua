@@ -189,7 +189,6 @@ else
   supportsRednet = (peripheral.getType("right") == "modem") or false
 end
 
-local tArgs = {...}
 --Pre-defining variables that need to be saved
       xPos,yPos,zPos,facing,percent,mined,moved,relxPos, rowCheck, connected, isInPath, layersDone, attacked, startY, chestFull, gotoDest, atChest, fuelLevel, numDropOffs, allowedItems, compareSlots, dumpSlots, selectedSlot, extraDropItems, oldOreQuarry, specialSlots, relzPos
     = 0,   1,   1,   0,     0,      0,    0,    1,       true   ,  false,     true,     1,          0,        0,      false,     "",       false,   0,         0,           {},             {},           {},      1,            false,          false,        {},           0
@@ -277,11 +276,17 @@ print("----- Welcome to Quarry! -----")
 print("")
 
 local sides = {top = "top", right = "right", left = "left", bottom = "bottom", front = "front"} --Used to whitelist sides
+local tArgs --Will be set in initializeArgs
+local originalArgs = {...}
 local changedT, tArgsWithUpper = {}, {}
 changedT.new = function(key, value) table.insert(changedT,{key, value}) end --Numeric list of lists
 changedT.remove = function() table.remove(changedT) end
 local function capitalize(text) return (string.upper(string.sub(text,1,1))..string.sub(text,2,-1)) end
-for i=1, #tArgs do tArgsWithUpper[i] = tArgs[i]; tArgsWithUpper[tArgsWithUpper[i]] = i; tArgs[i] = tArgs[i]:lower(); tArgs[tArgs[i]] = i end --My signature key-value pair system, now with upper
+local function initializeArgs()
+  tArgs = copyTable(originalArgs) --"Reset" tArgs
+  for i=1, #tArgs do tArgsWithUpper[i] = tArgs[i]; tArgsWithUpper[tArgsWithUpper[i]] = i; tArgs[i] = tArgs[i]:lower(); tArgs[tArgs[i]] = i end --My signature key-value pair system, now with upper
+end
+initializeArgs()
 
 local restoreFound, restoreFoundSwitch = false --Initializing so they are in scope
 function addParam(name, displayText, formatString, forcePrompt, trigger, variableOverride, variableExists) --To anyone that doesn't understand this very well, probably not your best idea to go in here.
@@ -312,11 +317,11 @@ function addParam(name, displayText, formatString, forcePrompt, trigger, variabl
   if formatType == "boolean" then --All the format strings will be basically be put through a switch statement
     toRet = givenValue:sub(1,1):lower() ~= "n" and givenValue:sub(1,1):lower() ~= "f" --Accepts anything but false or no
   elseif formatType == "string" then
-    toRet = givenValue:match("^[%w%.]+") --Basically anything not a space or control character etc
-  elseif formatType == "number" then
+    toRet = givenValue:match("^[%w%./]+") --Basically anything not a space or control character etc
+  elseif formatType == "number" or formatType == "float" then
     toRet = tonumber(givenValue) --Note this is a local, not the above so we don't change anything
     if not toRet then return end --We need a number... Otherwise compare errors
-    toRet = math.abs(math.floor(toRet)) --Get proper integers
+    if formatType == "number" then toRet = math.floor(toRet) end --Get proper integers
     local startNum, endNum = formatString:match("(%d+)%-(%d+)") --Gets range of numbers
     startNum, endNum = tonumber(startNum), tonumber(endNum)
     if not ((toRet >= startNum) and (toRet <= endNum)) then return end --Can't use these
@@ -368,12 +373,25 @@ if tArgs["help"] or tArgs["-help"] or tArgs["-?"] or tArgs["?"] then
   end
   error("",0)
 end
---Loading custom parameter lists
-local function split(str, sep)
-  return str:gmatch(".*"..sep)
+
+if tArgs["-version"] or tArgs["version"] then
+  print("QUARY VERSION: ",VERSION)
+  error("",0) --Exit not so gracefully
 end
 
-if addParam("file","Custom Parameters","string", false, nil, "parameterFile", false) and parameterFile then
+--Loading custom parameter lists
+local function split(str, sep)
+  assert(#sep == 1, "Split seperator too long. Got '"..sep.."'")
+  if not str:match(sep) then return {str} end --So everything else isn't pointless
+  local toRet = {}
+  toRet[1] = str:match("^([^"..sep.."]-)"..sep)
+  for i in str:gmatch(sep.."([^"..sep.."]*)") do --Matches not seperator chars
+    toRet[#toRet+1] = i
+  end
+  return toRet
+end
+
+if addParam("file","Custom Parameters","string", false, nil, "parameterFile", false) and parameterFile then --Do note, this will load even if it is resuming.
   if not fs.exists(parameterFile) then
     print("WARNING: '"..parameterFile.."' DOES NOT EXIST. FILE NOT LOADED")
     sleep(3)
@@ -382,6 +400,26 @@ if addParam("file","Custom Parameters","string", false, nil, "parameterFile", fa
     local file = fs.open(parameterFile, "r")
     local text = file.readAll()
     file.close()
+    text = text.."\n" --So that all replacements work properly
+    text = text:gsub("#[^\n]-\n","") --Replace program codes/comment lines+
+    local commands = {} --Contains all the parameters
+    local append = table.insert
+    for _, a in pairs(split(text,"\n")) do
+      local words = split(a," ")
+      if not a:match("-") then --This means only one command per line
+        append(originalArgs,"-"..words[1])
+        for i=2, #words do
+          append(originalArgs, words[i])
+        end
+      else --Otherwise the dashes are already ordered where we want!
+        for i=1, #words do
+          append(originalArgs, words[i])
+        end
+      end
+    end
+    initializeArgs() --Fix the magic
+    print("Finished loading file: ",tArgs[tArgs["-file"]+1])
+    sleep(0.5) --Give em a sec
   end
 end
   
@@ -538,8 +576,8 @@ addParam("doRefuel", "Refuel from Inventory","boolean", nil, checkFuel() ~= math
 addParam("doCheckFuel", "Check Fuel", "boolean", nil, checkFuel() ~= math.huge)
 excessFuelAmount = excessFuelAmount or math.huge --Math.huge apparently doesn't save properly
 addParam("maxFuel", "Max Fuel", "number 1-999999999", nil, checkFuel() ~= math.huge, "excessFuelAmount")
-addParam("fuelMultiplier", "Fuel Multiplier", "number 1-9001", nil, checkFuel() ~= math.huge)
-addParam("overfuel", "Fuel Multiplier", "number 1-9001", nil, checkFuel() ~= math.huge, "fuelMultiplier")
+addParam("fuelMultiplier", "Fuel Multiplier", "float 1-9001", nil, checkFuel() ~= math.huge)
+addParam("overfuel", "Fuel Multiplier", "float 1-9001", nil, checkFuel() ~= math.huge, "fuelMultiplier")
 --Logging
 addParam("logging", "Logging", "boolean")
 addParam("logFolder", "Log Folder", "string")
@@ -588,7 +626,6 @@ local function doAutoResumeStuff()
 --Made by civilwargeeky's Variable Size Quarry
 print("Now Resuming Quarry")
 print("Press any key to quit. You have 5 seconds.")
-sleep(1)
 function deleteStuff()
   fs.delete("]]..startupName..[[")
   if fs.exists("]]..startupRename..[[") then
@@ -723,7 +760,7 @@ end
 --Getting Fuel
 local hasRefueled --This is for oldOreQuarry prompting
 if doCheckFuel and checkFuel() < neededFuel then
-  neededFuel = math.min(neededFuel * fuelMultiplier, checkFuelLimit()-checkFuel()-1) --Does the same as above, but not verbose because optional
+  neededFuel = math.min(math.floor(neededFuel * fuelMultiplier), checkFuelLimit()-checkFuel()-1) --Does the same as above, but not verbose because optional
   hasRefueled = true
   print("Not enough fuel")
   print("Current: ",checkFuel()," Needed: ",neededFuel)
