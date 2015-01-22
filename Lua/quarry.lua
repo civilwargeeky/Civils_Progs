@@ -48,6 +48,7 @@ enderChestEnabled = false --Whether or not to use an ender chest [Default false]
 enderChestSlot = 16 --What slot to put the ender chest in [Default 16]
 fuelChestEnabled = false --Whether or not to use a fuel chest [Default false]
 fuelChestSlot = 15 --What slot to put the fuel chest in [Default 15]
+preciseTotals = false --If true, will record exact totals and names for all materials [Default false]
 goLeftNotRight = false --Quarry to left, not right (parameter is "left") [Default false]
 oreQuarry = false --Enables ore quarry functionality [Default false]
 oreQuarryBlacklistName = "oreQuarryBlacklist.txt" --This is the file that will be parsed for item names [Default "oreQuarryBlacklist"]
@@ -98,6 +99,7 @@ Welcome!: Welcome to quarry help. Below are help entries for all parameters. Exa
 -chest: [side] This specifies what side the chest at the end will be on. You can say "top", "bottom", "front", "left", or "right"
 -enderChest: This one is special. If you use "-enderChest true" then it will use an enderChest in the default slot. However, you can also do "-enderChest [slot]" then it will take the ender chest from whatever slot you tell it to. Like 7... or 14... or whatever.
 -fuelChest: See the above, but for a fueling chest. Reccommend use with -maxFuel and -doCheckFuel false
+-preciseTotals: [t/f] If true, will record a detailed file of everything it mined.
 -GPS: [force] If you use "-GPS" and there is a GPS network, then the turtle will record its first two positions to precisly calculate its position if it has to restart. This will only take two GPS readings
 -quad: [t/f] This forces the use of GPS. Make sure you have a network set up. This will request to be refueled by a quadrotor from Lyqyd's mod if the turtle is out of fuel
 -quadTimeout: [number] The amount of time the turtle will wait for a quadRotor
@@ -126,6 +128,7 @@ Welcome!: Welcome to quarry help. Below are help entries for all parameters. Exa
       |
       |
       |_ _ _ _ >
+-flatBedrock: [t/f] If true, turtle will find bedrock and "zero" itself so it ends on bedrock level
 -promptAll: This is the opposite of -Default, it prompts for everything
 -manualPos: [xPos] [zPos] [yPos] [facing] This is for advanced use. If the server reset when the turtle was in the middle of a 100x100x100 quarry, fear not, you can now manually set the position of the turtle. yPos is always positive. The turtle's starting position is 0, 1, 1, 0. Facing is measured 0 - 3. 0 is forward, and it progresses clockwise. Example- "-manualPos 65 30 30 2"
 -help: Thats what this is :D
@@ -201,6 +204,7 @@ for i=1, inventoryMax do
   dumpSlots[i] = false --Does this slot contain junk items?
 end --compareSlots is a table of the compare slots, not all slots with a condition
 totals = {cobble = 0, fuel = 0, other = 0} -- Total for display (cannot go inside function), this goes up here because many functions use it
+
 
 local function newSpecialSlot(index, value)
   value = tonumber(value) or 0 --We only want numerical indexes
@@ -584,9 +588,14 @@ addParam("logFolder", "Log Folder", "string")
 addParam("logExtension","Log Extension", "string")
 --Misc
 addParam("startY", "Start Y","number 1-256")
+addParam("maxTries","Tries Before Bedrock", "number 1-9001")
+--Inventory
 addParam("keepOpen", "Slots to Keep Open", "number 1-15")
 addParam("careAboutResources", "Care About Resources","boolean")
-addParam("maxTries","Tries Before Bedrock", "number 1-9001")
+addParam("preciseTotals","Precise Totals","boolean", nil, turtle.getItemDetail ~= nil)
+if preciseTotals and not restoreFoundSwitch then 
+  exactTotals = {} --Don't want to initialize if we aren't using this
+end
 --Auto Startup
 addParam("autoResume", "Auto Resume", "boolean", nil, doBackup)
 addParam("autoRestart", "Auto Restart", "boolean", nil, doBackup, "autoResume")
@@ -1113,6 +1122,19 @@ print("Connected: "..tostring(connected))
 end
 end
 --Utility functions
+local function pad(str, length, side)
+  toRet = ""
+  if side == "right" then
+    toRet = str
+  end
+  for i=1, length do
+    toRet = toRet.." "
+  end
+  if side == "left" then
+    toRet = toRet..str
+  end
+  return toRet
+end
 function logMiningRun(textExtension, extras) --Logging mining runs
   if not logging then return end
   local number, name = 0
@@ -1150,6 +1172,12 @@ function logMiningRun(textExtension, extras) --Logging mining runs
   write("Was using rednet? ",boolToText(rednetEnabled))
   write("Chest was on the ",dropSide," side")
   if startDown > 0 then write("Started ",startDown," blocks down") end
+  if exactTotals then
+    write("\n==DETAILED TOTALS==")
+    for a,b in pairs(exactTotals) do
+      write(pad(a, 15, "right"),":",pad(tostring(b),({term.getSize()})[1]-15-1, "left"))
+    end
+  end
   handle.close()
 end
 --Inventory related functions
@@ -1272,10 +1300,15 @@ function count(add) --Done any time inventory dropped and at end, true=add, fals
   end
     
   for i=1,inventoryMax do
-    if specialSlots[i] then --Do nothing!
-    elseif slot[i][1] == 1 then totals.cobble = totals.cobble + (slot[i][2] * mod)
-    elseif slot[i][1] == 2 then totals.fuel = totals.fuel + (slot[i][2] * mod)
-    elseif slot[i][1] == 3 then totals.other = totals.other + (slot[i][2] * mod) end
+    if not specialSlots[i] then --Do nothing!
+      if exactTotals then
+        local data = turtle.getItemDetail()
+        exactTotals[data.name] = (exactTotals[data.name] or 0) + data.count
+      end
+      if slot[i][1] == 1 then totals.cobble = totals.cobble + (slot[i][2] * mod)
+      elseif slot[i][1] == 2 then totals.fuel = totals.fuel + (slot[i][2] * mod)
+      elseif slot[i][1] == 3 then totals.other = totals.other + (slot[i][2] * mod) end
+    end
   end
 
   select(1)

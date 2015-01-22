@@ -19,6 +19,7 @@ Quarry Receiver x.x.x (matches current quarry):
     When a monitor receives final message, have an option for removing screen or restarting and waiting for another message
     Test if themes folder would actually work
     If only one monitor is being used, computer is automatically a station.
+    If preciseTotals is on, turtle can display all the values on the final screen
     
   Ideas:
   1. All themes are in files in a "themes" folder.
@@ -157,13 +158,13 @@ add it to a table. When you do addParam function, check if on force prompt table
     Maybe in future, option to place torches on walls efficiently
   
 Things for 3.6.3:
-  Organize all the things! Everything is so messy right now...
   Find out why turtle movement percent is slightly off
-  Idea for using inverted function with absolutes: Param for ignoreInverted. (Check detect functions) This allows much easier plugging in for other people (Make all main functions relative)
-  Add param for counting each individual item. So maybe send back a report of literally everything the turtle collected.
-  Fix bedrock error so it tries going up first, then direction 0, then direction 2
   
-Things to add for quarry version 3.6.4:
+Things for 3.6.4 (after shell):
+  Organize all the things! Everything is so messy right now...
+  Idea for using inverted function with absolutes: Param for ignoreInverted. (Check detect functions) This allows much easier plugging in for other people (Make all main functions relative)
+  
+Things to add for quarry version 3.6.5:
   Add support for mods. Like open peripheral chest finding.
   Maybe have an option to change the home position. Like at 1,1,1 instead of 0,1,1. You could just replace all the "goto 1,1,1 goto 0,1,1" with a "go home" command
   
