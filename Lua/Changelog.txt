@@ -10,6 +10,7 @@
   Removed sleep(1) from autostartup file because it was annoying
   Made bedrock function try to get out of bedrock intelligently. Hopefully won't get stuck
   Raised maxTries to 200
+  Fixed bug where refueling had unexpected behavior near maxFuelLimit
   New Parameters:
     -overfuel/fuelMultiplier [number]: This number is is what neededFuel is multiplied by when fuel is low.
     -version: This will display the current version number and end the program

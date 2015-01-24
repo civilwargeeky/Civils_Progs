@@ -751,7 +751,7 @@ do --Because many local variables unneeded elsewhere
   neededFuel = neededFuel + fuelTable[fuelSafety] --For safety
 end
 
-if neededFuel+checkFuel() > checkFuelLimit() and doCheckFuel then--Checks for if refueling goes over turtle fuel limit
+if neededFuel > checkFuelLimit() and doCheckFuel then--Checks for if refueling goes over turtle fuel limit
   if not (doRefuel or fuelChestEnabled) then
     screen()
     print("Turtle cannot hold enough fuel\n")
