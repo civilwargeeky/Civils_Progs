@@ -755,10 +755,15 @@ if neededFuel > checkFuelLimit() and doCheckFuel then--Checks for if refueling g
   if not (doRefuel or fuelChestEnabled) then
     screen()
     print("Turtle cannot hold enough fuel\n")
-    print("Options: \n1. Select a smaller size (press q) \n2. Enable Mid-Run Refueling (any other key)")
-    if ({os.pullEvent("char")})[2] == "q" then 
+    print("Options: \n1. Select a smaller size \n2. Enable Mid-Run Refueling (RECOMMENDED) \n3. Turn fuel checking off (only if fuel chest) \n4. Do nothing")
+    local _, key = os.pullEvent("char")
+    if key == "1" then 
       screen(); print("Okay"); error("",0) 
-    else
+    elseif key == "3" then
+      doCheckFuel = false
+    elseif key == "4" then
+      --pass
+    else --Not for number two because this is default
       doRefuel = true
     end
   end
