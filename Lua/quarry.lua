@@ -1978,7 +1978,7 @@ if not restoreFoundSwitch then --Regularly
   end
   runAllEvents()
   if flatBedrock then
-    while (detectDown() and digDown(false)) or not detectDown() do --None of these functions are non-invert protected because inverse always false here
+    while (detectDown() and digDown(false, true)) or not detectDown() do --None of these functions are non-invert protected because inverse always false here
       down()
       startDown = startDown + 1
     end
