@@ -20,6 +20,7 @@ end
 
 local quarryFunctions = {}
 quarryFunctions.parseConfig = function(name) --This parses configs for other configs and returns full config
+  local originalName = name --For recursion checking
   name = addDir(dataFolder, name..extensions.quarryConfig) --Put this in the proper place
   if not fs.exists(name) and not fs.isDir(name) then return false, "file not found" end --Can't read what isn't there
   
@@ -33,7 +34,9 @@ quarryFunctions.parseConfig = function(name) --This parses configs for other con
     if not first then break end --No more matches
     local str = text:sub(first+2, last) --Returns only the config name
     
-    local value = quarryFunctions.parseConfig(str)
+    if str:lower() ~= originalName:lower() then --So we don't call self. Not going to worry about other infinite recursion though, since its hard.
+      local value = quarryFunctions.parseConfig(str)
+    end
     if not value then
       value = "#Failed to load: "..str
     end
