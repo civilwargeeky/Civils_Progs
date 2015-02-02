@@ -10,6 +10,9 @@ outputPath = userDir + "\\Desktop"
 
 pygame.init()
 
+xBuffer = 30
+yBuffer = 20
+
 textHeight = 150
 font = pygame.font.SysFont(None, textHeight)
 def getText(text):
@@ -77,8 +80,8 @@ for i in array:
     sub.append(a.get_size()[1])
   maxHeights.append(max(sub))
 print("Heights: ",maxHeights)
-totalHeight = sum(maxHeights) + len(maxHeights) * textHeight #Adding in text
-totalWidth = maxWidth*across
+totalHeight = sum(maxHeights) + len(maxHeights) * textHeight + (len(array)-1) * yBuffer#Adding in text
+totalWidth = maxWidth*across + xBuffer*(len(array[0])-1)
 
 #This is the surface everything will be blitted to
 bigPicture = pygame.Surface((totalWidth,totalHeight))
@@ -93,9 +96,9 @@ for a in range(len(array)):
     bigPicture.blit(b, (currentPos[0],currentPos[1]+textHeight))
     toRender, height = getText(names[a*across + i])
     bigPicture.blit(toRender, (currentPos[0], currentPos[1]))
-    currentPos[0] += maxWidth #b.get_size()[0]
+    currentPos[0] += maxWidth + xBuffer #b.get_size()[0]
   currentPos[0] = 0
-  currentPos[1] += maxHeights[a] + textHeight
+  currentPos[1] += maxHeights[a] + textHeight + yBuffer
 
 print("Saving Picture...")
 output =  outputPath + "\\TestPicture.png"
