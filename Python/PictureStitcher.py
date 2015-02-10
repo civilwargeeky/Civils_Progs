@@ -57,11 +57,11 @@ for i in range(len(pics)):
   pic = pics[i]
   width, height = pic.get_size()[:] 
   scaleFactor = maxWidth / width #This gives a > 1 val for smaller pics, < 1 val for bigger
-  print(names[i],height)
+  print("Old: ",names[i],height)
   if height*scaleFactor > maxHeight:
     scaleFactor = maxHeight/height
   pics[i] = pygame.transform.scale(pic, (int(width*scaleFactor), int(height*scaleFactor))) #puts destination as same pic
-  print(names[i], pics[i].get_size()[1])
+  print("New: ",names[i], pics[i].get_size()[1])
   heights.append(height*scaleFactor)
   
 maxHeight = int(round(sum(heights)/len(heights),-2))
@@ -102,7 +102,7 @@ for a in range(len(array)):
     bigPicture.blit(b, (currentPos[0],currentPos[1]+textHeight))
     toRender, height = getText(names[a*across + i])
     bigPicture.blit(toRender, (currentPos[0], currentPos[1]))
-    currentPos[0] += maxWidth + xBuffer #b.get_size()[0]
+    currentPos[0] += maxWidth #b.get_size()[0]
   currentPos[0] = 0
   currentPos[1] += maxHeights[a] + textHeight + bufferY
 
