@@ -1,6 +1,14 @@
 import pygame
 import os
 
+#Config
+textHeight = 150
+bufferX = 70 #Buffer between pictures in pixels
+bufferY = 30
+across = 7
+
+
+
 command = os.popen("echo %userprofile%")
 userDir = command.read()[:-1]
 command.close()
@@ -10,7 +18,6 @@ outputPath = userDir + "\\Desktop"
 
 pygame.init()
 
-textHeight = 150
 font = pygame.font.SysFont(None, textHeight)
 def getText(text):
   toRet = font.render(text, True, (0,0,0))
@@ -61,7 +68,6 @@ maxHeight = int(round(sum(heights)/len(heights),-2))
 
 #This separates the pictures into fixed length arrays
 array = []
-across = 6
 for i in range(0,len(pics),across):
   try:
     array.append(pics[i:i+across])
@@ -77,7 +83,10 @@ for i in array:
     sub.append(a.get_size()[1])
   maxHeights.append(max(sub))
 print("Heights: ",maxHeights)
-totalHeight = sum(maxHeights) + len(maxHeights) * textHeight #Adding in text
+
+maxWidth += bufferX #Done here to avoid mucking scale factors
+
+totalHeight = sum(maxHeights) + len(maxHeights) * (textHeight + bufferY) #Adding in text and buffer
 totalWidth = maxWidth*across
 
 #This is the surface everything will be blitted to
@@ -95,7 +104,7 @@ for a in range(len(array)):
     bigPicture.blit(toRender, (currentPos[0], currentPos[1]))
     currentPos[0] += maxWidth #b.get_size()[0]
   currentPos[0] = 0
-  currentPos[1] += maxHeights[a] + textHeight
+  currentPos[1] += maxHeights[a] + textHeight + bufferY
 
 print("Saving Picture...")
 output =  outputPath + "\\TestPicture.png"
