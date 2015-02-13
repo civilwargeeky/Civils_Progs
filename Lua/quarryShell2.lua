@@ -2,11 +2,15 @@
 --Made by Civilwargeeky
 --Version 0.0.1
 
+local doDebug = true
+local debugLevel = 1 --Levels 1 through x, 1 is most trivial
 local dataFolder = "quarryData"
 
 local fileLocations = {}
 local fc = fileLocations
 fileLocations.quarry = "quarry.lua"
+fileLocations.basicEditor = "edit"
+
 
 local extensions = {}
 extensions.quarryConfig = ".qc"
@@ -14,10 +18,29 @@ extensions.quarryConfigFull = ".qcf"
 
 local addDir = fs.combine
 
+local d = {} --Table for storing debug functions
+d.debug = function(level, ...)
+  level = level or 3
+  if doDebug and level >= debugLevel then
+    print("\n",...)
+    os.pullEvent("char")
+  end
+end
+d.info = function(...)
+  d.debug(1, ...)
+end
+
+local function processFileName(name, ext)
+  return addDir(dataFolder, name..ext)
+end
 local function loadFile(name, ext) --This should return a file handle and fileName
-  name = addDir(dataFolder, name..ext) --Put this in the proper place
+  name = processFileName(name, ext) --Put this in the proper place
   if not fs.exists(name) and not fs.isDir(name) then return false end --Can't read what isn't there
   return fs.open(name, "r"), name
+end
+local function newFile(name, ext) --This returns a file handle and fileName
+  name = processFileName(name, ext)
+  return fs.open(name, "w")
 end
 
 --====================QUARRY FUNCTIONS====================
@@ -48,11 +71,11 @@ quarryFunctions.parseConfig = function(name) --This parses configs for other con
   return text
 end
 
-quarryFunctions.processConfig = function(name)
+quarryFunctions.processConfig = function(name) --This is just a wrapper for parsing and saving configs
   local toSave, message = quarryFunctions.parseConfig(name)
   if not toSave then return false, message end
   
-  local file = fs.open(addDir(dataFolder, name.. extensions.quarryConfigFull), "w")
+  local file = newFile(name, extensions.quarryConfigFull)
   file.writeLine(toSave)
   file.close()
   return true
@@ -60,7 +83,7 @@ end
 
 quarryFunctions.runConfig = function(name)
   if quarryFunctions.processConfig(name) then --Prepare config for running
-    print(fc.quarry.." -file "..addDir(dataFolder, name..extensions.quarryConfigFull))
+    d.info(fc.quarry.." -file "..addDir(dataFolder, name..extensions.quarryConfigFull))
     local spoof = {} --This is to trick quarry into saving the proper file
     spoof.getRunningProgram = function() return fc.quarry end
     os.run({shell = spoof}, fc.quarry,"-file",addDir(dataFolder, name..extensions.quarryConfigFull)) --Maybe later we'll handle running programs before/after quarry
@@ -68,6 +91,21 @@ quarryFunctions.runConfig = function(name)
   end
   return false
 end
+
+quarryFunctions.basicEdit = function(name, ignoreExists)
+  name = processFileName(name, extensions.quarryConfig)
+  d.info("New Basic Edit: ",name)
+  if not ignoreExists and fs.exists(name) then
+    return false, "file exists"
+  end
+  os.run({}, fileLocations.basicEditor .. " " .. name) --Just load the basic editor
+  return true
+end
+
+--====================LOGGING FUNCTIONS====================
+local loggingFunctions = {}
+loggingFunctions.readLog = function(name)
+  name = processFileName(name, 
 
 --====================MAIN PROGRAM====================
 
