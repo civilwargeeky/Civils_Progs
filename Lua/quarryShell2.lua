@@ -5,6 +5,7 @@
 local doDebug = true
 local debugLevel = 1 --Levels 1 through x, 1 is most trivial
 local dataFolder = "quarryData"
+local logsFolder = "Quarry_Logs"
 
 local fileLocations = {}
 local fc = fileLocations
@@ -15,6 +16,7 @@ fileLocations.basicEditor = "edit"
 local extensions = {}
 extensions.quarryConfig = ".qc"
 extensions.quarryConfigFull = ".qcf"
+extensions.log = ""
 
 local addDir = fs.combine
 
@@ -30,8 +32,8 @@ d.info = function(...)
   d.debug(1, ...)
 end
 
-local function processFileName(name, ext)
-  return addDir(dataFolder, name..ext)
+local function processFileName(name, ext, folder)
+  return addDir(folder or dataFolder, name..ext)
 end
 local function loadFile(name, ext) --This should return a file handle and fileName
   name = processFileName(name, ext) --Put this in the proper place
@@ -42,7 +44,16 @@ local function newFile(name, ext) --This returns a file handle and fileName
   name = processFileName(name, ext)
   return fs.open(name, "w")
 end
-
+local function getFiles(dir, regex) --Returns a list of all files that match regex
+  local list, toRet = fs.list(dir or ""), {}
+  for a, b in pairs(list) do
+    if b:match(regex or ".") then
+      table.insert(toRet, b)
+    end
+  end
+  return toRet
+end
+  
 --====================QUARRY FUNCTIONS====================
 local quarryFunctions = {}
 quarryFunctions.parseConfig = function(name) --This parses configs for other configs and returns full config  
@@ -92,6 +103,8 @@ quarryFunctions.runConfig = function(name)
   return false
 end
 
+quarryFunctions.deleteF
+
 quarryFunctions.basicEdit = function(name, ignoreExists)
   name = processFileName(name, extensions.quarryConfig)
   d.info("New Basic Edit: ",name)
@@ -104,9 +117,29 @@ end
 
 --====================LOGGING FUNCTIONS====================
 local loggingFunctions = {}
-loggingFunctions.readLog = function(name)
-  name = processFileName(name, 
+loggingFunctions.readLog = function(name) --returns a table of individual lines
+  local file = loadFile(processFileName(name, extensions.log, logsFolder))
+  local toRet = {}
+  for a in file:lines() do
+    table.insert(toRet, a)
+  end
+  file.close()
+  
+  return toRet
+end
+
+loggingFunctions.deleteLog = function(name)
+  name = processFileName(name, extensions.log, logFolder)
+  if fs.exists(name) then
+    fs.delete(name)
+  end
+end
+
+loggingFunctions.deleteAllLogs = function()
+  for a, b in pairs(getFiles(logFolder, extensions.log)) do
+    loggingFunctions.deleteLog(b)
+  end
+end
 
 --====================MAIN PROGRAM====================
 
-quarryFunctions.runConfig("lol")
