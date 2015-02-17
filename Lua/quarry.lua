@@ -1,6 +1,6 @@
 --Civilwargeeky's Quarry Program--
   VERSION = "3.6.3"
---[[ 
+--[[
 Recent Changes:
   Quarry no longer goes to start at end of row!
   Turtle can go left!
@@ -18,7 +18,7 @@ numResumed = 0 --Number of times turtle has been resumed
 -------Defaults for Arguments----------
 --Arguments assignable by text
 x,y,z = 3,3,3 --These are just in case tonumber fails
-inverted = false --False goes from top down, true goes from bottom up [Default false] 
+inverted = false --False goes from top down, true goes from bottom up [Default false]
 rednetEnabled = false --Default rednet on or off  [Default false]
 --Arguments assignable by tArgs
 dropSide = "front" --Side it will eject to when full or done [Default "front"]
@@ -87,7 +87,7 @@ Welcome!: Welcome to quarry help. Below are help entries for all parameters. Exa
   minecraft:sand
   ThermalExpansion:Sponge
   ThermalFoundation:Storage
-  
+
   If you have bspkrsCore, look for "UniqueNames.txt" in your config
 -atChest: [force] This is for use with "-restore," this will tell the restarting turtle that it is at its home chest, so that if it had gotten lost, it now knows where it is.
 -doRefuel: [t/f] If true, the turtle will refuel itself with coal and planks it finds on its mining run
@@ -135,30 +135,30 @@ Welcome!: Welcome to quarry help. Below are help entries for all parameters. Exa
 Examples: Everything below is examples and tips for use
 Important Note:
   None of the above parameters are necessary. They all have default values, and the above are just if you want to change them.
-Examples [1]: 
-  Want to just start a quarry from the interface, without going through menus? It's easy! Just use some parameters. Assume you called the program "quarry." To start a 10x6x3 quarry, you just type in "quarry -dim 10 6 3 -default". 
+Examples [1]:
+  Want to just start a quarry from the interface, without going through menus? It's easy! Just use some parameters. Assume you called the program "quarry." To start a 10x6x3 quarry, you just type in "quarry -dim 10 6 3 -default".
   You just told it to start a quarry with dimensions 10x6x3, and "-default" means it won't prompt you about invert or rednet. Wasn't that easy?
 Examples [2]:
-  Okay, so you've got the basics of this now, so if you want, you can type in really long strings of stuff to make the quarry do exactly what you want. Now, say you want a 40x20x9, but you want it to go down to diamond level, and you're on the surface (at y = 64). You also want it to send rednet messages to your computer so you can see how its doing. 
+  Okay, so you've got the basics of this now, so if you want, you can type in really long strings of stuff to make the quarry do exactly what you want. Now, say you want a 40x20x9, but you want it to go down to diamond level, and you're on the surface (at y = 64). You also want it to send rednet messages to your computer so you can see how its doing.
 Examples [2] [cont.]:
   Oh yeah! You also want it to use an ender chest in slot 12 and restart if the server crashes. Yeah, you can do that. You would type
   "quarry -dim 40x20x9 -invert false -startDown 45 -rednet true -enderChest 12 -restore"
   BAM. Now you can just let that turtle do it's thing
 Tips:
   The order of the parameters doesn't matter. "quarry -invert false -rednet true" is the same as "quarry -rednet true -invert false"
-  
+
   Capitalization doesn't matter. "quarry -iNVErt FALSe" does the same thing as "quarry -invert false"
 Tips [cont.]:
   For [t/f] parameters, you can also use "yes" and "no" so "quarry -invert yes"
-  
+
   For [t/f] parameters, it only cares about the first letter. So you can use "quarry -invert t" or "quarry -invert y"
 Tips [cont.]:
   If you are playing with fuel turned off, the program will automatically change settings for you so you don't have to :D
-  
+
   If you want, you can load this program onto a computer, and use "quarry -help" so you can have help with the parameters whenever you want.
 Internal Config:
   At the top of this program is an internal configuration file. If there is some setup that you use all the time, you can just change the config value at the top and run "quarry -default" for a quick setup.
-  
+
   You can also use this if there are settings that you don't like the default value of.
 ]]
 
@@ -195,11 +195,11 @@ end
 --Pre-defining variables that need to be saved
       xPos,yPos,zPos,facing,percent,mined,moved,relxPos, rowCheck, connected, isInPath, layersDone, attacked, startY, chestFull, gotoDest, atChest, fuelLevel, numDropOffs, allowedItems, compareSlots, dumpSlots, selectedSlot, extraDropItems, oldOreQuarry, specialSlots, relzPos
     = 0,   1,   1,   0,     0,      0,    0,    1,       true   ,  false,     true,     1,          0,        0,      false,     "",       false,   0,         0,           {},             {},           {},      1,            false,          false,        {},           0
-    
+
 local statusString
 
 --Initializing various inventory management tables
-for i=1, inventoryMax do 
+for i=1, inventoryMax do
   allowedItems[i] = 0 --Number of items allowed in slot when dropping items
   dumpSlots[i] = false --Does this slot contain junk items?
 end --compareSlots is a table of the compare slots, not all slots with a condition
@@ -236,7 +236,7 @@ end
 local function copyTable(tab) local toRet = {}; for a, b in pairs(tab) do toRet[a] = b end; return toRet end --This goes up here because it is a basic utility
 
 --NOTE: rowCheck is a bit. true = "right", false = "left"
-    
+
 local foundBedrock = false
 
 local checkFuel, checkFuelLimit
@@ -247,14 +247,14 @@ if turtle then --Function inits
   end --There is no "else" because it will already return the regular getFuel
   if turtle.getFuelLimit then
     checkFuelLimit = function() return math.min(turtle.getFuelLimit(), excessFuelAmount) end --Return the limiting one
-    if turtle.getFuelLimit() == "unlimited" then 
+    if turtle.getFuelLimit() == "unlimited" then
       checkFuelLimit = function() return math.huge end
     end
   else
-    checkFuelLimit = function() return excessFuelAmount end --If the function doesn't exist 
+    checkFuelLimit = function() return excessFuelAmount end --If the function doesn't exist
   end
 
-  
+
   turtle.select(1) --To ensure this is correct
 end
 
@@ -265,7 +265,7 @@ function select(slot)
     return turtle.select(slot), selectedSlot
   end
 end
-  
+
 
  -----------------------------------------------------------------
 --Input Phase
@@ -282,13 +282,19 @@ print("")
 local sides = {top = "top", right = "right", left = "left", bottom = "bottom", front = "front"} --Used to whitelist sides
 local tArgs --Will be set in initializeArgs
 local originalArgs = {...}
-local changedT, tArgsWithUpper = {}, {}
+local changedT, tArgsWithUpper, forcePrompts = {}, {}, {}
 changedT.new = function(key, value) table.insert(changedT,{key, value}) end --Numeric list of lists
 changedT.remove = function() table.remove(changedT) end
 local function capitalize(text) return (string.upper(string.sub(text,1,1))..string.sub(text,2,-1)) end
 local function initializeArgs()
   tArgs = copyTable(originalArgs) --"Reset" tArgs
-  for i=1, #tArgs do tArgsWithUpper[i] = tArgs[i]; tArgsWithUpper[tArgsWithUpper[i]] = i; tArgs[i] = tArgs[i]:lower(); tArgs[tArgs[i]] = i end --My signature key-value pair system, now with upper
+  for i=1, #tArgs do --My signature key-value pair system, now with upper
+    tArgsWithUpper[i] = tArgs[i]
+    tArgsWithUpper[tArgsWithUpper[i]] = i
+    tArgs[i] = tArgs[i]:lower()
+    tArgs[tArgs[i]] = i
+
+  end
 end
 initializeArgs()
 
@@ -366,7 +372,7 @@ if tArgs["help"] or tArgs["-help"] or tArgs["-?"] or tArgs["?"] then
   local key = 0
   while pos <= #help and key ~= keys.q do
     if pos < 1 then pos = 1 end
-    screen(1,1) 
+    screen(1,1)
     print(help[pos].title)
     for a=1, #help[pos] do print(help[pos][a]) end
     repeat
@@ -421,12 +427,12 @@ if addParam("file","Custom Parameters","string", false, nil, "parameterFile", fa
         end
       end
     end
-    initializeArgs() --Fix the magic
+    initializeArgs() --Manipulate the args again, because we modified them
     print("Finished loading file: ",tArgs[tArgs["-file"]+1])
     sleep(0.5) --Give em a sec
   end
 end
-  
+
 
 
 --Saving
@@ -457,7 +463,7 @@ if restoreFoundSwitch then
       end
      end
     if gpsEnabled then --If it had saved gps coordinates
-      print("Found GPS Start Coordinates") 
+      print("Found GPS Start Coordinates")
       local currLoc = {gps.locate(gpsTimeout)} or {}
       local backupPos = {xPos, yPos, zPos} --This is for comparing to later
       if #currLoc > 0 and #gpsStartPos > 0 and #gpsSecondPos > 0 then --Cover all the different positions I'm using
@@ -504,7 +510,7 @@ if restoreFoundSwitch then
         end
       else
         print("GPS Locate Failed, Using Standard Methods")
-      end    
+      end
     print("Restore File read successfully. Starting in 3"); sleep(3)
     end
   else
@@ -518,7 +524,7 @@ else --If turtle is just starting
 end
 
 --Dimensions
-if tArgs["-dim"] then 
+if tArgs["-dim"] then
   local a,b,c = x,y,z
   local num = tArgs["-dim"]
   x = tonumber(tArgs[num + 1]) or x; z = tonumber(tArgs[num + 2]) or z; y = tonumber(tArgs[num + 3]) or y
@@ -593,7 +599,7 @@ addParam("maxTries","Tries Before Bedrock", "number 1-9001")
 addParam("keepOpen", "Slots to Keep Open", "number 1-15")
 addParam("careAboutResources", "Care About Resources","boolean")
 addParam("preciseTotals","Precise Totals","boolean", nil, turtle.getItemDetail ~= nil)
-if preciseTotals and not restoreFoundSwitch then 
+if preciseTotals and not restoreFoundSwitch then
   exactTotals = {} --Don't want to initialize if we aren't using this
 end
 --Auto Startup
@@ -757,8 +763,8 @@ if neededFuel > checkFuelLimit() and doCheckFuel then--Checks for if refueling g
     print("Turtle cannot hold enough fuel\n")
     print("Options: \n1. Select a smaller size \n2. Enable Mid-Run Refueling (RECOMMENDED) \n3. Turn fuel checking off (only if fuel chest) \n4. Do nothing")
     local _, key = os.pullEvent("char")
-    if key == "1" then 
-      screen(); print("Okay"); error("",0) 
+    if key == "1" then
+      screen(); print("Okay"); error("",0)
     elseif key == "3" then
       doCheckFuel = false
     elseif key == "4" then
@@ -769,8 +775,8 @@ if neededFuel > checkFuelLimit() and doCheckFuel then--Checks for if refueling g
   end
   neededFuel = checkFuelLimit()-checkFuel()-1
 end
-    
-    
+
+
 --Getting Fuel
 local hasRefueled --This is for oldOreQuarry prompting
 if doCheckFuel and checkFuel() < neededFuel then
@@ -867,7 +873,7 @@ if oldOreQuarry then
     print("You have selected an Ore Quarry!")
     if counter == 0 or hasRefueled then --If there are no compare slots, or the turtle has refueled, and probably has fuel in inventory
       print("Please place your compare blocks in the first slots\n")
-      
+
       print("Press Enter when done")
       repeat until ({os.pullEvent("key")})[2] == 28 --Should wait for enter key to be pressed
     else
@@ -1008,7 +1014,7 @@ function biometrics(isAtBedrock, requestQuad)
     print("\nEngaging in emergency refueling")
     emergencyRefuel()
   end
-  
+
 end
 --Showing changes to settings
 screen(1,1)
@@ -1064,7 +1070,7 @@ function eventRun(value, ...)
 end
 function eventClear(pos)
   if pos then events[pos] = nil else events = {} end
-end   
+end
 function runAllEvents()
   while #events > 0 do
     local toRun = eventGet()
@@ -1094,7 +1100,7 @@ function display() --This is just the last screen that displays at the end
     sendMessage(channels.send,channels.receive, finalTable)
     modem.close(channels.receive)
   end
-  if doBackup then 
+  if doBackup then
     fs.delete(saveFile)
     if autoResume then --Getting rid of the original startup files and replacing
       fs.delete(startupName)
@@ -1194,7 +1200,7 @@ function isFull(slots) --Checks if there are more than "slots" used inventory sl
     if turtle.getItemCount(i) > 0 then numUsed = numUsed + 1 end
   end
   if numUsed > slots then
-    return true 
+    return true
   end
   return false
 end
@@ -1258,7 +1264,7 @@ function assignTypes(types, count) --The parameters allow a preexisting table to
 end
 function getTableOfType(which, list) --Returns a table of all the slots of which type
   local toRet = {}
-  for a, b in pairs(list) do 
+  for a, b in pairs(list) do
     if b == which then
       table.insert(toRet, a)
     end
@@ -1280,20 +1286,20 @@ function count(add) --Done any time inventory dropped and at end, true=add, fals
   if add then mod = 1 end
   if add == false then mod = 0 end
   slot = {}        --1: Filler 2: Fuel 3:Other --[1] is type, [2] is number
-  for i=1, inventoryMax do   
+  for i=1, inventoryMax do
     slot[i] = {}
     slot[i][2] = turtle.getItemCount(i)
   end
-  
+
   local function iterate(toSet , rawTypes, set)
     for _, a in pairs(getTableOfType(toSet, rawTypes)) do --Get all slots matching type
       slot[a][1] = set --Set official type to "set"
     end
   end
-  
+
   --This assigns "dumb" types to all slots based on comparing, then based on knowledge of dump type slots, changes all slots matching a dump type to one. Otherwise, if the slot contains fuel, it is 2, else 3
   local rawTypes, numTypes = assignTypes(copyTable(initialTypes), initialCount) --This gets increasingly numbered types, copyTable because assignTypes will modify it
-  
+
   for i=1, numTypes do
     if (select(getRep(i, rawTypes)) or true) and turtle.refuel(0) then --Selects the rep slot, checks if it is fuel
       iterate(i, rawTypes, 2) --This type is fuel
@@ -1303,7 +1309,7 @@ function count(add) --Done any time inventory dropped and at end, true=add, fals
       iterate(i, rawTypes, 3) --This type is other
     end
   end
-    
+
   for i=1,inventoryMax do
     if not specialSlots[i] then --Do nothing!
       if exactTotals then
@@ -1398,7 +1404,7 @@ function emergencyRefuel()
       local slot = getFirstChanged(startInventory, getSlotsTable())
       select(slot)
       midRunRefuel(slot)
-    end        
+    end
   elseif doRefuel then --Attempt an emergency refueling
     screen()
     print("Attempting an emergency refuel")
@@ -1417,7 +1423,7 @@ function emergencyRefuel()
     end
     select(1) --Cleanup
     print("Done fueling")
-    if checkFuel() > initialFuel then 
+    if checkFuel() > initialFuel then
       continueEvac = false
       print("Evac Aborted")
     else
@@ -1461,10 +1467,10 @@ function relxCalc()
   else
     relzPos = (z-zPos) + 1
   end
-  if relzPos % 2 == 1 then 
-    relxPos = xPos 
-  else 
-    relxPos = (x-xPos)+1 
+  if relzPos % 2 == 1 then
+    relxPos = xPos
+  else
+    relxPos = (x-xPos)+1
   end
   if layersDone % 2 == 0 and z % 2 == 1 then
     relxPos = (x-relxPos)+1
@@ -1520,10 +1526,10 @@ function down()
   verticalMove(inverted and turtle.up or turtle.down, 1, digDown, attackDown)
 end
 
-   
+
 function right(num)
   num = num or 1
-  for i=1, num do 
+  for i=1, num do
     facing = coterminal(facing+1)
     saveProgress()
     if not goLeftNotRight then turtle.turnRight() --Normally
@@ -1532,19 +1538,19 @@ function right(num)
 end
 function left(num)
   num = num or 1
-  for i=1, num do 
+  for i=1, num do
   facing = coterminal(facing-1)
   saveProgress()
   if not goLeftNotRight then turtle.turnLeft() --Normally
   else turtle.turnRight() end --Left Quarry
 end
 end
-  
+
 function attack(doAdd, func)
   doAdd = doAdd or true
   func = func or turtle.attack
   if func() then
-    if doAdd then 
+    if doAdd then
       attacked = attacked + 1
     end
     return true
@@ -1676,7 +1682,7 @@ function checkSanity()
     if zPos < 0 then goto(xPos, 1, yPos, 1) end
     relxCalc() --Get relxPos properly
     eventClear()
-    
+
     --[[
     print("Oops. Detected that quarry was outside of predefined boundaries.")
     print("Please go to my forum thread and report this with a short description of what happened")
@@ -1711,8 +1717,8 @@ function turnTo(num)
   while facing ~= num do          --The above is used to smartly turn
     if turnRight then
       right()
-    else 
-      left() 
+    else
+      left()
     end
   end
 end
@@ -1727,7 +1733,7 @@ function goto(x,z,y, toFace, destination, updateStatus)
   end
   if zPos > z then
     turnTo(3)
-  elseif zPos < z then 
+  elseif zPos < z then
     turnTo(1)
   end
   while zPos ~= z do mine(false,false,true,false) end
@@ -1810,7 +1816,7 @@ function enderRefuel() --Assumes a) An enderchest is in front of it b) It needs 
   return true -- :D
 end
 
-  
+
 function drop(side, final, compareDump)
   side = sides[side] or "front"
   local dropFunc, detectFunc, dropFacing = turtle.drop, turtle.detect, facing+2
@@ -1819,10 +1825,10 @@ function drop(side, final, compareDump)
   if side == "right" then turnTo(1); dropFacing = 0 end
   if side == "left" then turnTo(3); dropFacing = 0 end
   local properFacing = facing --Capture the proper direction to be facing
-  
+
   count(true) --Count number of items before drop. True means add. This is before chest detect, because could be final
-  
-  while not compareDump and not detectFunc() do 
+
+  while not compareDump and not detectFunc() do
     if final then return end --If final, we don't need a chest to be placed, but there can be
     chestFull = true
     biometrics() --Let the user know there is a problem with chest
@@ -1831,14 +1837,14 @@ function drop(side, final, compareDump)
     sleep(2)
   end
   chestFull = false
-  
+
   local fuelSwitch = false --If doRefuel, this can switch so it won't overfuel
   for i=1,inventoryMax do
     --if final then allowedItems[i] = 0 end --0 items allowed in all slots if final ----It is already set to 1, so just remove comment if want change
     if turtle.getItemCount(i) > 0 then --Saves time, stops bugs
       if slot[i][1] == 1 and dumpCompareItems then turnTo(dropFacing) --Turn around to drop junk, not store it. dumpComapareItems is global config
       else turnTo(properFacing) --Turn back to proper position... or do nothing if already there
-      end 
+      end
       select(i)
       if doRefuel and slot[i][1] == 2 then --Intelligently refuels to fuel limit
         if not fuelSwitch then --Not in the conditional because we don't want to waitDrop excess fuel. Not a break so we can drop junk
@@ -1849,10 +1855,10 @@ function drop(side, final, compareDump)
       end
     end
   end
-  
+
   if oldOreQuarry or compareDump then count(nil) end--Subtract the items still there if oreQuarry
   resetDumpSlots() --So that slots gone aren't counted as dump slots next
-  
+
   select(1) --For fanciness sake
 
 end
@@ -1929,7 +1935,7 @@ function bedrock()
       end
     until not turtle.detectUp() or turtle.digUp() --These should be absolute and we don't care about about counting resources here.
   end
-  up() --Go up two to avoid any bedrock. 
+  up() --Go up two to avoid any bedrock.
   up()
   eventClear() --Get rid of any excess events that may be run. Don't want that.
   endingProcedure()
@@ -1961,10 +1967,10 @@ if not restoreFoundSwitch then --Regularly
   --Check if it is a mining turtle
   if not isMiningTurtle then
     local a, b = turtle.dig()
-    if a then 
+    if a then
       mined = mined + 1
       isMiningTurtle = true
-    elseif b == "Nothing to dig with" or b == "No tool to dig with" then 
+    elseif b == "Nothing to dig with" or b == "No tool to dig with" then
       print("This is not a mining turtle. To make a mining turtle, craft me together with a diamond pickaxe")
       error("",0)
     end
