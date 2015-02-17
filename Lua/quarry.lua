@@ -2,14 +2,17 @@
   VERSION = "3.6.3"
 --[[
 Recent Changes:
+  Parameter Files! Create a file of parameters, and use -file to load it!
+    Works will with -forcePrompt
   Quarry no longer goes to start at end of row!
   Turtle can go left!
   QuadCopters! Check Lyqyd's thread
-  New Arguments!
-  -flatBedrock [t/f]: The turtle will initially dig down to bedrock (or possibly a mob) and set startDown from that
-  -left [t/f]: The turtle will quarry to the left instead of the right
-  -maxFuel [number]: The number the turtle will stop fueling at. Basically just sets checkFuelLimit to this number
-  -fuelChest [nothing or slot number]: Prompts for a chest with fuel it. This will be used if the turtle runs out of fuel. Recommended with maxfuel and doCheckFuel false
+New Parameters:
+    -overfuel/fuelMultiplier [number]: This number is is what neededFuel is multiplied by when fuel is low.
+    -version: This will display the current version number and end the program
+    -file [fileName]: This will load a custom configuration file (basically a list of parameters). "##" starts comment lines. In the future "#" will start programs to run (but only through shell)
+    -preciseTotals [t/f]: If true, turtle will write exactly what it mined to the logs. It may also transmit it over rednet.
+    -forcePrompt [param]: This will add to a list of parameters to force prompt for. So if you say "-forcePrompt doRefuel" it will prompt you "Length","Width","Height","Invert","Do Refuel" etc.
 ]]
 --Defining things
 civilTable = nil; _G.civilTable = {}; setmetatable(civilTable, {__index = getfenv()}); setfenv(1,civilTable)
@@ -87,8 +90,9 @@ Welcome!: Welcome to quarry help. Below are help entries for all parameters. Exa
   minecraft:sand
   ThermalExpansion:Sponge
   ThermalFoundation:Storage
-
-  If you have bspkrsCore, look for "UniqueNames.txt" in your config
+  
+  Note: If you have bspkrsCore, look 
+  for "UniqueNames.txt" in your config
 -atChest: [force] This is for use with "-restore," this will tell the restarting turtle that it is at its home chest, so that if it had gotten lost, it now knows where it is.
 -doRefuel: [t/f] If true, the turtle will refuel itself with coal and planks it finds on its mining run
 -doCheckFuel: [t/f] If you for some reason don't want the program to check fuel usage, set to false. This is honestly a hold-over from when the refueling algorithm was awful...
@@ -146,23 +150,23 @@ Examples [2] [cont.]:
   BAM. Now you can just let that turtle do it's thing
 Tips:
   The order of the parameters doesn't matter. "quarry -invert false -rednet true" is the same as "quarry -rednet true -invert false"
-
+  
   Capitalization doesn't matter. "quarry -iNVErt FALSe" does the same thing as "quarry -invert false"
 Tips [cont.]:
   For [t/f] parameters, you can also use "yes" and "no" so "quarry -invert yes"
-
+  
   For [t/f] parameters, it only cares about the first letter. So you can use "quarry -invert t" or "quarry -invert y"
 Tips [cont.]:
   If you are playing with fuel turned off, the program will automatically change settings for you so you don't have to :D
-
+  
   If you want, you can load this program onto a computer, and use "quarry -help" so you can have help with the parameters whenever you want.
 Internal Config:
   At the top of this program is an internal configuration file. If there is some setup that you use all the time, you can just change the config value at the top and run "quarry -default" for a quick setup.
-
+  
   You can also use this if there are settings that you don't like the default value of.
 ]]
-
 --NOTE: BIOS 114 MEANS YOU FORGOT A COLON
+--NOTE: THIS ALSO BREAKS IF YOU REMOVE "REDUNDANT" WHITESPACE
 --Parsing help for display
 --[[The way the help table works:
 All help indexes are numbered. There is a help[i].title that contains the title,
@@ -174,15 +178,15 @@ local i = 0
 local titlePattern = ".-%:" --Find the beginning of the line, then characters, then a ":"
 local textPattern = "%:.+" --Find a ":", then characters until the end of the line
 for a in help_paragraph:gmatch("\n?.-\n") do --Matches in between newlines
-local current = string.sub(a,1,-2).."" --Concatenate Trick
-if string.sub(current,1,1) ~= " " then
-i = i + 1
-help[i] = {}
-help[i].title = string.sub(string.match(current, titlePattern),1,-2)..""
-help[i][1] = string.sub(string.match(current,textPattern) or " ",3,-1)
-elseif string.sub(current,1,1) == " " then
-table.insert(help[i], string.sub(current,2, -1).."")
-end
+  local current = string.sub(a,1,-2).."" --Concatenate Trick
+  if string.sub(current,1,1) ~= " " then
+    i = i + 1
+    help[i] = {}
+    help[i].title = string.sub(string.match(current, titlePattern),1,-2)..""
+    help[i][1] = string.sub(string.match(current,textPattern) or " ",3,-1)
+  elseif string.sub(current,1,1) == " " then
+    table.insert(help[i], string.sub(current,2, -1).."")
+  end
 end
 
 local supportsRednet
@@ -208,7 +212,7 @@ totals = {cobble = 0, fuel = 0, other = 0} -- Total for display (cannot go insid
 
 local function newSpecialSlot(index, value)
   value = tonumber(value) or 0 --We only want numerical indexes
-  if specialSlots[value] then return false end --Can't overwrite other slots
+  if value ~= 0 and specialSlots[value] then error("Failed making special slot: "..index.."\nSlot "..tonumber(value).." already taken",2) end --Can't overwrite other slots
   specialSlots[index] = value
   specialSlots[value] = index
   return true
@@ -293,18 +297,20 @@ local function initializeArgs()
     tArgsWithUpper[tArgsWithUpper[i]] = i
     tArgs[i] = tArgs[i]:lower()
     tArgs[tArgs[i]] = i
-
+    if tArgs[i] == "-forceprompt" and i ~= #tArgs then --If the prompt exists then add it to the list of prompts
+      forcePrompts[tArgs[i+1]:lower()] = true
+    end
   end
 end
 initializeArgs()
 
 local restoreFound, restoreFoundSwitch = false --Initializing so they are in scope
-function addParam(name, displayText, formatString, forcePrompt, trigger, variableOverride, variableExists) --To anyone that doesn't understand this very well, probably not your best idea to go in here.
+function parseParam(name, displayText, formatString, forcePrompt, trigger, variableOverride, variableExists) --To anyone that doesn't understand this very well, probably not your best idea to go in here.
   if variableExists ~= false then variableExists = true end --Almost all params should have the variable exist. Some don't exist unless invoked
   if trigger == nil then trigger = true end --Defaults to being able to run
   if not trigger then return end --This is what the trigger is for. Will not run if trigger not there
   if restoreFoundSwitch or tArgs["-default"] then forcePrompt = false end --Don't want to prompt if these. Default is no variable because resuming
-  if not restoreFoundSwitch and tArgs["-promptall"] then forcePrompt = true end
+  if not restoreFoundSwitch and (tArgs["-promptall"] or forcePrompts[name:lower()]) then forcePrompt = true end --Won't prompt if resuming, can prompt all or checks list of prompts
   local toGetText = name:lower() --Because all params are now lowered
   local formatType = formatString:match("^%a+"):lower() or error("Format String Unknown: "..formatString) --Type of format string
   local args = formatString:sub(({formatString:find(formatType)})[2] + 2).."" --Everything in formatString but the type and space
@@ -359,6 +365,30 @@ function addParam(name, displayText, formatString, forcePrompt, trigger, variabl
   return toRet
 end
 
+local paramLookup = {}
+local function addParam(...)
+  local args = {...}
+  if not paramLookup[args[1]] then
+    local toRet = copyTable(args)
+    for i=2, table.maxn(toRet) do --Have to do this because table.remove breaks on nil
+      toRet[i-1] = toRet[i]
+    end
+    table.remove(toRet)
+    paramLookup[args[1]] = toRet
+  end
+  return parseParam(unpack(args, 1, table.maxn(args)))
+end
+
+local function paramAlias(original, alias)
+  local a = paramLookup[original]
+  if a then
+    if a[5] == nil then a[5] = original end --This is variableOverride because the originals won't put a variable override
+    parseParam(alias, unpack(a, 1, table.maxn(a)))
+  else
+    error("In paramAlias: '"..original.."' did not exist",2)
+  end
+end
+
 --Check if it is a turtle
 if not(turtle or tArgs["help"] or tArgs["-help"] or tArgs["-?"] or tArgs["?"]) then --If all of these are false then
   print("This is not a turtle, you might be looking for the \"Companion Rednet Program\" \nCheck My forum thread for that")
@@ -385,7 +415,7 @@ if tArgs["help"] or tArgs["-help"] or tArgs["-?"] or tArgs["?"] then
 end
 
 if tArgs["-version"] or tArgs["version"] then
-  print("QUARY VERSION: ",VERSION)
+  print("QUARRY VERSION: ",VERSION)
   error("",0) --Exit not so gracefully
 end
 
@@ -557,9 +587,6 @@ newSpecialSlot("enderChest",enderChestEnabled and enderChestSlot or 0) --This al
 addParam("fuelChest","Fuel Chest Enabled","boolean special", nil, nil, "fuelChestEnabled") --See above notes
 addParam("fuelChest", "Fuel Chest Slot", "number 1-16", nil, nil, "fuelChestSlot")
 newSpecialSlot("fuelChest", fuelChestEnabled and fuelChestSlot or 0)
-if (enderChestEnabled and fuelChestEnabled) and (enderChestSlot == fuelChestSlot) then
-  error("Warning: Ender Chest Slot and Fuel Chest Slot cannot be the same",0)
-end
 --Rednet
 addParam("rednet", "Rednet Enabled","boolean",true, supportsRednet, "rednetEnabled")
 addParam("sendChannel", "Rednet Send Channel", "number 1-65535", false, supportsRednet, "channels.send")
@@ -572,7 +599,7 @@ if addParam("quad", "Quad Rotor Enabled","boolean",nil, rednetEnabled, "quadEnab
 end
 addParam("quadTimeout","Quad Rotor Timeout","number 1-1000000", nil, quadEnabled) --The amount of time to wait for a quadRotor
 --GPS
-addParam("gps", "GPS Location Services", "force", nil, (not restoreFoundSwitch) and supportsRednet, "gpsEnabled" ) --Has these triggers so that does not record position if restarted.
+addParam("gps", "GPS Location Services", "force", nil, (not restoreFoundSwitch) and supportsRednet and not quadEnabled, "gpsEnabled" ) --Has these triggers so that does not record position if restarted.
 if gpsEnabled and not restoreFoundSwitch then
   gpsStartPos = {gps.locate(gpsTimeout)} --Stores position in array
   gpsEnabled = #gpsStartPos > 0 --Checks if location received properly. If not, position is not saved
@@ -584,10 +611,11 @@ end
 addParam("uniqueExtras","Unique Items", "number 0-15")
 addParam("doRefuel", "Refuel from Inventory","boolean", nil, checkFuel() ~= math.huge) --math.huge due to my changes
 addParam("doCheckFuel", "Check Fuel", "boolean", nil, checkFuel() ~= math.huge)
-excessFuelAmount = excessFuelAmount or math.huge --Math.huge apparently doesn't save properly
+excessFuelAmount = excessFuelAmount or math.huge --Math.huge apparently doesn't save properly (Without saving, this is the config, on save it is actually set to nil if math.huge)
 addParam("maxFuel", "Max Fuel", "number 1-999999999", nil, checkFuel() ~= math.huge, "excessFuelAmount")
 addParam("fuelMultiplier", "Fuel Multiplier", "float 1-9001", nil, checkFuel() ~= math.huge)
-addParam("overfuel", "Fuel Multiplier", "float 1-9001", nil, checkFuel() ~= math.huge, "fuelMultiplier")
+paramAlias("fuelMultiplier","fuelRequestMultiplier")
+paramAlias("fuelMultiplier","overFuel")
 --Logging
 addParam("logging", "Logging", "boolean")
 addParam("logFolder", "Log Folder", "string")
@@ -604,7 +632,7 @@ if preciseTotals and not restoreFoundSwitch then
 end
 --Auto Startup
 addParam("autoResume", "Auto Resume", "boolean", nil, doBackup)
-addParam("autoRestart", "Auto Restart", "boolean", nil, doBackup, "autoResume")
+paramAlias("autoResume","autoRestart")
 addParam("startupRename", "Startup Rename","string", nil, autoResume)
 addParam("startupName", "Startup File", "string", nil, autoResume)
 --Ore Quarry
@@ -617,9 +645,10 @@ end
 addParam("oldOreQuarry", "Old Ore Quarry", "boolean")
 addParam("dumpCompareItems", "Dump Compare Items", "boolean", nil, oldOreQuarry) --Do not dump compare items if not oreQuarry
 addParam("extraDropItems", "", "force", nil, oldOreQuarry) --Prompt for extra dropItems
-addParam("extraDumpItems", "", "force", nil, oldOreQuarry, "extraDropItems") --changed to Dump
+paramAlias("extraDropItems","extraDumpItems") --changed to Dump
 --New Ore
 addParam("blacklist","Ore Blacklist", "string", nil, oreQuarry, "oreQuarryBlacklistName")
+paramAlias("blacklist","blacklistFile")
 --Mod Related
 
 

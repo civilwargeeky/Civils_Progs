@@ -13,11 +13,14 @@
   Fixed bug where refueling had unexpected behavior near maxFuelLimit
   Added more options if neededFuel is over fuel limit
   Fixed -flatBedrock not working with -oreQuarry
+  Added support for parameter aliases so I don't have to type as much adding aliases
+  newSpecialSlot now intelligently errors if you try to have two slots the same
   New Parameters:
     -overfuel/fuelMultiplier [number]: This number is is what neededFuel is multiplied by when fuel is low.
     -version: This will display the current version number and end the program
     -file [fileName]: This will load a custom configuration file (basically a list of parameters). "##" starts comment lines. In the future "#" will start programs to run (but only through shell)
     -preciseTotals [t/f]: If true, turtle will write exactly what it mined to the logs. It may also transmit it over rednet.
+    -forcePrompt [param]: This will add to a list of parameters to force prompt for. So if you say "-forcePrompt doRefuel" it will prompt you "Length","Width","Height","Invert","Do Refuel" etc.
 
 --Version 3.6.2
   Allowed for 1.4.7 users to use rednet

@@ -151,10 +151,6 @@ Random future thoughts: Maybe make more seamless. Have an arg/option to make cal
 
 Quarry Version 3.6.3:
   General Ideas:
-    maybe look for multiple "-forcePrompt setting" parameters, and each time one is found, 
-add it to a table. When you do addParam function, check if on force prompt table, then prompt if so.
-    Better Idea! In the addparam function just call a "isForcePrompt" function that loops through args to check if user said "-forcePrompt left" etc. Really simple.
-    To look for multiple of the same command, check quarryReceiver: just loop through all commands
     Maybe in future, option to place torches on walls efficiently
   
 Things for 3.6.3:
