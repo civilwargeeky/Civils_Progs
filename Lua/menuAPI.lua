@@ -1,14 +1,14 @@
 --Menu API made by Civilwargeeky
---Version 1.0.1
+--Version 1.0.2
 
 function titleize(text)
-local x = term.getSize()
-if #text+2 > x then return text:upper() end
-text = " "..string.upper(text).." "
-for i=1, math.floor((x-#text)/2) do
-  text = "="..text.."="
-end
-return text
+  local x = term.getSize()
+  if #text+2 > x then return text:upper() end
+  text = " "..string.upper(text).." "
+  for i=1, math.floor((x-#text)/2) do
+    text = "="..text.."="
+  end
+  return text
 end
 function sentenceCaseTable(tab) --Expects a prepared table or sequentially numbered
   local toRet = {} --So we don't go modifying people's tables
@@ -31,42 +31,45 @@ function prepareTable(tab)
   return toRet
 end
 
-function separateLines(text, x) --Separates multi-line text into a table
-  if type(text) ~= "string" then error("Separate Lines expects string, got "..type(text),2) end
-  if type(x) ~= "number" then x = term.getSize() end
-  local toRet = {}
-  local originalText = text --I do this because it may break the gsub if I modify while iterating
-  while true do
-    local count = 0
-    text = originalText
-    if #toRet >= 1 and not text:match("[^ ]") then --If there are no non-space characters, you are done
-      toRet[#toRet] = toRet[#toRet]..text:match(" *$") --Get buffer spaces at end
-      return toRet, #toRet 
-    end 
-    table.insert(toRet, "")
-    if #toRet == 1 then --We want to add in buffer spaces at the beginning
-      toRet[1] = toRet[1]..text:match("^ *")
-      count = #toRet[1]
-      originalText = originalText:sub(#toRet[1]+1)
-    end
-    for word in text:gmatch("[^ ]+ *") do --Non space characters with an optional space(s) at the end
-      local toBreak
-      local found = word:find("\n")--This makes newLines actually work (hopefully)
-      if found then
-        word = word:sub(1,found-1)
-        originalText = originalText:sub(1,found-1)..originalText:sub(found+1) --Cut out the newline
-        toBreak = true --If this line should be cut off
-      end
-      count = count + #word --Counts characters so we don't go over limit
-      if count <= x or #word > x then  --The second is for emergencies, if the word is longer than a line, put it here anyways
-        toRet[#toRet] = toRet[#toRet]..word
-        originalText = originalText:sub(#word+1) --Sub out the beginning
-        if toBreak then break end
-      else
-        break --Go to next line
-      end
+function separateLines(text, x)
+  print("Starting this")
+  local toRet = {text}
+  if text:match("\n") then --We can't handle newlines inside this, so we'll split it up and do recursion!
+    local pos = text:find("\n") --Get where the newline is
+    local before, after = separateLines(text:sub(1,pos-1), x), separateLines(text:sub(pos+1), x) --Then run the function on the before section (with no newlines), and the after section (which may be recursive)
+    toRet = before
+    for a, b in ipairs(after) do
+      table.insert(toRet, b)
     end
   end
+    
+  local i = #toRet
+  while #(toRet[i]) > x do --Current index is the "working line" that may or may not be longer than necessary
+    local curr = toRet[i]
+    if curr:sub(x+1,x+1):match("%s") then --This is a special case: If the last part is a space, the line isn't separated there, so we'll do it explicitly.
+      toRet[i] = curr:sub(1,x):gsub("%s+$","") --The gsub removes trailing spaces
+      local _, cutEnd = curr:find("%s+",x+1) --This will get all spaces starting at end of wanted line
+      toRet[i+1] = curr:sub(cutEnd+1) --This returns all text starting after end of space
+    else --Otherwise, we need to split at internal space or word
+      local cutString = curr:sub(1,x)..""
+      local cutStart, sneakyEnd = cutString:find("%s+%S-$") --Apparently captures don't work in string.find. I'll just find the length of a substring *sigh*
+      local cutEnd
+      if cutStart then --I don't know if sneakyEnd is necessary, it should always be end of string
+        cutEnd = cutStart + #(cutString:sub(cutStart, sneakyEnd):match("%s+")) - 1 --This just gets the number of spaces at the end of the line. Could be multiple
+      end
+      
+      if cutStart or math.huge < x then --If there is a whitespace we can split at
+        toRet[i] = curr:sub(1, cutStart-1)..""
+        toRet[i+1] = curr:sub(cutEnd+1)..""
+      else --There is no whitespace to split at
+        toRet[i] = curr:sub(1,x)
+        toRet[i+1] = curr:sub(x+1)
+      end
+    end
+    i = i+1
+  end
+  
+  return toRet
 end
 
 function menu(title, description, textTable, isNumbered, titleAlign, textAlign, prefixCharacter, suffixCharacter, spaceCharacter, incrementFunction)

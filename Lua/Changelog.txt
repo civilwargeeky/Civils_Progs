@@ -154,6 +154,8 @@
 --Version 1.0.1
   Program will pass current index to handler
   New Function: separateLines will take text and split it into a table of lines (really just moved this from local)
+--Version 1.0.2
+  Massively improved separateLines
   
   
   
