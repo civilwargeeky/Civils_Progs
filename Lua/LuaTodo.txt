@@ -153,10 +153,10 @@ Quarry Version 3.6.3:
   General Ideas:
     Maybe in future, option to place torches on walls efficiently
   
-Things for 3.6.3:
-  Find out why turtle movement percent is slightly off
   
 Things for 3.6.4 (after shell):
+  Find out why turtle movement percent is slightly off
+  Have preciseTotals send stuff back over rednet to see
   Organize all the things! Everything is so messy right now...
   Idea for using inverted function with absolutes: Param for ignoreInverted. (Check detect functions) This allows much easier plugging in for other people (Make all main functions relative)
   

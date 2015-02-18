@@ -93,6 +93,7 @@ Welcome!: Welcome to quarry help. Below are help entries for all parameters. Exa
   
   Note: If you have bspkrsCore, look 
   for "UniqueNames.txt" in your config
+-file: [file name] Will load a file of parameters. One parameter per line. # is a comment line (See the forum thread for more detailed directions)
 -atChest: [force] This is for use with "-restore," this will tell the restarting turtle that it is at its home chest, so that if it had gotten lost, it now knows where it is.
 -doRefuel: [t/f] If true, the turtle will refuel itself with coal and planks it finds on its mining run
 -doCheckFuel: [t/f] If you for some reason don't want the program to check fuel usage, set to false. This is honestly a hold-over from when the refueling algorithm was awful...
@@ -118,7 +119,9 @@ Welcome!: Welcome to quarry help. Below are help entries for all parameters. Exa
 -oldOreQuarry: [t/f] If you are using new CC versions, you can use this to use the old oreQuarry.
 -left: [t/f] If true, turtle will quarry to the left instead of the right
 -maxTries: [number] This is the number of times the turtle will try to dig before deciding its run into bedrock.
+-forcePrompt: [parameter] Whatever parameter you specify, it will always prompt you, like it does now for invert and dim.
 -logging: [t/f] If true, will record information about its mining run in a folder at the end of the mining run
+-preciseTotals: [t/f] If true (and turtle.inspect exists), it will log a detailed record of every block the turtle mines (may eventually send it over rednet)
 -doBackup: [t/f] If false, will not back up important information and cannot restore, but will not make an annoying file (Actually I don't really know why anyone would use this...)
 -saveFile: [word] This is what the backup file will be called
 -logFolder: [word] The folder that quarry logs will be stored in
@@ -135,6 +138,7 @@ Welcome!: Welcome to quarry help. Below are help entries for all parameters. Exa
 -flatBedrock: [t/f] If true, turtle will find bedrock and "zero" itself so it ends on bedrock level
 -promptAll: This is the opposite of -Default, it prompts for everything
 -manualPos: [xPos] [zPos] [yPos] [facing] This is for advanced use. If the server reset when the turtle was in the middle of a 100x100x100 quarry, fear not, you can now manually set the position of the turtle. yPos is always positive. The turtle's starting position is 0, 1, 1, 0. Facing is measured 0 - 3. 0 is forward, and it progresses clockwise. Example- "-manualPos 65 30 30 2"
+-version: Displays the current quarry version and stops the program
 -help: Thats what this is :D
 Examples: Everything below is examples and tips for use
 Important Note:
