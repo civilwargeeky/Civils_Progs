@@ -3,58 +3,56 @@ Maybe have a "master" and "slave" function on the quarry shell so that you could
  to individual turtles and view their progress through the quarry receiver.
 To use keyboard shortcuts, set var = os.startTimer(num), then in event loop, check if timer is removed. Functions checking for a key will check if the var exists
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
+
 Ladders Ideas:
 1. Turtle goes all the way to bottom, places ladders on the way back up
 2. Turtle goes all the way to bottom, back one, then places ladders. These should be on the wall directly behind it
 
-
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
+Menu API:
 
-Quarry Receiver x.x.x (matches current quarry):
-  --Known Issues:
-    1. Receiver cannot connect properly over repeaters with legacy on. Old quarry won't recognize new format
-    2. Receiver cannot properly display the stop message for old quarries. It was sent in two different messages so it won't work
-  ToDo:
-    Save file to restart with
-    When a monitor receives final message, have an option for removing screen or restarting and waiting for another message
-    Test if themes folder would actually work
-    If only one monitor is being used, computer is automatically a station.
-    If preciseTotals is on, turtle can display all the values on the final screen
-    
-  Ideas:
-  1. All themes are in files in a "themes" folder.
-  11. Fun Idea: If you hit a screen, it briefly flashes in error colors "Quit Touching Meeeee!" :D That would be funny
-  12. Get more default themes
+Goals:
+  Menu can run in a "window" that can be moved around
+    This will involve a class of term-like functions so that the window can work right.
+  ChangeableText class: Will basically be a string in a table so that other things can change it while menu is running
+    Maybe have a color aspect as well? That could get complicated drawing though
+  Menu items too long for one line will cut to the right length, and replace the end with "..."
+  Have a popup menu function with yes/no that can be clicked or arrowed
+  Menu items can be clicked to select, then clicked again to enter
+  When menu is updating, it only draws the lines it needs to (but can update everything)
 
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 
 Quarry Shell 1.0.0:
-Program that can read logs and make a configuration file to run quarry from.
-Will feature an interactive menu where you can select start quarry, make configuration file, or read logs.
-All menu items will be clickable/scrollable with mouse. Different types of menus:
-  t/f can be changed with return key / arrow keys
-  number can be changed with arrow keys, maybe just do a popup menu and only accept integers. Because channel 35346 will take a while to get to.
-  text will open up a text box popup.
   
-Will feature an interactive editor for configurations. It will be just like any other menu, but will have all possible parameters. 2 options for getting these:
-  1. Have a list that you make (lazy)
-  2. Have it search for "addParam" functions in the program and take parameters off of them.
-Option: Either interactive editor or raw editor. Raw editor will just be a file that will be parsed and loaded as parameters.
-
+  Features: 
+    Program that can read logs and make a configuration file to run quarry from.
+    Will feature an interactive menu where you can select start quarry, make configuration file, or read logs.
+    All menu items will be clickable/scrollable with mouse. Different types of menus:
+      t/f can be changed with return key / arrow keys
+      number can be changed with arrow keys, maybe just do a popup menu and only accept integers. Because channel 35346 will take a while to get to.
+      text will open up a text box popup.
+    Will feature an interactive editor for configurations. It will be just like any other menu, but will have all possible parameters. 2 options for getting these:
+      1. Have a list that you make (lazy)
+      2. Have it search for "addParam" functions in the program and take parameters off of them.
+    Option: Either interactive editor or raw editor. Raw editor will just be a file that will be parsed and loaded as parameters.
+      "Then I have a plan for making an installer that will perform various tasks like installing latest versions, 
+      running pre-designated quarries (so like, load a set of parameters that you make in a file), reading quarry logs, 
+      and possibly doing multiple quarries/rooms/however you use its in a row (quarry, go left 60, quarry). 
+      So that will be cool."
+      
+    
 Technical idea:
   Definitely a standard menu design. Have different types and have menu functions for up, down, enter, back, selct index. This will make the menus really cool and seamless.
   So have a menu that interacts with different menu objects that can do different things if they are selected, clicked, etc.
   
 Configuration Interface Idea:
-  Have main screen with all options, on the right is a smaller menu with "> run" selected, then above is "press ctrl to access menu", and below are "edit" "rename", and "delete"
+  Have main screen with all options, on the right is a smaller menu with "> run" selected, then above is "press ctrl to access menu", and below are "edit" "rename", and "delete" so user can switch modes
+  Basically have another window on the right that handles cool stuff.
   
 Mixing Configs and Setups:
-  Configs could support a "#" operator and everything after would be a file to call and parameters. Then quarry could still load these and ignore lines started with "#"
+  Configs could support a "###" operator and everything after would be a file to call and parameters. Then quarry could still load these and ignore lines started with "#"
 
-"Then I have a plan for making an installer that will perform various tasks like installing latest versions, 
-running pre-designated quarries (so like, load a set of parameters that you make in a file), reading quarry logs, 
-and possibly doing multiple quarries/rooms/however you use its in a row (quarry, go left 60, quarry). 
-So that will be cool."
 
 Idea: Shell will automatically install quarry the first time run on turtle, and receiver the first time run on a computer
 
@@ -69,10 +67,15 @@ Another idea: Have users able to upload quarry param things to pastebin, like th
  Each param thing would also be given a unique id to facilitate renaming them.
 
 Also the param thing maker wizard should go through all the "addParam" functions in addition to a couple special ones that are set. So it would look for "enderchest", but would already have "manualPos" or "x"
+  Maybe this could utilize the right menu to give the help listing of the parameter on the side.
+  
+The list of options will be alphabetically sorted and have a "search bar" at the top so when you type letters, it will add to the search box.
+  Results will first give entries starting with that string, then entries containing that string
 
 Cool idea for menus:
 Have a "Settings" Page where you could change the install directory, and what you call each program. There will be a cool file browser
 The file browser will be a menu, and you can have a "fileBrowser" function that takes an argument of a compareFunction. The function will only add to list of files if compare is true.
+  Better yet, the menu is a ChangeableText and your event handler is given the title to update
 There will also be a param for directory or file. If directory, there will be a first option which is select current. For file, you just press enter on the file.
 There will be off to the right (aligned) a "<DIR>" or "-FILE-" to indicate this. The title will say file browser and the description will be the current path.
 All the menus will be linked together when the function is called. The function will also have a starting path, and you have a "go up" option at the bottom unless you are at root.
@@ -80,11 +83,17 @@ All the menus will be linked together when the function is called. The function 
 Menu Plans (w/ sub menu):
   Run Default Quarry
   Configurations
-    Run loaded configuration
-      All different configurations
-    Edit configuration
-      All different configurations --Since both same, maybe function "loaded quarries menu" or something
-    New configuration
+    New Configuration
+      Popup: Name?
+      Popup: Basic or Advanced Editor
+    List All Configurations
+    Delete All
+      Are you sure?
+    --Side Menu:
+      Run
+      Rename
+      Edit
+      Delete
   Setups --This is just a simple scripting file. Like a regular lua file except that when saved, things like "&config renault&" are replaced by "shell.run("quarry", args)"
     Run
     New
@@ -97,6 +106,9 @@ Menu Plans (w/ sub menu):
     Edit
       Menu
     New
+  Setup Master (If has wireless modem)
+    
+  Setup Slave (If has wireless modem and is turtle)
   Themes (If advanced turtle/computer) --These will load a theme for the shell or receiver.
     Shell Themes
       Menu of installed
@@ -106,11 +118,13 @@ Menu Plans (w/ sub menu):
       Popup for pastebin code
   Read Logs
     List of logs
-      Read Log
-        Pastebin put log
-        Delete log
     Delete all logs
       Are you sure?
+    --Side Menu:
+      Read Log
+      Rename Log
+      Pastebin put log
+      Delete log
   Updates --If update found, will ask user if they want to overwrite files. Updates will include those to the shell itself, quarry, and quarryReceiver
     Update All
     Check Updates
@@ -127,8 +141,8 @@ Menu Plans (w/ sub menu):
     tips/help
     
 Arguments:
-  -run [name]: This will run the selected script instead of launching gui
-  -default: Will run the default quarry
+  /run [name]: This will run the selected script instead of launching gui
+  /default: Will run the default quarry
 
 How things might work:
   Setups:
@@ -140,8 +154,6 @@ How things might work:
   
   Each menu set is intricately tied with a table. e.g. The table controls all that goes on for that context menu, and just happens to have .text fields for all elements.
   The table would be passed a "parent table" by the previous menu so that each table can have a back button.
-  
-  In menu api, add in that each element can have a color and background color: either for the whole line or just where the text is.
   
 Way in future: Add session persistence for setups
 
@@ -163,6 +175,24 @@ Things for 3.6.4 (after shell):
 Things to add for quarry version 3.6.5:
   Add support for mods. Like open peripheral chest finding.
   Maybe have an option to change the home position. Like at 1,1,1 instead of 0,1,1. You could just replace all the "goto 1,1,1 goto 0,1,1" with a "go home" command
+  
+-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
+
+Quarry Receiver x.x.x (matches current quarry):
+  --Known Issues:
+    1. Receiver cannot connect properly over repeaters with legacy on. Old quarry won't recognize new format
+    2. Receiver cannot properly display the stop message for old quarries. It was sent in two different messages so it won't work
+  ToDo:
+    Save file to restart with
+    When a monitor receives final message, have an option for removing screen or restarting and waiting for another message
+    Test if themes folder would actually work
+    If only one monitor is being used, computer is automatically a station.
+    If preciseTotals is on, turtle can display all the values on the final screen
+    
+  Ideas:
+  1. All themes are in files in a "themes" folder.
+  11. Fun Idea: If you hit a screen, it briefly flashes in error colors "Quit Touching Meeeee!" :D That would be funny
+  12. Get more default themes
   
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 Ideas for a Remote Turtle:
