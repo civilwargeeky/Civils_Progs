@@ -1,6 +1,31 @@
 --Menu API made by Civilwargeeky
 --Version 1.0.2
 
+--Window Class
+local window = {}
+window.setDim = function(obj, pt1, pt2) 
+  obj.pt1 = {math.min(pt1[1],pt2[1]), math.min(pt1[2], pt2[2]) } --This is top left point
+  obj.pt2 = {math.max(pt1[1],pt2[1]), math.max(pt1[2], pt2[2]) } --This is bottom right point
+  
+  obj.xDim = obj.pt2[1]-obj.pt1[1]
+  obj.yDim = obj.pt2[2]-obj.pt1[2]
+  
+  if obj.xPos > obj.xDim then obj.xPos = obj.xDim end
+  if obj.yPos > obj.yDim then obj.yPos = obj.yDim end
+  obj:setCursorPos(obj.xPos, obj.yPos)
+  return obj
+end
+window.setCursorPos = function(x,y)
+  
+  return obj
+end
+window.new = function(term, pt1, pt2) --Expects two {x, y}
+  local toRet = {}
+  toRet.term = term --Could be term, or a monitor or something
+  
+  
+end
+
 --Text Utilities
 function titleize(text)
   local x = term.getSize()
