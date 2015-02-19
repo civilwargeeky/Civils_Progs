@@ -103,7 +103,14 @@ quarryFunctions.runConfig = function(name)
   return false
 end
 
-quarryFunctions.deleteF
+quarryFunctions.deleteConfig = function(name)
+  if not fs.exists(addDir(dataFolder,name..extensions.quarryConfig)) then
+    return false
+  end
+  fs.delete(addDir(dataFolder,name..extensions.quarryConfig))
+  fs.delete(addDir(dataFolder,name..extensions.quarryConfigFull))
+  return true
+end
 
 quarryFunctions.basicEdit = function(name, ignoreExists)
   name = processFileName(name, extensions.quarryConfig)

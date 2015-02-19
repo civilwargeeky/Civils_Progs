@@ -24,6 +24,13 @@ Goals:
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 
 Quarry Shell 1.0.0:
+  Features to add:
+    Automatic Updating Interface
+    Loading options and file locations from a file
+    Saving configurations and menu states
+    Master and Slave program
+    Installer
+  
   
   Features: 
     Program that can read logs and make a configuration file to run quarry from.
