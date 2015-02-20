@@ -148,5 +148,39 @@ loggingFunctions.deleteAllLogs = function()
   end
 end
 
+--====================UPDATING FUNCTIONS====================
+local updatingFunctions = {}
+updatingFunctions.getPastebin = function(id)
+  local file = http.get("http://www.pastebin.com/raw.php?i"..id)
+  if not file then return false end
+  return file.readAll(), file.close()
+end
+
+updatingFunctions.parseVersion = function(version)
+  local total, i = 0, 3
+  for a in version:gmatch("[^%.]+") do
+    total = total + tonumber(a) * 100 ^ i --So 3.1.2 would be 30102 and 3.4.0 would be 30400, which is greater
+    i = i-1
+  end
+  return total
+end
+
+updatingFunctions.parseVersionsFile = function(text) --This returns two tables, one containing versions, the other pastebin ids for download
+  local versions, pastebins = {}, {}
+
+  if text:sub(-1) ~= "\n" then text = text.."\n" end
+  for line in text:gmatch("([^\n])+\n") do --Expects line in form "name of program:version:pastebin"
+    local first = line:find(":")
+    if first then
+      local second = line:find(":",first+1)
+      local key, version, pastebin = line:sub(1,first-1), line:sub(first+1, second-1), line:sub(second+1)
+      versions[key] = updatingFunctions.parseVersion(version)
+      pastebins[key] = pastebin
+    end
+  end
+  return versions, pastebins
+end
+    
+
 --====================MAIN PROGRAM====================
 
