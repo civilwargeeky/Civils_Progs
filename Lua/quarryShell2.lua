@@ -5,7 +5,7 @@
 local doDebug = true
 local debugLevel = 1 --Levels 1 through x, 1 is most trivial
 local dataFolder = "quarryData"
-local initialSave = "fileLocations"
+local initialSave = "initialData"
 
 local fileLocations = {}
 local fc = fileLocations
@@ -24,20 +24,32 @@ extensions.saveFile = ".ssf"
 local addDir = fs.combine
 
 local d = {} --Table for storing debug functions
-d.debug = function(level, ...)
-  level = level or 3
+d.baseDebug = function(level, ...)
+  if type(level) ~= "number" then
+    level = 3
+  end
   if doDebug and level >= debugLevel then
     print("\n",...)
     os.pullEvent("char")
   end
 end
+d.debug = function(...)
+  d.baseDebug(3, ...)
+end
 d.info = function(...)
-  d.debug(1, ...)
+  d.baseDebug(1, ...)
 end
 
 --====================DIRECTORY FUNCTIONS====================
 local function processFileName(name, ext, folder)
-  return addDir(folder or dataFolder, name..(ext or ""))
+  return addDir((folder or dataFolder):gsub("%s",""), name:gsub("%s","")..(ext or ""))
+end
+local function copyTable(tab)
+  local toRet = {}
+  for a,b in pairs(tab) do
+    toRet[a] = b
+  end
+  return toRet
 end
 local function loadFile(name, ext) --This should return a file handle and fileName
   name = processFileName(name, ext) --Put this in the proper place
@@ -45,6 +57,10 @@ local function loadFile(name, ext) --This should return a file handle and fileNa
   return fs.open(name, "r"), name
 end
 local function newFile(name, ext) --This returns a file handle and fileName
+  if not fs.exists(dataFolder) then --It is possible this doesn't exist
+    d.info("newFile making data folder")
+    fs.makeDir(dataFolder)
+  end
   name = processFileName(name, ext)
   return fs.open(name, "w")
 end
@@ -57,16 +73,26 @@ local function getFiles(dir, regex) --Returns a list of all files that match reg
   end
   return toRet
 end
+local function updateTable(original, new)
+  for a, b in pairs(copyTable(original)) do --Remove all the old values
+    original[a] = nil
+  end
+  for a,b in pairs(new) do --Add all my own
+    original[a] = b
+  end
+  return original
+end
 
 --====================SAVING FUNCTIONS====================
 local save = {}
 save.seperator = "<SEPERATOR>"
 save.saveFile = function(saveName, ...)
+  d.info("Saving Properties File: ",saveName)
   local handle = newFile(saveName, extensions.saveFile)
   if not handle then return false end --The file must already be in use
   local args = {...}
   for i=1, #args do
-    if type(args[i]) == "table"
+    if type(args[i]) == "table" then
       handle.write(textutils.serialize(args[i]))
       handle.write(save.seperator)
     end
@@ -74,36 +100,45 @@ save.saveFile = function(saveName, ...)
   handle.close()
   return true
 end
-save.loadFile = function(saveName) --Returns all files saved as different return values
-  local tabs = {}
+
+save.loadFile = function(saveName, ...) --Updates all the tables passed with new values, in order
+  d.info("Loading Properties File: ",saveName)
+  local args = {...} --Note: Order saved must be order loaded, since I don't deal with the names
   local handle = loadFile(saveName, extensions.saveFile)
   if not handle then return false end
   local text = handle.readAll()
   handle.close()
+  local i = 1
   for tab in text:gmatch("(.-)"..save.seperator) do
-    table.insert(textutils.unserialize(tab))
+    updateTable(args[i], textutils.unserialize(tab))
+    i = i + 1
   end
-  return unpack(tabs)
+  return true
 end
+
 save.changeDataFolder = function(newName) --Actually changes this file so that the folder is different
+  newName = newName:gsub("%s","") --Remove all whitespaces
   if fs.exists(newName) or not shell then
     return false
   end
-  local prog = shell.getRunningProgram()
+  os.rename(dataFolder, newName) --Change it for current session
+  dataFolder = newName
+  
+  local prog = shell.getRunningProgram() --Change for future sessions
   local handle = fs.open(prog, "r")
   local text = handle.readAll()
   handle.close()
-  text:gsub("local dataFolder = \"[^\"]+\"", "local dataFolder = \""..newName.."\"") --Replaces the definition line with a new one
+  text = text:gsub("local dataFolder = \"[^\"]+\"", "local dataFolder = \""..newName.."\"",1) --Replaces the definition line with a new one
   local handle = fs.open(prog, "w")
   handle.write(text)
   handle.close()
   return true
 end
-  
+ 
 --====================QUARRY FUNCTIONS====================
 local quarryFunctions = {}
 quarryFunctions.parseConfig = function(name) --This parses configs for other configs and returns full config  
-  local file = loadFile(name, ext)
+  local file = loadFile(name, extensions.quarryConfig)
   if not file then return false, "file not found" end
   local text = file.readAll()
   file.close()
@@ -143,10 +178,12 @@ quarryFunctions.runConfig = function(name)
     d.info(fc.quarry.." -file "..addDir(dataFolder, name..extensions.quarryConfigFull))
     local spoof = {} --This is to trick quarry into saving the proper file
     spoof.getRunningProgram = function() return fc.quarry end
-    os.run({shell = spoof}, fc.quarry,"-file",addDir(dataFolder, name..extensions.quarryConfigFull)) --Maybe later we'll handle running programs before/after quarry
+    os.run({shell = spoof}, fc.quarry,"-file",processFileName(name,extensions.quarryConfigFull)) --Maybe later we'll handle running programs before/after quarry
     return true
+  else
+    d.debug("run config could not run '",processFileName(name,extensions.quarryConfig),"'")
+    return false
   end
-  return false
 end
 
 quarryFunctions.deleteConfig = function(name)
@@ -164,8 +201,9 @@ quarryFunctions.basicEdit = function(name, ignoreExists)
   if not ignoreExists and fs.exists(name) then
     return false, "file exists"
   end
-  os.run({}, fileLocations.basicEditor .. " " .. name) --Just load the basic editor
-  return true
+  shell.run(fileLocations.basicEditor .. " " .. name) --Just load the basic editor
+    --I don't like relying on shell, but I can't get os.run to work
+  return name
 end
 
 --====================LOGGING FUNCTIONS====================
@@ -238,4 +276,6 @@ updatingFunctions.compareVersions = function(existing, check) --Returns a list o
 end
 --====================MAIN PROGRAM====================
 
---
+--Loading Initial Configurations
+--save.loadFile(initialSave, fc, extensions) --Loading all the file locations of other save files
+

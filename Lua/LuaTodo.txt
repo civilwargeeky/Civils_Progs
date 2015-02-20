@@ -25,8 +25,8 @@ Goals:
 
 Quarry Shell 1.0.0:
   Features to add:
-    Automatic Updating Interface
-    Loading options and file locations from a file
+    --Automatic Updating Interface
+    --Loading options and file locations from a file
     Saving configurations and menu states
     Master and Slave program
     Installer
