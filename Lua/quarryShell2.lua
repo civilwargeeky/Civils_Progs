@@ -5,18 +5,21 @@
 local doDebug = true
 local debugLevel = 1 --Levels 1 through x, 1 is most trivial
 local dataFolder = "quarryData"
-local logsFolder = "Quarry_Logs"
+local initialSave = "fileLocations"
 
 local fileLocations = {}
 local fc = fileLocations
-fileLocations.quarry = "quarry.lua"
-fileLocations.basicEditor = "edit"
+fc.quarry = "quarry.lua"
+fc.basicEditor = "edit"
+fc.logsFolder = "Quarry_Logs"
+
 
 
 local extensions = {}
 extensions.quarryConfig = ".qc"
 extensions.quarryConfigFull = ".qcf"
 extensions.log = ""
+extensions.saveFile = ".ssf"
 
 local addDir = fs.combine
 
@@ -32,12 +35,13 @@ d.info = function(...)
   d.debug(1, ...)
 end
 
+--====================DIRECTORY FUNCTIONS====================
 local function processFileName(name, ext, folder)
-  return addDir(folder or dataFolder, name..ext)
+  return addDir(folder or dataFolder, name..(ext or ""))
 end
 local function loadFile(name, ext) --This should return a file handle and fileName
   name = processFileName(name, ext) --Put this in the proper place
-  if not fs.exists(name) and not fs.isDir(name) then return false end --Can't read what isn't there
+  if not fs.exists(name) or fs.isDir(name) then return false end --Can't read what isn't there
   return fs.open(name, "r"), name
 end
 local function newFile(name, ext) --This returns a file handle and fileName
@@ -53,6 +57,48 @@ local function getFiles(dir, regex) --Returns a list of all files that match reg
   end
   return toRet
 end
+
+--====================SAVING FUNCTIONS====================
+local save = {}
+save.seperator = "<SEPERATOR>"
+save.saveFile = function(saveName, ...)
+  local handle = newFile(saveName, extensions.saveFile)
+  if not handle then return false end --The file must already be in use
+  local args = {...}
+  for i=1, #args do
+    if type(args[i]) == "table"
+      handle.write(textutils.serialize(args[i]))
+      handle.write(save.seperator)
+    end
+  end
+  handle.close()
+  return true
+end
+save.loadFile = function(saveName) --Returns all files saved as different return values
+  local tabs = {}
+  local handle = loadFile(saveName, extensions.saveFile)
+  if not handle then return false end
+  local text = handle.readAll()
+  handle.close()
+  for tab in text:gmatch("(.-)"..save.seperator) do
+    table.insert(textutils.unserialize(tab))
+  end
+  return unpack(tabs)
+end
+save.changeDataFolder = function(newName) --Actually changes this file so that the folder is different
+  if fs.exists(newName) or not shell then
+    return false
+  end
+  local prog = shell.getRunningProgram()
+  local handle = fs.open(prog, "r")
+  local text = handle.readAll()
+  handle.close()
+  text:gsub("local dataFolder = \"[^\"]+\"", "local dataFolder = \""..newName.."\"") --Replaces the definition line with a new one
+  local handle = fs.open(prog, "w")
+  handle.write(text)
+  handle.close()
+  return true
+end
   
 --====================QUARRY FUNCTIONS====================
 local quarryFunctions = {}
@@ -64,7 +110,7 @@ quarryFunctions.parseConfig = function(name) --This parses configs for other con
   
   local i = 1
   while true do
-    local first, last = text:find("##[^#\n]+", i) --Double '#' means load config
+    local first, last = text:find("##[^#\n]+", i) --Double octothorpe means load config
     if not first then break end --No more matches
     local str = text:sub(first+2, last) --Returns only the config name
     
@@ -151,7 +197,7 @@ end
 --====================UPDATING FUNCTIONS====================
 local updatingFunctions = {}
 updatingFunctions.getPastebin = function(id)
-  local file = http.get("http://www.pastebin.com/raw.php?i"..id)
+  local file = http.get("http://www.pastebin.com/raw.php?i="..id)
   if not file then return false end
   return file.readAll(), file.close()
 end
@@ -180,7 +226,16 @@ updatingFunctions.parseVersionsFile = function(text) --This returns two tables, 
   end
   return versions, pastebins
 end
-    
 
+updatingFunctions.compareVersions = function(existing, check) --Returns a list of updates available
+  local toRet = {}
+  for a,b in pairs(check) do
+    if existing[a] and b > existing[a] then
+      table.insert(toRet, a)
+    end
+  end
+  return toRet
+end
 --====================MAIN PROGRAM====================
 
+--
