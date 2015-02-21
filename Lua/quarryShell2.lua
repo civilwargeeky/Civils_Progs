@@ -242,8 +242,7 @@ quarry.basicEdit = function(name, ignoreExists)
   if not ignoreExists and fs.exists(name) then
     return false, "file exists"
   end
-  shell.run(fileLocations.basicEditor .. " " .. name) --Just load the basic editor
-    --I don't like relying on shell, but I can't get os.run to work
+  os.run({shell = shell}, fileLocations.basicEditor, name) --Just load the basic editor
   return name
 end
 

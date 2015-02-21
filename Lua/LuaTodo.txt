@@ -11,6 +11,14 @@ Ladders Ideas:
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 Menu API:
 
+Ideas:
+  The parameters for the menu function could be like
+    title (table or string [will be turned into table])
+    description (same)
+    textTable
+    optionsTable (all the other options, including handler functions) {OPTIONAL}
+    stateTable (so that menus can be resumed where left off) {OPTIONAL}
+
 Goals:
   Menu can run in a "window" that can be moved around
     This will involve a class of term-like functions so that the window can work right.
