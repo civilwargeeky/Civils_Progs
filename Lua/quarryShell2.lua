@@ -9,17 +9,23 @@ local initialSave = "initialData"
 
 local fileLocations = {}
 local fc = fileLocations
-fc.quarry = "quarry.lua"
 fc.basicEditor = "edit"
 fc.logsFolder = "Quarry_Logs"
-
-
+fc.versions = "versions"
+fc.quarry = "quarry" --These are unnecessary but useful for testing
+fc.menuAPI = "menuAPI.lua"
 
 local extensions = {}
 extensions.quarryConfig = ".qc"
 extensions.quarryConfigFull = ".qcf"
 extensions.log = ""
 extensions.saveFile = ".ssf"
+extensions.program = ".lua"
+
+local pastebins = {}
+pastebins.default = "UQD6i2y9"
+
+local versions = {}
 
 local addDir = fs.combine
 
@@ -63,6 +69,12 @@ local function newFile(name, ext) --This returns a file handle and fileName
   end
   name = processFileName(name, ext)
   return fs.open(name, "w")
+end
+local function saveFile(name, ext, text)
+  local handle = newFile(name, ext)
+  handle.write(text)
+  handle.close()
+  return true
 end
 local function getFiles(dir, regex) --Returns a list of all files that match regex
   local list, toRet = fs.list(dir or ""), {}
@@ -134,10 +146,42 @@ save.changeDataFolder = function(newName) --Actually changes this file so that t
   handle.close()
   return true
 end
+
+save.items = {}
+save.new = function(saveName, ...)
+  local obj = {}
+  save.items[saveName] = obj
+  obj.saveName = saveName
+  obj.data = {...}
+  obj.isSaveObj = true
+  return obj
+end
+
+save.saveObj = function(str, func)
+  local a = save.items[str]
+  if a then
+    return (func or save.saveFile)(a.saveName, unpack(a.data))
+  end
+end
+save.loadObj = function(str)
+  return save.saveObj(str, save.loadFile)
+end
  
 --====================QUARRY FUNCTIONS====================
-local quarryFunctions = {}
-quarryFunctions.parseConfig = function(name) --This parses configs for other configs and returns full config  
+local quarry = {}
+quarry.installed = function()
+  return fs.exists(fc.quarry)
+end
+
+quarry.runQuarry = function(...) --Accepts any number of arguments
+  if not quarry.installed() then d.debug("Could not run quarry, not loaded") return false end
+  local spoof = {} --This is to trick quarry into saving the proper file
+  spoof.getRunningProgram = function() return fc.quarry end
+  os.run({shell = spoof}, ...) --Maybe later we'll handle running programs before/after quarry
+  return true
+end
+
+quarry.parseConfig = function(name) --This parses configs for other configs and returns full config  
   local file = loadFile(name, extensions.quarryConfig)
   if not file then return false, "file not found" end
   local text = file.readAll()
@@ -151,7 +195,7 @@ quarryFunctions.parseConfig = function(name) --This parses configs for other con
     
     local value
     if str:lower() ~= name:lower() then --So we don't call self. Not going to worry about other infinite recursion though, since its hard.
-      value = quarryFunctions.parseConfig(str)
+      value = quarry.parseConfig(str)
     end
     if not value then
       value = "#Failed to load: "..str
@@ -163,8 +207,8 @@ quarryFunctions.parseConfig = function(name) --This parses configs for other con
   return text
 end
 
-quarryFunctions.processConfig = function(name) --This is just a wrapper for parsing and saving configs
-  local toSave, message = quarryFunctions.parseConfig(name)
+quarry.processConfig = function(name) --This is just a wrapper for parsing and saving configs
+  local toSave, message = quarry.parseConfig(name)
   if not toSave then return false, message end
   
   local file = newFile(name, extensions.quarryConfigFull)
@@ -173,20 +217,17 @@ quarryFunctions.processConfig = function(name) --This is just a wrapper for pars
   return true
 end
 
-quarryFunctions.runConfig = function(name)
-  if quarryFunctions.processConfig(name) then --Prepare config for running
+quarry.runConfig = function(name)
+  if quarry.processConfig(name) then --Prepare config for running
     d.info(fc.quarry.." -file "..addDir(dataFolder, name..extensions.quarryConfigFull))
-    local spoof = {} --This is to trick quarry into saving the proper file
-    spoof.getRunningProgram = function() return fc.quarry end
-    os.run({shell = spoof}, fc.quarry,"-file",processFileName(name,extensions.quarryConfigFull)) --Maybe later we'll handle running programs before/after quarry
-    return true
+    return quarry.runQuarry("-file",processFileName(name,extensions.quarryConfigFull))
   else
     d.debug("run config could not run '",processFileName(name,extensions.quarryConfig),"'")
     return false
   end
 end
 
-quarryFunctions.deleteConfig = function(name)
+quarry.deleteConfig = function(name)
   if not fs.exists(addDir(dataFolder,name..extensions.quarryConfig)) then
     return false
   end
@@ -195,7 +236,7 @@ quarryFunctions.deleteConfig = function(name)
   return true
 end
 
-quarryFunctions.basicEdit = function(name, ignoreExists)
+quarry.basicEdit = function(name, ignoreExists)
   name = processFileName(name, extensions.quarryConfig)
   d.info("New Basic Edit: ",name)
   if not ignoreExists and fs.exists(name) then
@@ -207,8 +248,8 @@ quarryFunctions.basicEdit = function(name, ignoreExists)
 end
 
 --====================LOGGING FUNCTIONS====================
-local loggingFunctions = {}
-loggingFunctions.readLog = function(name) --returns a table of individual lines
+local logging = {}
+logging.readLog = function(name) --returns a table of individual lines
   local file = loadFile(processFileName(name, extensions.log, logsFolder))
   local toRet = {}
   for a in file:lines() do
@@ -219,53 +260,71 @@ loggingFunctions.readLog = function(name) --returns a table of individual lines
   return toRet
 end
 
-loggingFunctions.deleteLog = function(name)
+logging.deleteLog = function(name)
   name = processFileName(name, extensions.log, logFolder)
   if fs.exists(name) then
     fs.delete(name)
   end
 end
 
-loggingFunctions.deleteAllLogs = function()
+logging.deleteAllLogs = function()
   for a, b in pairs(getFiles(logFolder, extensions.log)) do
-    loggingFunctions.deleteLog(b)
+    logging.deleteLog(b)
   end
 end
 
 --====================UPDATING FUNCTIONS====================
-local updatingFunctions = {}
-updatingFunctions.getPastebin = function(id)
+local updating = {}
+updating.pastebinGet = function(id)
   local file = http.get("http://www.pastebin.com/raw.php?i="..id)
-  if not file then return false end
+  if not file then d.debug("Pastebin get failed on: ",id) return false end
+  d.info("Pastebin Get Succeeded!")
   return file.readAll(), file.close()
 end
 
-updatingFunctions.parseVersion = function(version)
+updating.downloadFile = function(tab, ext, allowOutdated)
+  if type(tab) ~= "table" then error("downloadFile expected table, got "..type(tab),1) end
+  if not allowOutdated and (versions[tab.name] or 0) >= tab.version then d.debug(tab.name," already updated") return false end
+  local text = updating.pastebinGet(tab.pastebin)
+  if not text then return false end
+  saveFile(tab.name, ext, text)
+  fileLocations[tab.name] = processFileName(tab.name, ext)
+  versions[tab.name] = tab.version
+  save.saveObj(initialSave)
+  save.saveObj(fc.versions)
+  return true
+  
+end
+
+updating.parseVersion = function(version)
+  if type(version) == "number" then return version end
   local total, i = 0, 3
   for a in version:gmatch("[^%.]+") do
-    total = total + tonumber(a) * 100 ^ i --So 3.1.2 would be 30102 and 3.4.0 would be 30400, which is greater
+    total = total + (tonumber(a) or 0) * 100 ^ i --So 3.1.2 would be 30102 and 3.4.0 would be 30400, which is greater
     i = i-1
   end
   return total
 end
 
-updatingFunctions.parseVersionsFile = function(text) --This returns two tables, one containing versions, the other pastebin ids for download
-  local versions, pastebins = {}, {}
+updating.parseVersionsFile = function(text) --This returns two tables, one containing versions, the other pastebin ids for download
+  local toRet = {}
 
   if text:sub(-1) ~= "\n" then text = text.."\n" end
-  for line in text:gmatch("([^\n])+\n") do --Expects line in form "name of program:version:pastebin"
+  d.info("Parsing Version File")
+  for line in text:gmatch("[^\n]+") do --Expects line in form "name of program:version:pastebin"
     local first = line:find(":")
     if first then
       local second = line:find(":",first+1)
-      local key, version, pastebin = line:sub(1,first-1), line:sub(first+1, second-1), line:sub(second+1)
-      versions[key] = updatingFunctions.parseVersion(version)
-      pastebins[key] = pastebin
+      local third = line:find(":",second+1)
+      local key, name, pastebin, version = line:sub(1,first-1), line:sub(first+1, second-1), line:sub(second+1, third-1), line:sub(third+1)
+      d.info("K,V,P ",key," ",version," ",pastebin)
+      toRet[key] = {rawVersion = version, version = updating.parseVersion(version), pastebin = pastebin, name = key, displayName = name}
     end
   end
-  return versions, pastebins
+  return toRet
 end
 
-updatingFunctions.compareVersions = function(existing, check) --Returns a list of updates available
+updating.compareVersions = function(existing, check) --Returns a list of updates available
   local toRet = {}
   for a,b in pairs(check) do
     if existing[a] and b > existing[a] then
@@ -274,8 +333,20 @@ updatingFunctions.compareVersions = function(existing, check) --Returns a list o
   end
   return toRet
 end
+--====================MENU FUNCTIONS====================
+local menus = {}
+menus.installed = function()
+  return fs.exists(fc.menuAPI)
+end
+
 --====================MAIN PROGRAM====================
 
 --Loading Initial Configurations
---save.loadFile(initialSave, fc, extensions) --Loading all the file locations of other save files
+save.new(initialSave,fc, extensions)
+--save.loadObj(initialSave)
 
+save.new(fc.versions, versions)
+save.loadObj(fc.versions)
+
+local data = updating.parseVersionsFile(updating.pastebinGet(pastebins.default)) --This gets the table of versions and IDs and parses them into tables
+updating.downloadFile(data.menuAPI, extensions.program) --We need this before anything else
