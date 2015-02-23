@@ -1089,11 +1089,12 @@ if quadEnabled then
       print("No QuadRotor Base Attached, please attach one")
     elseif quadBase.getQuadCount() == 0 then
       print("Please install at least one QuadRotor in the base")
+      sleep(1) --Prevents screen flickering and overcalling gps
     else
       flag = true
       debug("QuadBase successfully connected!")
     end
-    if not gps.locate(5) then
+    if not computerLocation and not gps.locate(5) then
       flag = false
       error("No GPS lock. Please make a GPS network to use quadrotors")
     else

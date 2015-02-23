@@ -1424,19 +1424,27 @@ function emergencyRefuel()
     print("The turtle will soon send a message, then wait ",quadTimeout," seconds before moving on")
     print("Press any key to break timer")
     biometrics(nil, true)
-    local timer, counter, event, id, counterID = os.startTimer(quadTimeout), 0
+    local timer, counter, counterID, event, id  = os.startTimer(quadTimeout), 0, os.startTimer(1)
     local startInventory = getSlotsTable()
     repeat
-      if id == counterID then counter = counter + 1 end
-      counterID = os.startTimer(1)
+      if id == counterID then counter = counter + 1; counterID = os.startTimer(1) end
       screenLine(1,6)
       print("Seconds elapsed: ",counter)
       event, id = os.pullEvent() --Waits for a key or fuel or the timer
-    until (event == "timer" and id == timer) or event == "key" or event == "turtle_inventory"
+    until (event == "timer" and id == timer) or event == "key" or event == "turtle_inventory" --Key event just makes turtle go back to start
     if event == "turtle_inventory" then --If fuel was actually delivered
       local slot = getFirstChanged(startInventory, getSlotsTable())
       select(slot)
+      local initialFuel = checkFuel()
       midRunRefuel(slot)
+      if checkFuel() > initialFuel then
+        print("Fuel delivered! Evac aborted")
+        continueEvac = false
+      else
+        print("What did you send the turtle? Not fuel >:(")
+        print("Continuing evac")
+      end
+      sleep(1)
     end
   elseif doRefuel then --Attempt an emergency refueling
     screen()
