@@ -36,11 +36,24 @@ function titleize(text)
   end
   return text
 end
-local function align(text, alignment, x) --Used to align text to a certain direction
+function align(text, alignment, x) --Used to align text to a certain direction
   if alignment == "left" then return 1 end
   if alignment == "center" then return (x/2)-(#text/2) end
   if alignment == "right" then return x - #text+1 end
   error("Invalid Alignment",3) --Three because is only called by output
+end
+
+function makeColoredText(text, textColor, backgroundColor)
+  return {text or "", textColor = textColor, backgroundColor = backgroundColor, isText = true}
+end
+
+function makeText(...)
+  local args = {...}
+  local toWrite = ""
+  for a, b in ipairs(args) do
+    toWrite = toWrite..tostring(b)
+  end
+  return makeColoredText(toWrite)
 end
 
 
@@ -61,13 +74,15 @@ function sentenceCaseTable(tab) --Expects a prepared table or sequentially numbe
 function prepareTable(tab)
   local toRet = {}
   for a,b in pairs(tab) do
-    table.insert(toRet, {key = a, value = b})
+    table.insert(toRet, {key = a, value = makeText(b)})
   end
   return toRet
 end
 
 function separateLines(text, x)
-  local toRet = {text}
+  --This sets toRet to text if it is a makeText object, otherwise it is a string or non-usable.
+  local toRet = text.isText and text or (type(text) == "string" and {text}) or error("seperateLines expected a makeTable or string, got "..type(text),2)
+  
   if text:match("\n") then --We can't handle newlines inside this, so we'll split it up and do recursion!
     local pos = text:find("\n") --Get where the newline is
     local before, after = separateLines(text:sub(1,pos-1), x), separateLines(text:sub(pos+1), x) --Then run the function on the before section (with no newlines), and the after section (which may be recursive)
@@ -106,7 +121,9 @@ function separateLines(text, x)
   return toRet, #toRet
 end
 
-function menu(title, description, textTable, isNumbered, titleAlign, textAlign, prefixCharacter, suffixCharacter, spaceCharacter, incrementFunction)
+function menu(title, description, textTable, options, incrementFunction)
+  --in text table, program displays the element.text, and returns the .text, .key, and .value
+  --options table contains [isNumbered, titleAlign, textAlign, prefixCharacter, suffixCharacter, spaceCharacter]
   --Initialization
   local x, y = term.getSize() --Screen size
   local currIndex, scroll = 1, 0 --currIndex is the item from the table it is on, scroll is how many down it should go.
@@ -116,19 +133,11 @@ function menu(title, description, textTable, isNumbered, titleAlign, textAlign, 
   --Checking for all required parts
   if not (title and textTable) then error("Requires title and menu list",2) end
   if not type(textTable) == "table" and #textTable >= 1 then error("Menu list must be a table with values",2) end
-  if isNumbered == nil then isNumbered = true end --Setting isNumbered default
-  titleAlign = alignments[titleAlign] or alignments.center --Default title alignment
-  textAlign = alignments[textAlign] or alignments.left --Default options alignment
-  prefixCharacter = prefixCharacter or "["
-  suffixCharacter = suffixCharacter or "]"
-  spaceCharacter = spaceCharacter or "."
-  for i=1, #textTable do
-    if type(textTable[i]) ~= "table" then 
-      textTable[i] = {text = textTable[i]} --If it is given without key and value pairs
-    end
-    textTable[i].text = textTable[i].text or textTable[i].value --This allows you to have tables of text, function pairs. So my function returns 1, and you call input[1].func()
-    textTable[i].key = textTable[i].key or i
-  end
+  local defaultOptions = {isNumbered = true, titleAlign = alignments.center, textAlign = alignments.left, prefixCharacter = "[", suffixCharacter = "]", spaceCharacter = "."}
+  options = options or {}
+  setmetatable(options, {__index = defaultOptions}) --So we have a default here
+  
+  textTable = prepareTable(textTable)
   
   --Defining local functions
   local function output(text,y, alignment, assumeSingle) --My own term.write with more control
