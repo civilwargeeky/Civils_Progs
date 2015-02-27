@@ -203,6 +203,7 @@ Quarry Receiver x.x.x (matches current quarry):
     Test if themes folder would actually work
     If only one monitor is being used, computer is automatically a station.
     If preciseTotals is on, turtle can display all the values on the final screen
+    "One recommendation I would have for the monitoring program when used with advanced computer or pocket computer is to have clickable buttons to pause/stop the turtle or tell it to return to home and wait." --Javatech
     
   Ideas:
   1. All themes are in files in a "themes" folder.
