@@ -176,7 +176,7 @@ Random future thoughts: Maybe make more seamless. Have an arg/option to make cal
 
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 
-Quarry Version 3.6.3:
+Quarry Version 3.6.4:
   General Ideas:
     Maybe in future, option to place torches on walls efficiently
   
@@ -184,6 +184,7 @@ Quarry Version 3.6.3:
 Things for 3.6.4 (after shell):
   Find out why turtle movement percent is slightly off
   Have preciseTotals send stuff back over rednet to see
+  Possibly change the parameter type of enderchest and friends to just be a number. Have true return 0 or something. Then make enderChestEnabled a single variable with either the number or false.
   Organize all the things! Everything is so messy right now...
   Idea for using inverted function with absolutes: Param for ignoreInverted. (Check detect functions) This allows much easier plugging in for other people (Make all main functions relative)
   

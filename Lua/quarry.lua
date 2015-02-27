@@ -1,5 +1,5 @@
 --Civilwargeeky's Quarry Program--
-  VERSION = "3.6.3"
+  VERSION = "3.6.4"
 --[[
 Recent Changes:
   Parameter Files! Create a file of parameters, and use -file to load it!
@@ -589,7 +589,9 @@ addParam("enderChest","Ender Chest Enabled","boolean special", nil, nil, "enderC
 addParam("enderChest", "Ender Chest Slot", "number 1-16", nil, nil, "enderChestSlot") --This will get the number slot if given
 newSpecialSlot("enderChest",enderChestEnabled and enderChestSlot or 0) --This allows for easy checking and getting --This makes everything better (0)
 addParam("fuelChest","Fuel Chest Enabled","boolean special", nil, nil, "fuelChestEnabled") --See above notes
+addParam("enderRefuel","Fuel Chest Enabled","boolean special", nil, nil, "fuelChestEnabled") --Sadly doesn't work with alias because doubled
 addParam("fuelChest", "Fuel Chest Slot", "number 1-16", nil, nil, "fuelChestSlot")
+addParam("enderRefuel", "Fuel Chest Slot", "number 1-16", nil, nil, "fuelChestSlot") --Also doesn't work with alias
 newSpecialSlot("fuelChest", fuelChestEnabled and fuelChestSlot or 0)
 --Rednet
 addParam("rednet", "Rednet Enabled","boolean",true, supportsRednet, "rednetEnabled")
