@@ -3,6 +3,7 @@
 ----Quarry----
 --Version 3.6.4
   Added alias for fuelChest: enderRefuel
+  Blacklist file parser now matches alpha-numeric characters and "_", but not commas :)
 
 --Version 3.6.3
   Turtle will attempt to drop "junk" items in oreQuarry before moving to drop stuff off. If two or less stacks changed, will still do full drop
