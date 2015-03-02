@@ -185,6 +185,7 @@ Things for 3.6.4 (after shell):
   Find out why turtle movement percent is slightly off
   Have preciseTotals send stuff back over rednet to see
   Possibly change the parameter type of enderchest and friends to just be a number. Have true return 0 or something. Then make enderChestEnabled a single variable with either the number or false.
+  Add in a "lava" parameter that will ask for a bucket and will try detecting lava when it can hold enough fuel. Do note: usable lava is "minecraft:flowing_lava" metadata 0
   Organize all the things! Everything is so messy right now...
   Idea for using inverted function with absolutes: Param for ignoreInverted. (Check detect functions) This allows much easier plugging in for other people (Make all main functions relative)
   
