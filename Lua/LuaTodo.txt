@@ -189,6 +189,8 @@ Things for 3.6.4 (after shell):
   Make it so turtle will check for 0 fuel level when starting (which happens if checkFuel is off) and do an emergencyRefuel. If not that, prompt and error.
     Note: The current behavior is that the turtle will save, removing adding "doCheckFuel true" to its save file, and restart the turtle.
   Add in a "lava" parameter that will ask for a bucket and will try detecting lava when it can hold enough fuel. Do note: usable lava is "minecraft:flowing_lava" metadata 0
+  "I think I will indeed add in chest checking to the next version for Ore Quarries. 
+      The new oreQuarry will do it automatically, but the oldOreQuarry will have a "-chest [slot]" parameter added for which slot contains the chest."
   Organize all the things! Everything is so messy right now...
   Idea for using inverted function with absolutes: Param for ignoreInverted. (Check detect functions) This allows much easier plugging in for other people (Make all main functions relative)
   
