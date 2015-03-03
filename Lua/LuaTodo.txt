@@ -185,6 +185,9 @@ Things for 3.6.4 (after shell):
   Find out why turtle movement percent is slightly off
   Have preciseTotals send stuff back over rednet to see
   Possibly change the parameter type of enderchest and friends to just be a number. Have true return 0 or something. Then make enderChestEnabled a single variable with either the number or false.
+  When a special slot is run with "true" instead of a number, it will auto-select or be displaced with the next number less than 16
+  Make it so turtle will check for 0 fuel level when starting (which happens if checkFuel is off) and do an emergencyRefuel. If not that, prompt and error.
+    Note: The current behavior is that the turtle will save, removing adding "doCheckFuel true" to its save file, and restart the turtle.
   Add in a "lava" parameter that will ask for a bucket and will try detecting lava when it can hold enough fuel. Do note: usable lava is "minecraft:flowing_lava" metadata 0
   Organize all the things! Everything is so messy right now...
   Idea for using inverted function with absolutes: Param for ignoreInverted. (Check detect functions) This allows much easier plugging in for other people (Make all main functions relative)

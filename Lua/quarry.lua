@@ -1843,7 +1843,7 @@ function enderRefuel() --Assumes a) An enderchest is in front of it b) It needs 
   if not slot then return false end --No room for fueling
   select(slot)
   repeat
-    print("Required Fuel: ",excessFuelAmount)
+    print("Required Fuel: ",checkFuelLimit())
     print("Current Fuel: ",checkFuel())
     local tries = 0
     while not turtle.suck() do
