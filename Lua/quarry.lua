@@ -1826,7 +1826,8 @@ function midRunRefuel(i, allowed)
   local numToRefuel = turtle.getItemCount(i)-allowed
   if checkFuel() >= checkFuelLimit() then return true end --If it doesn't need fuel, then signal to not take more
   local firstCheck = checkFuel()
-  if numToRefuel > 0 then turtle.refuel(1) end --This is so we can see how many fuel we need.
+  if numToRefuel > 0 then turtle.refuel(1)  --This is so we can see how many fuel we need.
+    else return false end --Bandaid solution: If won't refuel, don't try.
   local singleFuel
   if checkFuel() - firstCheck > 0 then singleFuel = checkFuel() - firstCheck else singleFuel = math.huge end --If fuel is 0, we want it to be huge so the below will result in 0 being taken
   --Refuel      The lesser of   max allowable or         remaining fuel space         /    either inf or a single fuel (which can be 0)
