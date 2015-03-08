@@ -47,10 +47,6 @@ logFolder = "Quarry_Logs" --What folder the turtle will store logs in [Default "
 logExtension = "" --The extension of the file (e.g. ".txt") [Default ""]
 flatBedrock = false --If true, will go down to bedrock to set startDown [Default false]
 startDown = 0 --How many blocks to start down from the top of the mine [Default 0]
-enderChestEnabled = false --Whether or not to use an ender chest [Default false]
-enderChestSlot = 16 --What slot to put the ender chest in [Default 16]
-fuelChestEnabled = false --Whether or not to use a fuel chest [Default false]
-fuelChestSlot = 15 --What slot to put the fuel chest in [Default 15]
 preciseTotals = false --If true, will record exact totals and names for all materials [Default false]
 goLeftNotRight = false --Quarry to left, not right (parameter is "left") [Default false]
 oreQuarry = false --Enables ore quarry functionality [Default false]
@@ -201,8 +197,8 @@ else
 end
 
 --Pre-defining variables that need to be saved
-      xPos,yPos,zPos,facing,percent,mined,moved,relxPos, rowCheck, connected, isInPath, layersDone, attacked, startY, chestFull, gotoDest, atChest, fuelLevel, numDropOffs, allowedItems, compareSlots, dumpSlots, selectedSlot, extraDropItems, oldOreQuarry, specialSlots, relzPos
-    = 0,   1,   1,   0,     0,      0,    0,    1,       true   ,  false,     true,     1,          0,        0,      false,     "",       false,   0,         0,           {},             {},           {},      1,            false,          false,        {},           0
+      xPos,yPos,zPos,facing,percent,mined,moved,relxPos, rowCheck, connected, isInPath, layersDone, attacked, startY, chestFull, gotoDest, atChest, fuelLevel, numDropOffs, allowedItems, compareSlots, dumpSlots, selectedSlot, extraDropItems, oldOreQuarry, specialSlots, relzPos, enderChest, fuelChest
+    = 0,   1,   1,   0,     0,      0,    0,    1,       true   ,  false,     true,     1,          0,        0,      false,     "",       false,   0,         0,           {},             {},           {},      1,            false,          false,        {explicit = {}},    0, false,      false
 
 local statusString
 
@@ -213,13 +209,38 @@ for i=1, inventoryMax do
 end --compareSlots is a table of the compare slots, not all slots with a condition
 totals = {cobble = 0, fuel = 0, other = 0} -- Total for display (cannot go inside function), this goes up here because many functions use it
 
-
-local function newSpecialSlot(index, value)
+local function newSpecialSlot(index, value, explicit) --If isn't explicit, it will move whatever is already in the slot around to make room.
   value = tonumber(value) or 0 --We only want numerical indexes
-  if value ~= 0 and specialSlots[value] then error("Failed making special slot: "..index.."\nSlot "..tonumber(value).." already taken",2) end --Can't overwrite other slots
+  local flag = false --Used in slot moving, moved slot is returned for ease of use
+  local function check(num) return num >= 1 and num <= inventoryMax end
+  if not check(value) then error("from newSpecialSlot: number "..value.." out of range",2) end
+  local function getFirstFree(start)
+    for i=1, math.max(inventoryMax-value,value-1) do
+      for a=-1,1,2 do
+        local num = value + (a*i)
+        if check(num) and not specialSlots[num] then return num end
+      end
+    end
+    return false
+  end
+  if specialSlots[value] and specialSlots[value] ~= index then --If we aren't trying to override the same slot :P
+    if not explicit then
+      value = getFirstFree(value) or error("from newSpecialSlots: all slots full, could not add")
+    elseif explicit and not specialSlots.explicit[value] then --Moving around other slots
+      flag = getFirstFree(value)
+      if not flag then error("from newSpecialSlots: could not add explicit in slot: "..index.." "..value.." Taken by "..specialSlots[value],2) end
+      specialSlots[flag] = specialSlots[value]
+      specialSlots[specialSlots[value]] = flag --These will get set to the new thing later
+    else
+      error('You cannot put a "'..index..'" in the same slot as a "'..specialSlots.explicit[value]..'" (Slot '..value..")",0) --Show the user an understandable error :)
+    end
+  end
   specialSlots[index] = value
   specialSlots[value] = index
-  return true
+  if explicit then
+    specialSlots.explicit[value] = index
+  end
+  return value, flag
 end
 
 function resetDumpSlots()
@@ -291,8 +312,8 @@ local sides = {top = "top", right = "right", left = "left", bottom = "bottom", f
 local tArgs --Will be set in initializeArgs
 local originalArgs = {...}
 local changedT, tArgsWithUpper, forcePrompts = {}, {}, {}
-changedT.new = function(key, value) table.insert(changedT,{key, value}) end --Numeric list of lists
-changedT.remove = function() table.remove(changedT) end
+changedT.new = function(key, value, name) table.insert(changedT,{key, value, name}); if name then changedT[name] = #changedT end end --Numeric list of lists
+changedT.remove = function(num) changedT[num or #changedT].hidden = true end --Note actually remove, just hide :)
 local function capitalize(text) return (string.upper(string.sub(text,1,1))..string.sub(text,2,-1)) end
 local function initializeArgs()
   tArgs = copyTable(originalArgs) --"Reset" tArgs
@@ -309,7 +330,11 @@ end
 initializeArgs()
 
 local restoreFound, restoreFoundSwitch = false --Initializing so they are in scope
-function parseParam(name, displayText, formatString, forcePrompt, trigger, variableOverride, variableExists) --To anyone that doesn't understand this very well, probably not your best idea to go in here.
+function parseParam(name, displayText, formatString, forcePrompt, trigger, variableOverride, variableExists) --Beware confusion, all ye who enter here
+  --[[ Guide to Variables
+    originalValue: what the variable was before the function
+    givenValue: This is the value after the parameter. So -invert fAlSe, givenValue is "fAlSe"
+  ]]
   if variableExists ~= false then variableExists = true end --Almost all params should have the variable exist. Some don't exist unless invoked
   if trigger == nil then trigger = true end --Defaults to being able to run
   if not trigger then return end --This is what the trigger is for. Will not run if trigger not there
@@ -317,13 +342,13 @@ function parseParam(name, displayText, formatString, forcePrompt, trigger, varia
   if not restoreFoundSwitch and (tArgs["-promptall"] or forcePrompts[name:lower()]) then forcePrompt = true end --Won't prompt if resuming, can prompt all or checks list of prompts
   local toGetText = name:lower() --Because all params are now lowered
   local formatType = formatString:match("^%a+"):lower() or error("Format String Unknown: "..formatString) --Type of format string
-  local args = formatString:sub(({formatString:find(formatType)})[2] + 2).."" --Everything in formatString but the type and space
+  local args = formatString:match(" (.+)") or "".."" --Everything in formatString after the type
   local variable = variableOverride or name --Goes first to the override for name
-  local func = loadstring("return "..variable)
+  local func = loadstring("return "..variable) --Note to future self: If you want to remove loadstring, this breaks on tables. You will have to remove tables or figure something else out
   setfenv(func,getfenv(1))
   local originalValue = assert(func)() --This is the default value, for checking to add to changed table
   if originalValue == nil and variableExists then error("From addParam, \""..variable.."\" returned nil",2) end --I may have gotten a wrong variable name
-  local givenValue, toRet --Initializing for use
+  local givenValue, toRet, values --Initializing for use
   if tArgs["-"..toGetText] then
     givenValue = tArgsWithUpper[tArgs["-"..toGetText]+1] --This is the value after the desired parameter
   elseif forcePrompt then
@@ -333,7 +358,7 @@ function parseParam(name, displayText, formatString, forcePrompt, trigger, varia
   if formatType == "force" then --This is the one exception. Should return true if givenValue is nothing
     toRet = (tArgs["-"..toGetText] and true) or false --Will return true if param exists, otherwise false
   end
-  if not (givenValue or toRet) or (type(givenValue) == "string" and #givenValue == 0) then return end --Don't do anything if you aren't given anything. Leave it as default, except for "force"
+  if not (givenValue or toRet) or (type(givenValue) == "string" and #givenValue == 0) then return end --Don't do anything if you aren't given anything. Leave it as default, except for "force". Also don't want empty strings
   if formatType == "boolean" then --All the format strings will be basically be put through a switch statement
     toRet = givenValue:sub(1,1):lower() ~= "n" and givenValue:sub(1,1):lower() ~= "f" --Accepts anything but false or no
   elseif formatType == "string" then
@@ -354,17 +379,25 @@ function parseParam(name, displayText, formatString, forcePrompt, trigger, varia
     for a in args:gmatch("[^,]") do
       table.insert(toRet,a)
     end
+  elseif formatType == "slot" then
+    if givenValue:sub(1,1):lower() == "n" or givenValue:sub(1,1):lower() == "f" then --Copied from boolean
+      toRet = false
+    else
+      local userNumber, correction = givenValue:match("^%d+$") --This makes sure the value is a number | Locally initialize correction
+      toRet, correction = newSpecialSlot(variable, tonumber(userNumber or args), userNumber) --If givenValue was "true", it won't be explicit and will use default number
+      if correction then changedT[changedT[specialSlots[correction]]][2] = tostring(correction) end --This changes the value field of the changedT index taken from the named pointer (which is the value in specialSlots under correction)
+    end
   elseif formatType == "force" then --Do nothing, everything is already done
   else error("Improper formatType",2)
   end
   if toRet == nil then return end --Don't want to set variables to nil... That's bad
   tempParam = toRet --This is what loadstring will see :D
   local func = loadstring(variable.." = tempParam")
-  setfenv(func, getfenv(1))
+  setfenv(func, getfenv(1)) --Note to future self: If you want to remove loadstring, this breaks on tables. You will have to remove tables or figure something else out
   func()
   tempParam = nil --Cleanup of global
   if toRet ~= originalValue and displayText ~= "" then
-    changedT.new(displayText, tostring(toRet))
+    changedT.new(displayText, tostring(toRet), variable)
   end
   return toRet
 end
@@ -387,7 +420,7 @@ local function paramAlias(original, alias)
   local a = paramLookup[original]
   if a then
     if a[5] == nil then a[5] = original end --This is variableOverride because the originals won't put a variable override
-    parseParam(alias, unpack(a, 1, table.maxn(a)))
+    return parseParam(alias, unpack(a, 1, table.maxn(a)))
   else
     error("In paramAlias: '"..original.."' did not exist",2)
   end
@@ -585,6 +618,7 @@ addParam("startDown","Start Down","number 1-256", nil, not flatBedrock)
 addParam("left","Left Quarry","boolean", nil, nil, "goLeftNotRight")
 --Inventory
 addParam("chest", "Chest Drop Side", "side front", nil, nil, "dropSide")
+--[[
 addParam("enderChest","Ender Chest Enabled","boolean special", nil, nil, "enderChestEnabled") --This will accept anything (including numbers) thats not "f" or "n"
 addParam("enderChest", "Ender Chest Slot", "number 1-16", nil, nil, "enderChestSlot") --This will get the number slot if given
 newSpecialSlot("enderChest",enderChestEnabled and enderChestSlot or 0) --This allows for easy checking and getting --This makes everything better (0)
@@ -592,7 +626,10 @@ addParam("fuelChest","Fuel Chest Enabled","boolean special", nil, nil, "fuelChes
 addParam("enderRefuel","Fuel Chest Enabled","boolean special", nil, nil, "fuelChestEnabled") --Sadly doesn't work with alias because doubled
 addParam("fuelChest", "Fuel Chest Slot", "number 1-16", nil, nil, "fuelChestSlot")
 addParam("enderRefuel", "Fuel Chest Slot", "number 1-16", nil, nil, "fuelChestSlot") --Also doesn't work with alias
-newSpecialSlot("fuelChest", fuelChestEnabled and fuelChestSlot or 0)
+newSpecialSlot("fuelChest", fuelChestEnabled and fuelChestSlot or 0) ]]
+addParam("enderChest","Ender Chest Slot","slot 8")
+addParam("test","Test Chest","slot 15")
+paramAlias("enderChest","ender")
 --Rednet
 addParam("rednet", "Rednet Enabled","boolean",true, supportsRednet, "rednetEnabled")
 addParam("sendChannel", "Rednet Send Channel", "number 1-65535", false, supportsRednet, "channels.send")
@@ -657,6 +694,18 @@ addParam("blacklist","Ore Blacklist", "string", nil, oreQuarry, "oreQuarryBlackl
 paramAlias("blacklist","blacklistFile")
 --Mod Related
 
+--Extra
+if tArgs["-testparams"] then
+  screen()
+  print("KEY: VALUE (VARIABLE)")
+  for key, val in ipairs(changedT) do
+    if not val.hidden then
+      print(val[1],": ",val[2],"  (",val[3] or "",")")
+    end
+  end
+  error("Done",0)
+end
+  
 
 --for flatBedrock
 if flatBedrock then
@@ -1055,11 +1104,13 @@ end
 screen(1,1)
 print("Your selected settings:")
 if #changedT == 0 then
-print("Completely Default")
-else
-for i=1, #changedT do
-print(changedT[i][1],": ",changedT[i][2]) --Name and Value
-end
+  print("Completely Default")
+  else
+  for i=1, #changedT do
+    if not changedT[i].hidden then
+      print(changedT[i][1],": ",changedT[i][2]) --Name and Value
+    end
+  end
 end
 print("\nStarting in 3"); sleep(1); print("2"); sleep(1); print("1"); sleep(1.5) --Dramatic pause at end
 
