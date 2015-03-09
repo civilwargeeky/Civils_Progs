@@ -192,6 +192,7 @@ Things for 3.6.4 (after shell):
 Things for 3.6.5:
   Refactoring, I swear
   Maybe have a "warn" function in IO for like "you have selected fuel chest but maxFuel == turtle.getFuelLimit()"
+  Redo Help Paragraph (and function) to be more like receiver's. Have categories. Everything is ridiculously messy right now
   Things to refactor:
     INVENTORY MANAGEMENT (lots of cool ideas, just need to move everything so they work)
       Instead of specialSlots, allowedItems, dumpSlots, etc., just have a "slots" with .special and then numeric indices with .allowed, .toDump or something
