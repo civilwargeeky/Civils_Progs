@@ -6,9 +6,14 @@
   Blacklist file parser now matches alpha-numeric characters and "_", but not commas :)
   enderChest and fuelChest are no longer assignable in the written config because I don't check for their existence except through parameters
   When not explicitly assigned, specialSlots like enderChests will auto-assign themselves if conflicts occur.
+  prmoptCompareSlot has a hacky "limit" parameter to allow multiple items in slots
+  Added a "eventInsertionPoint" to control where events are inserted
+  When doing persistence work for frontChests and things, I discovered that I have no idea how the restore system works so perfectly. It just does... (Just pointing this out)
   New Parameters:
     -testParams [force]: Lists all the parameters you've selected and ends the program
-    -lava/lavaBucket [slot]: Turtle will check itself and refuel with lava if possible.
+    -lava/lavaBucket/lavaRefuel [slot]: Turtle will check itself and refuel with lava if possible.
+    -compareChest [slot]: This is the chest slot for oldOreQuarry
+    -frontChest [t/f]: If true, turtle will also check in front of itself for chests when mining. (May only work on odd rows...)
 
 --Version 3.6.3
   Turtle will attempt to drop "junk" items in oreQuarry before moving to drop stuff off. If two or less stacks changed, will still do full drop

@@ -52,7 +52,7 @@ goLeftNotRight = false --Quarry to left, not right (parameter is "left") [Defaul
 oreQuarry = false --Enables ore quarry functionality [Default false]
 oreQuarryBlacklistName = "oreQuarryBlacklist.txt" --This is the file that will be parsed for item names [Default "oreQuarryBlacklist"]
 dumpCompareItems = true --If ore quarry, the turtle will dump items compared to (like cobblestone) [Default true]
-frontCheck = false --If oreQuarry and chest checking, you can turn this on to make turtle check in front of itself for chests as well [Default false]
+frontChest = false --If oreQuarry and chest checking, you can turn this on to make turtle check in front of itself for chests as well [Default false]
 inventoryMax = 16 --The max number of slots in the turtle inventory [Default 16] (Not assignable by parameter)
 quadEnabled = false --Whether or not to request a quadRotor when out of fuel [Default false]
 quadTimeout = 60 * 5 --How long the turtle will wait for a quadRotor [Default 5 minutes]
@@ -99,8 +99,9 @@ Welcome!: Welcome to quarry help. Below are help entries for all parameters. Exa
 -uniqueExtras: [number] The expected number of slots filled with low-stacking items like ore. Higher numbers request more fuel.
 -maxFuel: [number] How much the turtle will fuel to max (limited by turtle in most cases)
 -chest: [side] This specifies what side the chest at the end will be on. You can say "top", "bottom", "front", "left", or "right"
--enderChest: This one is special. If you use "-enderChest true" then it will use an enderChest in the default slot. However, you can also do "-enderChest [slot]" then it will take the ender chest from whatever slot you tell it to. Like 7... or 14... or whatever.
--fuelChest: See the above, but for a fueling chest. Reccommend use with -maxFuel and -doCheckFuel false
+-enderChest: [slot] This one is special. If you use "-enderChest true" then it will use an enderChest in the default slot. However, you can also do "-enderChest [slot]" then it will take the ender chest from whatever slot you tell it to. Like 7... or 14... or whatever.
+-fuelChest: [slot] See the above, but for a fueling chest. Reccommend use with -maxFuel and -doCheckFuel false
+-lava: [slot] If using an oreQuarry, will fill itself with lava it finds to maxFuel
 -preciseTotals: [t/f] If true, will record a detailed file of everything it mined.
 -GPS: [force] If you use "-GPS" and there is a GPS network, then the turtle will record its first two positions to precisly calculate its position if it has to restart. This will only take two GPS readings
 -quad: [t/f] This forces the use of GPS. Make sure you have a network set up. This will request to be refueled by a quadrotor from Lyqyd's mod if the turtle is out of fuel
@@ -114,6 +115,8 @@ Welcome!: Welcome to quarry help. Below are help entries for all parameters. Exa
 -extraDropItems: [force] If oreQuarry then this will prompt the user for extra items to drop, but not compare to (like cobblestone)
 -dumpCompareItems: [t/f] If oreQuarry and this is true, the turtle will dump off compare blocks instead of storing them in a chest
 -oldOreQuarry: [t/f] If you are using new CC versions, you can use this to use the old oreQuarry.
+-compareChest: [slot] If using oldOreQuarry, this will allow you to check for dungeon chests and suck from them.
+-frontChest: [t/f] If using oreQuarry/oldOreQuarry, this will check in front of itself for chests as well.
 -left: [t/f] If true, turtle will quarry to the left instead of the right
 -maxTries: [number] This is the number of times the turtle will try to dig before deciding its run into bedrock.
 -forcePrompt: [parameter] Whatever parameter you specify, it will always prompt you, like it does now for invert and dim.
@@ -134,6 +137,7 @@ Welcome!: Welcome to quarry help. Below are help entries for all parameters. Exa
       |_ _ _ _ >
 -flatBedrock: [t/f] If true, turtle will find bedrock and "zero" itself so it ends on bedrock level
 -promptAll: This is the opposite of -Default, it prompts for everything
+-listParams: This will list out all your selected parameters and end quarry. Good for testing
 -manualPos: [xPos] [zPos] [yPos] [facing] This is for advanced use. If the server reset when the turtle was in the middle of a 100x100x100 quarry, fear not, you can now manually set the position of the turtle. yPos is always positive. The turtle's starting position is 0, 1, 1, 0. Facing is measured 0 - 3. 0 is forward, and it progresses clockwise. Example- "-manualPos 65 30 30 2"
 -version: Displays the current quarry version and stops the program
 -help: Thats what this is :D
@@ -198,14 +202,14 @@ else
 end
 
 --Pre-defining variables that need to be saved
-      xPos,yPos,zPos,facing,percent,mined,moved,relxPos, rowCheck, connected, isInPath, layersDone, attacked, startY, chestFull, gotoDest, atChest, fuelLevel, numDropOffs, allowedItems, compareSlots, dumpSlots, selectedSlot, extraDropItems, oldOreQuarry, specialSlots, relzPos, enderChest, fuelChest
-    = 0,   1,   1,   0,     0,      0,    0,    1,       true   ,  false,     true,     1,          0,        0,      false,     "",       false,   0,         0,           {},             {},           {},      1,            false,          false,        {explicit = {}},    0, false,      false
+      xPos,yPos,zPos,facing,percent,mined,moved,relxPos, rowCheck, connected, isInPath, layersDone, attacked, startY, chestFull, gotoDest, atChest, fuelLevel, numDropOffs, allowedItems, compareSlots, dumpSlots, selectedSlot, extraDropItems, oldOreQuarry, specialSlots, relzPos, eventInsertionPoint
+    = 0,   1,   1,   0,     0,      0,    0,    1,       true   ,  false,     true,     1,          0,        0,      false,     "",       false,   0,         0,           {},             {},           {},      1,            false,          false,        {explicit = {}},    0, 1
 
 --These are slot options that need to exist as variables for parameters to work.
   enderChest, fuelChest, lavaBucket, compareChest
 = false,      false,     false,      false
 
-local chestID = "minecraft:chest"
+local chestID, lavaID, lavaMeta = "minecraft:chest", "minecraft:flowing_lava", 0
 
 local statusString
 
@@ -627,8 +631,6 @@ addParam("left","Left Quarry","boolean", nil, nil, "goLeftNotRight")
 addParam("chest", "Chest Drop Side", "side front", nil, nil, "dropSide")
 addParam("enderChest","Ender Chest Slot","slot 16") --Note: All slots can be 16 and they will auto-assign, but I feel it is less confusing if they are always the same
 addParam("fuelChest","Fuel Chest Slot","slot 15")
-addParam("lavaBucket","Lava Bucket Slot", "slot 14")
-paramAlias("lavaBucket","lava")
 --Rednet
 addParam("rednet", "Rednet Enabled","boolean",true, supportsRednet, "rednetEnabled")
 addParam("sendChannel", "Rednet Send Channel", "number 1-65535", false, supportsRednet, "channels.send")
@@ -683,13 +685,16 @@ if oreQuarry and not turtle.inspect then
   oldOreQuarry = true
   oreQuarry = false
 end
-addParam("frontCheck","Front Chest Check","boolean", nil, oreQuarry)
+addParam("lavaBucket","Lava Bucket Slot", "slot 14", nil, oreQuarry)
+paramAlias("lavaBucket","lava")
+paramAlias("lavaBucket","lavaRefuel")
 --Old Ore
 addParam("oldOreQuarry", "Old Ore Quarry", "boolean")
 addParam("dumpCompareItems", "Dump Compare Items", "boolean", nil, oldOreQuarry) --Do not dump compare items if not oreQuarry
 addParam("extraDropItems", "", "force", nil, oldOreQuarry) --Prompt for extra dropItems
 paramAlias("extraDropItems","extraDumpItems") --changed to Dump
 addParam("compareChest","Compare Chest Slot","slot 13", nil, oldOreQuarry)
+addParam("frontChest","Front Chest Check","boolean", nil, compareChest or turtle.insepect) --Does not need oreQuarry, but is similar (does need inspect if not compareChest)
 --New Ore
 addParam("blacklist","Ore Blacklist", "string", nil, oreQuarry, "oreQuarryBlacklistName")
 paramAlias("blacklist","blacklistFile")
@@ -921,8 +926,9 @@ if doCheckFuel and checkFuel() < neededFuel then
   select(1)
 end
 --Ender Chest Obtaining
-function promptSpecialSlot(specialSlot, name)
-  while turtle.getItemCount(specialSlots[specialSlot]) ~= 1 do
+function promptSpecialSlot(specialSlot, name, limit)
+  local function isInRange(toCheck, lower, upper) return toCheck <= upper and toCheck >= lower end
+  while not isInRange(turtle.getItemCount(specialSlots[specialSlot]), 1, limit or 1) do
     screen(1,1)
     print("You have decided to use a ",name,"!")
     print("Please place one ",name," in slot ",specialSlots[specialSlot])
@@ -930,13 +936,13 @@ function promptSpecialSlot(specialSlot, name)
   end
   print(name," in slot ",specialSlots[specialSlot], " checks out")
 end
-function checkSpecialSlot(specialSlot, name)
+function checkSpecialSlot(specialSlot, name, allowed)
  if restoreFoundSwitch and turtle.getItemCount(specialSlots[specialSlot]) == 0 then --If the turtle was stopped while dropping off items.
     select(specialSlots[specialSlot])
     turtle.dig()
     select(1)
   end
-  promptSpecialSlot(specialSlot, name)
+  promptSpecialSlot(specialSlot, name, allowed)
   allowedItems[specialSlots[specialSlot]] = 1
   sleep(1)
 end
@@ -956,14 +962,14 @@ if lavaBucket then
   select(1)
 end
 if compareChest then
-  checkSpecialSlot("compareChest","Chest")
+  checkSpecialSlot("compareChest","Chest", 64)
 end
 
 --Setting which slots are marked as compare slots
 if oldOreQuarry then
   if not restoreFoundSwitch then --We don't want to reset compare blocks every restart
     local counter = 0
-    for i=1, inventoryMax do if turtle.getItemCount(i) > 0 and i ~= specialSlots.enderChest then counter = counter+1 end end --If the slot has items, but isn't enderChest slot if it is enabled
+    for i=1, inventoryMax do if turtle.getItemCount(i) > 0 and not specialSlots[i] then counter = counter+1 end end --If the slot has items, but isn't enderChest slot if it is enabled
 
     screen(1,1)
     print("You have selected an Ore Quarry!")
@@ -978,7 +984,7 @@ if oldOreQuarry then
     end
     for i=1, inventoryMax do
       if turtle.getItemCount(i) > 0 then
-        if i ~= specialSlots.enderChest then
+        if not specialSlots[i] then
           table.insert(compareSlots, i) --Compare slots are ones compared to while mining. Conditions are because we Don't want to compare to enderChest
           allowedItems[i] = 1 --Blacklist is for dropping off items. The number is maximum items allowed in slot when dropping off
           dumpSlots[i] = true --We also want to ignore all excess of these items, like dirt
@@ -1131,11 +1137,14 @@ print("\nStarting in 3"); sleep(1); print("2"); sleep(1); print("1"); sleep(1.5)
 ----------------------------------------------------------------
 --Define ALL THE FUNCTIONS
 --Event System Functions
+function eventSetInsertionPoint(num)
+  eventInsertionPoint = num or 1
+end
 function eventAddAt(pos, ...)
   return table.insert(events,pos, {...}) or true
 end
 function eventAdd(...) --Just a wrapper
-  return eventAddAt(1, ...)
+  return eventAddAt(eventInsertionPoint, ...)
 end
 function eventGet(pos)
   return events[tonumber(pos) or #events]
@@ -1521,20 +1530,41 @@ function emergencyRefuel()
   return continueEvac
 end
 
+function lavaRefuel(suckDir)
+  if checkFuel() + 200 >= checkFuelLimit() then return false end --Magic number, but we don't want to constantly over-fuel the turtle.
+  local suckFunc
+  if suckDir == "up" then suckFunc = turtle.placeUp
+  elseif suckDir == "down" then suckFunc = turtle.placeDown
+  else suckFunc = turtle.place end
+  
+  select(specialSlots.lavaBucket)
+  if suckFunc() then
+    midRunRefuel(specialSlots.lavaBucket, 0) --0 forces it to refuel, even though allowed items[slot] is 1
+  end
+  select(1)
+  return true
+end
+
 --Mining functions
-function dig(doAdd, mineFunc, inspectFunc, suckFunc) --Note, turtle will not bother comparing if not given an inspectFunc
+function dig(doAdd, mineFunc, inspectFunc, suckDir) --Note, turtle will not bother comparing if not given an inspectFunc
   if doAdd == nil then doAdd = true end
   mineFunc = mineFunc or turtle.dig
-  suckFunc = suckFunc or turtle.suck
   local function retTab(tab) if type(tab) == "table" then return tab end end --Please ignore the stupid one-line trickery. I felt special writing that. (Unless it breaks, then its cool)
     --Mine if not in blacklist. inspectFunc returns success and (table or string) so retTab filters out the string and the extra table prevents errors.
   local mineFlag = false
   if oreQuarry and inspectFunc then
     local worked, data = inspectFunc()
-    if data then mineFlag = not blacklist[data.name] end --Don't mine on blacklist
-    --STOPPED HERE: PROBLEM: HOW TO PASS INSPECTFUNC FOR FRONT CHEST, BUT WANT TO MINE ANYWAY. MAYBE CALL DIG PREEMPTIVELY IN MINE THEN CONTINUE? Maybe forget front chest all together?
+    if data then
+      mineFlag = not blacklist[data.name]
+      if data.name == chestID then
+        emptyChest(suckDir)
+      end
+      if lavaBucket and data.name == lavaID and data.metadata == lavaMeta then
+        lavaRefuel(suckDir)
+      end
+    end
   end
-  if not oreQuarry or not inspectFunc or not blacklist[(retTab(({inspectFunc()})[2]) or {name = "none"}).name] then --Will stop at first false, last part won't run if one of first are false
+  if not oreQuarry or not inspectFunc or mineFlag then --Mines if not oreQuarry, or if the inspect passed
    if mineFunc() then
      if doAdd then
        mined = mined + 1
@@ -1548,10 +1578,10 @@ function dig(doAdd, mineFunc, inspectFunc, suckFunc) --Note, turtle will not bot
 end
 
 function digUp(doAdd, ignoreInspect)--Regular functions :) I switch definitions for optimization (I think)
-  return dig(doAdd, turtle.digUp, (not ignoreInspect and turtle.inspectUp) or nil, turtle.suckUp)
+  return dig(doAdd, turtle.digUp, (not ignoreInspect and turtle.inspectUp) or nil, "up")
 end
 function digDown(doAdd, ignoreInspect)
-  return dig(doAdd, turtle.digDown, (not ignoreInspect and turtle.inspectDown) or nil, turtle.suckDown)
+  return dig(doAdd, turtle.digDown, (not ignoreInspect and turtle.inspectDown) or nil, "down")
 end
 if inverted then --If inverted, switch the options
   digUp, digDown = digDown, digUp
@@ -1567,6 +1597,12 @@ function smartDig(doDigUp, doDigDown) --This function is used only in mine when 
     select(compareSlots[i])
     if blockAbove and turtle.compareUp() then blockAbove = false end
     if blockBelow and turtle.compareDown() then blockBelow = false end
+  end
+  if compareChest then
+    local flag = false
+    select(specialSlots.compareChest)
+    if turtle.compareUp() then emptyChest("up") end --Impressively, this actually works with session persistence. I'm gooood (apparently :P )
+    if turtle.compareDown() then emptyChest("down") end --Looking over the code, I see no reason why that works... Oh well.
   end
   table.insert(compareSlots, 1, table.remove(compareSlots, index)) --This is so the last selected slot is the first slot checked, saving a select call
   if blockAbove then dig(true, turtle.digUp) end
@@ -1718,6 +1754,23 @@ function mine(doDigDown, doDigUp, outOfPath,doCheckInv) -- Basic Move Forward
       error("",0)
     end
   end
+  if frontChest and not outOfPath then
+    if turtle.inspect then
+      local check, data = turtle.inspect()
+      if check and data.name == chestID then
+        emptyChest("front")
+      end
+    else
+      local flag = false
+      select(specialSlots.compareChest)
+      if turtle.compare() then flag = true end
+      select(1)
+      if flag then
+        emptyChest("front")
+      end
+    end
+  end
+  
   local count = 0
   if not outOfPath then dig() end  --This speeds up the quarry by a decent amount if there are more mineable blocks than air
   while not forward(not outOfPath) do
@@ -1871,6 +1924,25 @@ function getNumOpenSlots()
     end
   end
   return toRet
+end
+function emptyChest(suckDirection)
+  eventAdd("emptyChest",suckDirection)
+  eventSetInsertionPoint(2) --Because dropOff adds events we want to run first
+  local suckFunc
+  if suckDirection == "up" then
+    suckFunc = turtle.suckUp
+  elseif suckDirection == "down" then
+    suckFunc = turtle.suckDown
+  else
+    suckFunc = turtle.suck
+  end
+  repeat
+    if inventoryMax - countUsedSlots() <= 0 then --If there are no slots open, need to empty
+      dropOff()
+    end
+  until not suckFunc()
+  eventClear()
+  eventSetInsertionPoint()
 end
 
 --Ideas: Bring in inventory change-checking functions, count blocks that have been put in, so it will wait until all blocks have been put in.

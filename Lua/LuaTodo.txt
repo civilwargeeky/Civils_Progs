@@ -186,12 +186,7 @@ Quarry Version 3.6.4:
 Things for 3.6.4 (after shell):
   Find out why turtle movement percent is slightly off
   Have preciseTotals send stuff back over rednet to see
-  Add in a "lava" parameter that will ask for a bucket and will try detecting lava when it can hold enough fuel. Do note: usable lava is "minecraft:flowing_lava" metadata 0
-  "I think I will indeed add in chest checking to the next version for Ore Quarries. 
-      The new oreQuarry will do it automatically, but the oldOreQuarry will have a "-chest [slot]" parameter added for which slot contains the chest."
-      possibly could have a "-frontCheck" parameter to make the turtle slower but check in front of itself for chests as well
   Cool idea! For parameters, if you use (for example) fuel chest, then it forces prompt of maxFuel and doCheckFuel. Same for others like doRefuel or something.
-  Organize all the things! Everything is so messy right now...
   Idea for using inverted function with absolutes: Param for ignoreInverted. (Check detect functions) This allows much easier plugging in for other people (Make all main functions relative)
 
 Things for 3.6.5:
@@ -204,6 +199,8 @@ Things for 3.6.5:
     midRunRefuel
       Fix the "midRunRefuel" function so it will never refuel negative numbers. Also have it make more sense. Also it is logical that it would return true if it is completely full and false if not.
     The ordering and grouping of functions. Have io area, inventory area, mining area, etc.
+    Direction functions. Instead of having inspectFunc, suckFunc, etc. parameters, have a "directions" table that has directions.up.suck, etc.
+    Put all fueling functions together
     
 Things to add for quarry version 3.6.6:
   Add support for mods. Like open peripheral chest finding.
