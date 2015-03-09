@@ -52,6 +52,7 @@ goLeftNotRight = false --Quarry to left, not right (parameter is "left") [Defaul
 oreQuarry = false --Enables ore quarry functionality [Default false]
 oreQuarryBlacklistName = "oreQuarryBlacklist.txt" --This is the file that will be parsed for item names [Default "oreQuarryBlacklist"]
 dumpCompareItems = true --If ore quarry, the turtle will dump items compared to (like cobblestone) [Default true]
+frontCheck = false --If oreQuarry and chest checking, you can turn this on to make turtle check in front of itself for chests as well [Default false]
 inventoryMax = 16 --The max number of slots in the turtle inventory [Default 16] (Not assignable by parameter)
 quadEnabled = false --Whether or not to request a quadRotor when out of fuel [Default false]
 quadTimeout = 60 * 5 --How long the turtle will wait for a quadRotor [Default 5 minutes]
@@ -199,6 +200,12 @@ end
 --Pre-defining variables that need to be saved
       xPos,yPos,zPos,facing,percent,mined,moved,relxPos, rowCheck, connected, isInPath, layersDone, attacked, startY, chestFull, gotoDest, atChest, fuelLevel, numDropOffs, allowedItems, compareSlots, dumpSlots, selectedSlot, extraDropItems, oldOreQuarry, specialSlots, relzPos, enderChest, fuelChest
     = 0,   1,   1,   0,     0,      0,    0,    1,       true   ,  false,     true,     1,          0,        0,      false,     "",       false,   0,         0,           {},             {},           {},      1,            false,          false,        {explicit = {}},    0, false,      false
+
+--These are slot options that need to exist as variables for parameters to work.
+  enderChest, fuelChest, lavaBucket, compareChest
+= false,      false,     false,      false
+
+local chestID = "minecraft:chest"
 
 local statusString
 
@@ -468,7 +475,7 @@ local function split(str, sep)
   return toRet
 end
 
-if addParam("file","Custom Parameters","string", false, nil, "parameterFile", false) and parameterFile then --Do note, this will load even if it is resuming.
+if addParam("file","Custom Parameters","string", false, nil, "parameterFile", false) and parameterFile then --This will not load when resuming because there is no "file" parameter when resuming.
   if not fs.exists(parameterFile) then
     print("WARNING: '"..parameterFile.."' DOES NOT EXIST. FILE NOT LOADED")
     sleep(3)
@@ -618,18 +625,10 @@ addParam("startDown","Start Down","number 1-256", nil, not flatBedrock)
 addParam("left","Left Quarry","boolean", nil, nil, "goLeftNotRight")
 --Inventory
 addParam("chest", "Chest Drop Side", "side front", nil, nil, "dropSide")
---[[
-addParam("enderChest","Ender Chest Enabled","boolean special", nil, nil, "enderChestEnabled") --This will accept anything (including numbers) thats not "f" or "n"
-addParam("enderChest", "Ender Chest Slot", "number 1-16", nil, nil, "enderChestSlot") --This will get the number slot if given
-newSpecialSlot("enderChest",enderChestEnabled and enderChestSlot or 0) --This allows for easy checking and getting --This makes everything better (0)
-addParam("fuelChest","Fuel Chest Enabled","boolean special", nil, nil, "fuelChestEnabled") --See above notes
-addParam("enderRefuel","Fuel Chest Enabled","boolean special", nil, nil, "fuelChestEnabled") --Sadly doesn't work with alias because doubled
-addParam("fuelChest", "Fuel Chest Slot", "number 1-16", nil, nil, "fuelChestSlot")
-addParam("enderRefuel", "Fuel Chest Slot", "number 1-16", nil, nil, "fuelChestSlot") --Also doesn't work with alias
-newSpecialSlot("fuelChest", fuelChestEnabled and fuelChestSlot or 0) ]]
-addParam("enderChest","Ender Chest Slot","slot 8")
-addParam("test","Test Chest","slot 15")
-paramAlias("enderChest","ender")
+addParam("enderChest","Ender Chest Slot","slot 16") --Note: All slots can be 16 and they will auto-assign, but I feel it is less confusing if they are always the same
+addParam("fuelChest","Fuel Chest Slot","slot 15")
+addParam("lavaBucket","Lava Bucket Slot", "slot 14")
+paramAlias("lavaBucket","lava")
 --Rednet
 addParam("rednet", "Rednet Enabled","boolean",true, supportsRednet, "rednetEnabled")
 addParam("sendChannel", "Rednet Send Channel", "number 1-65535", false, supportsRednet, "channels.send")
@@ -684,11 +683,13 @@ if oreQuarry and not turtle.inspect then
   oldOreQuarry = true
   oreQuarry = false
 end
+addParam("frontCheck","Front Chest Check","boolean", nil, oreQuarry)
 --Old Ore
 addParam("oldOreQuarry", "Old Ore Quarry", "boolean")
 addParam("dumpCompareItems", "Dump Compare Items", "boolean", nil, oldOreQuarry) --Do not dump compare items if not oreQuarry
 addParam("extraDropItems", "", "force", nil, oldOreQuarry) --Prompt for extra dropItems
 paramAlias("extraDropItems","extraDumpItems") --changed to Dump
+addParam("compareChest","Compare Chest Slot","slot 13", nil, oldOreQuarry)
 --New Ore
 addParam("blacklist","Ore Blacklist", "string", nil, oreQuarry, "oreQuarryBlacklistName")
 paramAlias("blacklist","blacklistFile")
@@ -836,13 +837,13 @@ do --Because many local variables unneeded elsewhere
   local dropOffSupplies = 2*(x + z + y + startDown) --Assumes turtle as far away as possible, and coming back
   local frequency = math.ceil(((moveVolume/(64*(15-uniqueExtras) + uniqueExtras)) ) ) --This is complicated: volume / inventory space of turtle, defined as 64*full stacks + 1 * unique stacks.
                                                                                      --max of 15 full stacks because once one item is picked up, slot is "full". Ceil to count for initial back and forth
-  if enderChestEnabled then frequency = 0 end --Never goes back to start
+  if enderChest then frequency = 0 end --Never goes back to start
   neededFuel = moveVolume + changeYFuel + (frequency * dropOffSupplies) + ((x + z) * layers) --x + z *layers because turtle has to come back from far corner every layer
   neededFuel = neededFuel + fuelTable[fuelSafety] --For safety
 end
 
 if neededFuel > checkFuelLimit() and doCheckFuel then--Checks for if refueling goes over turtle fuel limit
-  if not (doRefuel or fuelChestEnabled) then
+  if not (doRefuel or fuelChest) then
     screen()
     print("Turtle cannot hold enough fuel\n")
     print("Options: \n1. Select a smaller size \n2. Enable Mid-Run Refueling (RECOMMENDED) \n3. Turn fuel checking off (only if fuel chest) \n4. Do nothing")
@@ -937,15 +938,26 @@ function checkSpecialSlot(specialSlot, name)
   end
   promptSpecialSlot(specialSlot, name)
   allowedItems[specialSlots[specialSlot]] = 1
-  sleep(2)
+  sleep(1)
 end
-if enderChestEnabled then
+if enderChest then
   checkSpecialSlot("enderChest","Ender Chest")
 end
-if fuelChestEnabled then
+if fuelChest then
   checkSpecialSlot("fuelChest","Fuel Chest")
 end
---Fuel Chest Obtaining
+if lavaBucket then
+  checkSpecialSlot("lavaBucket","Empty Bucket")
+  select(specialSlots.lavaBucket)
+  if turtle.refuel(1) then --Just in case they actually put in a lava bucket >:(
+    print("No! You're supposed to put in an empty bucket") --This doubles as emptying the lava bucket if mid-run
+    sleep(2)
+  end
+  select(1)
+end
+if compareChest then
+  checkSpecialSlot("compareChest","Chest")
+end
 
 --Setting which slots are marked as compare slots
 if oldOreQuarry then
@@ -1411,29 +1423,10 @@ function count(add) --Done any time inventory dropped and at end, true=add, fals
   select(1)
 end
 
---Mining functions
-function dig(doAdd, mineFunc, inspectFunc) --Note, turtle will not bother comparing if not given an inspectFunc
-  if doAdd == nil then doAdd = true end
-  mineFunc = mineFunc or turtle.dig
-  local function retTab(tab) if type(tab) == "table" then return tab end end --Please ignore the stupid one-line trickery. I felt special writing that. (Unless it breaks, then its cool)
-    --Mine if not in blacklist. inspectFunc returns success and (table or string) so retTab filters out the string and the extra table prevents errors.
-  if not oreQuarry or not inspectFunc or not blacklist[(retTab(({inspectFunc()})[2]) or {name = "none"}).name] then --Will stop at first false, last part won't run if one of first are false
-   if mineFunc() then
-     if doAdd then
-       mined = mined + 1
-     end
-     return true
-   else
-     return false
-   end
-  end
-  return true --This only runs if oreQuarry but item not in blacklist
-end
-
 --Refuel Functions
 function emergencyRefuel()
   local continueEvac = true --This turns false if more fuel is acquired
-  if fuelChestEnabled then --This is pretty much the only place that this will be used
+  if fuelChest then --This is pretty much the only place that this will be used
     if not fuelChestPhase then --Since I want to do things with return of enderRefuel, I will just make a special system. All of this is for backup safety.
       fuelChestPhase = 0 --Global variable will be saved
       fuelChestProperFacing = facing
@@ -1528,12 +1521,37 @@ function emergencyRefuel()
   return continueEvac
 end
 
+--Mining functions
+function dig(doAdd, mineFunc, inspectFunc, suckFunc) --Note, turtle will not bother comparing if not given an inspectFunc
+  if doAdd == nil then doAdd = true end
+  mineFunc = mineFunc or turtle.dig
+  suckFunc = suckFunc or turtle.suck
+  local function retTab(tab) if type(tab) == "table" then return tab end end --Please ignore the stupid one-line trickery. I felt special writing that. (Unless it breaks, then its cool)
+    --Mine if not in blacklist. inspectFunc returns success and (table or string) so retTab filters out the string and the extra table prevents errors.
+  local mineFlag = false
+  if oreQuarry and inspectFunc then
+    local worked, data = inspectFunc()
+    if data then mineFlag = not blacklist[data.name] end --Don't mine on blacklist
+    --STOPPED HERE: PROBLEM: HOW TO PASS INSPECTFUNC FOR FRONT CHEST, BUT WANT TO MINE ANYWAY. MAYBE CALL DIG PREEMPTIVELY IN MINE THEN CONTINUE? Maybe forget front chest all together?
+  end
+  if not oreQuarry or not inspectFunc or not blacklist[(retTab(({inspectFunc()})[2]) or {name = "none"}).name] then --Will stop at first false, last part won't run if one of first are false
+   if mineFunc() then
+     if doAdd then
+       mined = mined + 1
+     end
+     return true
+   else
+     return false
+   end
+  end
+  return true --This only runs if oreQuarry but item not in blacklist. true means succeeded in duty, not necessarily dug block
+end
 
 function digUp(doAdd, ignoreInspect)--Regular functions :) I switch definitions for optimization (I think)
-  return dig(doAdd, turtle.digUp, (not ignoreInspect and turtle.inspectUp) or nil)
+  return dig(doAdd, turtle.digUp, (not ignoreInspect and turtle.inspectUp) or nil, turtle.suckUp)
 end
 function digDown(doAdd, ignoreInspect)
-  return dig(doAdd, turtle.digDown, (not ignoreInspect and turtle.inspectDown) or nil)
+  return dig(doAdd, turtle.digDown, (not ignoreInspect and turtle.inspectDown) or nil, turtle.suckDown)
 end
 if inverted then --If inverted, switch the options
   digUp, digDown = digDown, digUp
@@ -1714,7 +1732,7 @@ function mine(doDigDown, doDigUp, outOfPath,doCheckInv) -- Basic Move Forward
     end
     if count > maxTries then
       if checkFuel() == 0 then --Don't worry about inf fuel because I modified this function
-        saveProgress({doCheckFuel = true, doRefuel = true})
+        saveProgress({doCheckFuel = true, doRefuel = true}) --This is emergency because this should never really happen.
         os.reboot()
       elseif yPos > (startY-7) and turtle.detect() then --If it is near bedrock
         bedrock()
@@ -1961,7 +1979,7 @@ end
 function dropOff() --Not local because called in mine()
   local currX,currZ,currY,currFacing = xPos, zPos, yPos, facing
   if careAboutResources then
-    if not enderChestEnabled then --Regularly
+    if not enderChest then --Regularly
       eventAdd("goto", 1,1,currY,2) --Need this step for "-startDown"
       eventAdd("goto(0,1,1,2)")
       eventAdd("drop", dropSide,false)
@@ -1993,7 +2011,7 @@ function endingProcedure() --Used both at the end and in "biometrics"
   eventAdd("goto",0,1,1,2, "quarryStart") --Go back to base
   runAllEvents()
   --Output to a chest or sit there
-  if enderChestEnabled then
+  if enderChest then
     if dropSide == "right" then eventAdd("turnTo(1)") end --Turn to proper drop side
     if dropSide == "left" then eventAdd("turnTo(3)") end
     eventAdd("dig(false)") --This gets rid of a block in front of the turtle.
@@ -2070,6 +2088,20 @@ if not restoreFoundSwitch then --Regularly
       error("",0)
     end
   end
+  
+  if checkFuel() == 0 then --Some people forget to start their turtles with fuel
+    screen(1,1)
+    print("I have no fuel and doCheckFuel is off!")
+    print("Starting emergency fueling procedures!\n")
+    emergencyRefuel()
+    if checkFuel() == 0 then
+      print("I have no fuel and can't get more!")
+      print("Try using -doRefuel or -fuelChest")
+      print("I have no choice but to quit.")
+      error("",0)
+    end
+  end
+  
   mine(false,false,true) --Get into quarry by going forward one
   if gpsEnabled and not restoreFoundSwitch then --The initial locate is done in the arguments. This is so I can figure out what quadrant the turtle is in.
     gpsSecondPos = {gps.locate(gpsTimeout)} --Note: Does not run this if it has already been restarted.
