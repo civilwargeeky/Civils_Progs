@@ -609,6 +609,7 @@ screenClass.removeChannel = function(self)
     if modem and modem.isOpen(self.receive) then
       modem.close(self.receive)
     end
+    self.receive = nil
   end
 end
 
@@ -982,7 +983,7 @@ screenClass.updateDisplay = screenClass.updateNormal --Update screen method is n
 screenClass.init = function(self) --Currently used by computer screen to replace its original method. This is called when instantiated and when unsetting station
   self.setNormalDisplay, self.setHandshakeDisplay, self.setBrokenDisplay = nil, nil, nil --Resets to super
   self:removeStation()
-  self:setNormalDisplay()
+  self:setSize()
 end 
 screenClass.setNormalDisplay = function(self)
   self.updateDisplay = self.updateNormal --This defaults to super if doesn't exist

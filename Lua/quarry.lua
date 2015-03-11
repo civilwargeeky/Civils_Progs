@@ -1105,10 +1105,10 @@ function biometrics(isAtBedrock, requestQuad)
     print("\nTurtle is paused. Send 'resume' or press any character to resume")
     statusString = "Paused"
     os.startTimer(3)
-    repeat
-      sendMessage(channels.send, channels.receive, toSend) --This may be a bit overkill, sending the whole message again, but whatever.
+    repeat --The turtle sends out periodic messages, which will clear the receiver's queue and send a message (if it exists)
+     --This may be a bit overkill, sending the whole message again, but whatever.
       local event, idCheck, confirm, _, message, distance = os.pullEvent()
-      if event == "timer" then os.startTimer(3) end --The turtle sends out periodic messages, which will clear the receiver's queue and send a message (if it exists)
+      if event == "timer" then os.startTimer(3); sendMessage(channels.send, channels.receive, toSend) end --Only send messages on the timer. This prevents ridiculous spam
       print("event: ",event)
     until (event == "modem_message" and confirm == channels.receive and (message.message == "resume" or message.message == "unpause" or message.message == "pause")) or (event == "char")
     statusString = nil
