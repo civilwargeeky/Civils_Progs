@@ -184,15 +184,12 @@ Quarry Version 3.6.4:
   
   
 Things for 3.6.4 (after shell):
-  Find out why turtle movement percent is slightly off
-  Have preciseTotals send stuff back over rednet to see
-  Cool idea! For parameters, if you use (for example) fuel chest, then it forces prompt of maxFuel and doCheckFuel. Same for others like doRefuel or something.
-  Idea for using inverted function with absolutes: Param for ignoreInverted. (Check detect functions) This allows much easier plugging in for other people (Make all main functions relative)
 
 Things for 3.6.5:
   Refactoring, I swear
   Maybe have a "warn" function in IO for like "you have selected fuel chest but maxFuel == turtle.getFuelLimit()"
   Redo Help Paragraph (and function) to be more like receiver's. Have categories. Everything is ridiculously messy right now
+  Find out why turtle movement percent is slightly off (???)
   Things to refactor:
     INVENTORY MANAGEMENT (lots of cool ideas, just need to move everything so they work)
       Instead of specialSlots, allowedItems, dumpSlots, etc., just have a "slots" with .special and then numeric indices with .allowed, .toDump or something
@@ -202,6 +199,7 @@ Things for 3.6.5:
     The ordering and grouping of functions. Have io area, inventory area, mining area, etc.
     Direction functions. Instead of having inspectFunc, suckFunc, etc. parameters, have a "directions" table that has directions.up.suck, etc.
     Put all fueling functions together
+    Idea for using inverted function with absolutes: Param for ignoreInverted. (Check detect functions) This allows much easier plugging in for other people (Make all main functions relative) (Not sure if needed)
     
 Things to add for quarry version 3.6.6:
   Add support for mods. Like open peripheral chest finding.
@@ -218,7 +216,6 @@ Quarry Receiver x.x.x (matches current quarry):
     When a monitor receives final message, have an option for removing screen or restarting and waiting for another message
     Test if themes folder would actually work
     If only one monitor is being used, computer is automatically a station.
-    If preciseTotals is on, turtle can display all the values on the final screen
     "One recommendation I would have for the monitoring program when used with advanced computer or pocket computer is to have clickable buttons to pause/stop the turtle or tell it to return to home and wait." --Javatech
     
   Ideas:

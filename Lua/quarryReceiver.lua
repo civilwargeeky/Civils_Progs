@@ -1,4 +1,4 @@
---Quarry Receiver Version 3.6.2
+--Quarry Receiver Version 3.6.4
 --Made by Civilwargeeky
 --[[
 Recent Changes:
@@ -10,6 +10,7 @@ Recent Changes:
 local doDebug = false --For testing purposes
 local ySizes = 3 --There are 3 different Y Screen Sizes right now
 local quadEnabled = false --This is for the quadrotors mod by Lyqyd
+local autoRestart = false --If true, will reset screens instead of turning them off. For when reusing turtles.
 
 --Initializing Program-Wide Variables
 local expectedMessage = "Civil's Quarry" --Expected initial message
@@ -32,6 +33,7 @@ local commandString = "" --This will be a command string sent to turtle. This va
 local lastCommand --If a command needs to be sent, this gets set
 local defaultSide
 local defaultCommand
+local stationsList = {}
 
 for i=1, #tArgs do --Parameters that must be set before rest of program for proper debugging
   local val = tArgs[i]:lower()
@@ -226,9 +228,12 @@ local function checkChannel(num)
   end
   return false
 end
+local function truncate(text, xDim)
+  return text:sub(1,xDim-3).."..."
+end
 local function align(text, xDim, direction)
   text = tostring(text or "None")
-  if #text >= xDim then return text end
+  if #text >= xDim then return truncate(text,xDim) end
   for i=1, xDim-#text do
     if direction == "right" then
       text = " "..text
@@ -324,8 +329,9 @@ end
 for a, b in pairs(colors) do --This is so commands color commands can be entered in one case
   colors[a:lower()] = b
 end
+colors.none = 0 --For adding things
 
-local requiredColors = {"title", "subtitle", "pos", "dim", "extra", "error", "info", "inverse", "command", "help", "background"}
+local requiredColors = {"default","title", "subtitle", "pos", "dim", "extra", "error", "info", "inverse", "command", "help", "background"}
 
 local function checkColor(name, text, back) --Checks if a given color works
   local flag = false
@@ -344,8 +350,11 @@ local themes = {} --Loaded themes, gives each one a names
 local function newTheme(name)
   name = name:lower() or "none"
   local self = {name = name}
-  self.addColor = function(self, colorName, text, back) --Background is optional. Will not change if nil
-    if not checkColor(colorName, text, back or "black") then debug("Color check failed: ",name," ",text," ",back); return self end --Back or black because optional
+  self.addColor = function(self, colorName, text, back) --Colors are optional. Will default to "default" value. Make sure default is a color
+    if colorName == "default" and (not text or not back) then return self end
+    if not text then text = 0 end
+    if not back then back = 0 end
+    if not checkColor(colorName, text, back) then debug("Color check failed: ",name," ",text," ",back); return self end --Back or black because optional
     colorName = colorName or "none"
     self[colorName] = {text = text, background = back}
     return self --Allows for chaining :)
@@ -379,7 +388,13 @@ local function parseTheme(file)
   return addedTheme
 end
 --This is how adding colors will work
+--regex for adding:
+--(\w+) (\w+) (\w+)
+--  \:addColor\(\"\1\"\, \2\, \3\)
+
+
 newTheme("default")
+  :addColor("default",colors.white, colors.black)
   :addColor("title", colors.green, colors.gray)
   :addColor("subtitle", colors.white, colors.black)
   :addColor("pos", colors.green, colors.black)
@@ -387,12 +402,13 @@ newTheme("default")
   :addColor("extra", colors.lightGray, colors.black)
   :addColor("error", colors.red, colors.white)
   :addColor("info", colors.blue, colors.lightGray)
-  :addColor("inverse", colors.yellow, colors.lightGray)
+  :addColor("inverse", colors.yellow, colors.blue)
   :addColor("command", colors.lightBlue, colors.black)
   :addColor("help", colors.red, colors.white)
   :addColor("background", colors.white, colors.black)
   
 newTheme("blue")
+  :addColor("default",colors.white, colors.blue)
   :addColor("title", 2048, 8192)
   :addColor("subtitle", 1, 2048)
   :addColor("pos", 16, 2048)
@@ -406,6 +422,7 @@ newTheme("blue")
   :addColor("background", 1, 2048)
   
 newTheme("seagle")
+  :addColor("default",colors.white, colors.black)
   :addColor("title", colors.white, colors.black)
   :addColor("subtitle", colors.red, colors.black)
   :addColor("pos", colors.gray, colors.black)
@@ -419,6 +436,7 @@ newTheme("seagle")
   :addColor("background", colors.white, colors.black)
   
 newTheme("random")
+  :addColor("default",colors.white, colors.black)
   :addColor("title", colors.pink, colors.blue)
   :addColor("subtitle", colors.black, colors.white)
   :addColor("pos", colors.green, colors.black)
@@ -430,6 +448,20 @@ newTheme("random")
   :addColor("command", colors.green, colors.lightGray)
   :addColor("help", colors.white, colors.yellow)
   :addColor("background", colors.white, colors.red)
+  
+newTheme("rainbow")
+  :addColor("dim", 32, 0)
+  :addColor("background", 16384, 0)
+  :addColor("extra", 2048, 0)
+  :addColor("info", 2048, 0)
+  :addColor("inverse", 32, 0)
+  :addColor("subtitle", 2, 0)
+  :addColor("title", 16384, 0)
+  :addColor("error", 1024, 0)
+  :addColor("default", 1, 512)
+  :addColor("command", 16, 0)
+  :addColor("pos", 16, 0)
+  :addColor("help", 2, 0)
   
 --If you modify a theme a bunch and want to save it
 local function saveTheme(theme, fileName)
@@ -472,7 +504,10 @@ screenClass.setBackgroundColor = function(self, color) --Accepts raw color
 end
 screenClass.setColor = function(self, color) --Wrapper, accepts themecolor objects
   if type(color) ~= "table" then error("Set color received a non-table",2) end
-  return self:setTextColor(color.text) and self:setBackgroundColor(color.background)
+  local text, back = color.text, color.background
+  if not text or text == 0 then text = self.theme.default.text end
+  if not back or back == 0  then back = self.theme.default.background end
+  return self:setTextColor(text) and self:setBackgroundColor(back)
 end
 
 screenClass.themeName = "default" --Setting super for fallback
@@ -556,29 +591,30 @@ screenClass.remove = function(tab) --Cleanup function
   if type(tab) == "number" then --Expects table, can take id (for no apparent reason)
     tab = screenClass.screens[tab]
   end
+  tab:removeStation()
   if tab.side == "REMOVED" then return end
   if tab.side == "computer" then error("Tried removing computer screen",2) end --This should never happen
   tab:reset() --Clear screen
   tab:say("Removed", tab.theme.info, 1) --Let everyone know whats up
   screenClass.screens[tab.id] = {side = "REMOVED"} --Not nil because screw up len()
   screenClass.sides[tab.side] = nil
-  if tab.receive then --may not have a channel
-    screenClass.channels[tab.receive] = nil 
-    if modem and modem.isOpen(tab.receive) then
-      modem.close(tab.receive)
+  tab:removeChannel()
+end
+
+--Init Functions
+screenClass.removeChannel = function(self)
+  self.send = nil
+  if self.receive then
+    screenClass.channels[self.receive] = nil
+    if modem and modem.isOpen(self.receive) then
+      modem.close(self.receive)
     end
   end
 end
 
---Init Functions
 screenClass.setChannel = function(self, channel)
-  self.send = nil --No matter what, send channel should be reset
-  if self.receive then
-    screenClass.channels[self.receive] = nil
-    if modem and modem.isOpen(tab.receive) then
-      modem.close(tab.receive)
-    end
-  end
+  if self.isStation then return false end --Don't want to set channel station
+  self:removeChannel()
   if type(channel) == "number" then
     self.receive = channel
     screenClass.channels[self.receive] = self
@@ -586,6 +622,15 @@ screenClass.setChannel = function(self, channel)
   end
 end
 
+screenClass.removeStation = function(self)
+  if self.isStation then
+    for i=1, #stationsList do --No IDs so have to do a linear traversal
+      if stationsList[i] == self then table.remove(stationsList, i) end
+    end
+  end
+  self.isStation = false
+end
+  
 screenClass.setSize = function(self) --Sets screen size
   if self.side ~= "computer" and not self.term then self.term = peripheral.wrap(self.side) end
   if not self.term.getSize() then --If peripheral is having problems/not there. Don't go further than term, otherwise index nil (maybe?)
@@ -595,7 +640,7 @@ screenClass.setSize = function(self) --Sets screen size
   elseif not self.receive then
     self:setBrokenDisplay() --This will prompt user to set channel
   elseif self.send then --This allows for class inheritance
-    self:init() --In case objects have special updateDisplay methods --Remove function in case it exists, defaults to super
+    self:setNormalDisplay() --In case objects have special updateDisplay methods --Remove function in case it exists, defaults to super
   else --If the screen needs to have a handshake display
     self:setHandshakeDisplay()
   end
@@ -662,7 +707,7 @@ screenClass.tryAddRaw = function(self, line, text, color, ...) --This will try t
         self.toPrint[line] = {text = text, color = color}
         return true
       else
-        debug("Tried adding ",text," on line ",line," but was too long")
+        debug("Tried adding '",text,"' on line ",line," but was too long: ",#text," vs ",self.dim[1])
       end
     end
   end
@@ -838,11 +883,34 @@ screenClass.updateNormal = function(self) --This is the normal updateDisplay fun
       self:tryAdd(center("Done!", self.dim[1]), theme.subtitle, false, true, true)
     else
       self:tryAdd("Done!", theme.title, true)
-      self:tryAdd("Blocks Dug: "..str(message.mined), theme.inverse, true)
-      self:tryAdd("Cobble Dug: "..str(message.cobble), theme.pos, false, true, true)
-      self:tryAdd("Fuel Dug: "..str(message.fuelblocks), theme.pos, false, true, true)
-      self:tryAdd("Others Dug: "..str(message.other), theme.pos, false, true, true)
-      self:tryAdd("Curr Fuel: "..str(message.fuel), theme.inverse, true)
+      self:tryAdd("Curr Fuel: "..str(message.fuel), theme.pos, true)
+      if message.preciseTotals then
+        local tab = {}
+        for a,b in pairs(message.preciseTotals) do --Sorting the table
+          a = a:match(":(.+)")
+          if #tab == 0 then --Have to initialize or rest does nothing :)
+            tab[1] = {a,b}
+          else
+            for i=1, #tab do --This is a really simple sort. Probably not very efficient, but I don't care.
+              if b > tab[i][2] then --Gets the second value from the table, which is the itemCount
+                table.insert(tab, i, {a,b})
+                break
+              elseif i == #tab then --Insert at the end if not bigger than anything
+                table.insert(tab,{a,b})
+              end
+            end
+          end
+        end
+        for i=1, #tab do --Print all the blocks in order
+          local firstPart = "#"..tab[i][1]..": "
+          self:tryAdd(firstPart..alignR(tab[i][2], self.dim[1]-#firstPart), (i%2 == 0) and theme.inverse or theme.info, true, true, true) --Switches the colors every time
+        end
+      else
+        self:tryAdd("Blocks Dug: "..str(message.mined), theme.inverse, true)
+        self:tryAdd("Cobble Dug: "..str(message.cobble), theme.pos, false, true, true)
+        self:tryAdd("Fuel Dug: "..str(message.fuelblocks), theme.pos, false, true, true)
+        self:tryAdd("Others Dug: "..str(message.other), theme.pos, false, true, true)
+      end
     end
   end
 end
@@ -893,18 +961,48 @@ screenClass.updateBroken = function(self) --If screen needs channel
     self:tryAddC('"""', self.theme.command, false, true, true)
   end
 end
+screenClass.updateStation = function(self)
+  self.toPrint = {}
+  sepChar = "| "
+  local part = math.floor((self.dim[1]-3*#sepChar - 3)/3)
+  self:tryAdd(alignL("ID",3)..sepChar..alignL("Side",part)..sepChar..alignL("Channel",part)..sepChar..alignL("Theme",part), self.theme.title, true, true, true)--Headings
+  local line = ""
+  for i=1, self.dim[1] do line = line.."-" end
+  self:tryAdd(line, self.theme.title, false, true, true)
+  for a,b in ipairs(screenClass.screens) do
+    if b.side ~= "REMOVED" then
+      self:tryAdd(alignL(b.id,3)..sepChar..alignL(b.side,part)..sepChar..alignL(b.receive, part)..sepChar..alignL(b.theme.name,part), self.theme.info, true, true, true)--Prints info about all screens
+    end
+  end
+end
 
 screenClass.updateDisplay = screenClass.updateNormal --Update screen method is normally this one
 
 --Misc
-screenClass.init = function(self) --Currently used by computer screen to replace its original method
-  self.updateDisplay = self.updateNormal --This defaults to super if doesn't exist
+screenClass.init = function(self) --Currently used by computer screen to replace its original method. This is called when instantiated and when unsetting station
+  self.setNormalDisplay, self.setHandshakeDisplay, self.setBrokenDisplay = nil, nil, nil --Resets to super
+  self:removeStation()
+  self:setNormalDisplay()
 end 
+screenClass.setNormalDisplay = function(self)
+  self.updateDisplay = self.updateNormal --This defaults to super if doesn't exist
+end
 screenClass.setHandshakeDisplay = function(self)
   self.updateDisplay = self.updateHandshake --Sets update to handshake version, defaults to super if doesn't exist
 end
 screenClass.setBrokenDisplay = function(self)
   self.updateDisplay = self.updateBroken
+end
+screenClass.setStationDisplay = function(self) --Note: This only changes the "set" methods so that "update" methods remain intact per object :)
+  self:removeChannel()
+  self.setNormalDisplay = function(self) self.updateDisplay = self.updateStation end
+  self.setHandshakeDisplay = self.setNormalDisplay
+  self.setBrokenDisplay = self.setNormalDisplay
+  self:setNormalDisplay()
+  if not self.isStation then --Just in case this gets called more than once
+    self.isStation = true
+    table.insert(stationsList,self)
+  end
 end
 
 
@@ -989,6 +1087,7 @@ sleep(1)
 --[[
 Parameters:
   -help/-?/help/?
+  -v/verbose --Turn on debugging
   -receiveChannel/channel [channel] --For only the main screen
   -theme --Sets a default theme
   -screen [side] [channel] [theme]
@@ -996,25 +1095,30 @@ Parameters:
   -auto --Prompts for all sides, or you can supply a list of receive channels for random assignment!
   -colorEditor
   -quad [cardinal direction] --This looks for a quadrotor from the quadrotors mod. The direction is of the fuel chest.
+  -autoRestart --Will reset any attached screen when done, instead of bricking them
 ]]
 
 --tArgs init
 local parameters = {} --Each command is stored with arguments
-local parameterIndex = 0 --So we can add new commands to the right table
+
+local function addParam(value)
+  val = value:lower()
+  if val:match("^%-") then
+    parameters[#parameters+1] = {val:sub(2)} --Starts a chain with the command. Can be unpacked later
+    parameters[val:sub(2)] = {} --Needed for force/before/after parameters
+  elseif parameterIndex ~= 0 then
+    table.insert(parameters[#parameters], value) --value because arguments should be case sensitive for filenames
+    table.insert(parameters[parameters[#parameters][1]], value) --Needed for force/after parameters
+  end
+end
+
 for a,b in ipairs(tArgs) do
   val = b:lower()
   if val == "help" or val == "-help" or val == "?" or val == "-?" or val == "usage" or val == "-usage" then
     displayHelp() --To make
     error("The End of Help",0)
   end
-  if val:match("^%-") then
-    parameterIndex = parameterIndex + 1
-    parameters[parameterIndex] = {val:sub(2)} --Starts a chain with the command. Can be unpacked later
-    parameters[val:sub(2)] = {} --Needed for force/before/after parameters
-  elseif parameterIndex ~= 0 then
-    table.insert(parameters[parameterIndex], b) --b because arguments should be case sensitive for filenames
-    table.insert(parameters[parameters[parameterIndex][1]], b) --Needed for force/after parameters
-  end
+  addParam(b)
 end
 
 if parameters.v or parameters.verbose then --Why not
@@ -1050,6 +1154,16 @@ if parameters.quad then
   end
 end
 
+if parameters.autorestart then
+  local val = parameters.autorstart[1]
+  if not val then
+    autoRestart = true --Assume no value = force true
+  else
+   val = val:sub(1,1):lower()
+   autoRestart = not (val == "n" or val == "f")
+  end
+end
+    
 --Init Modem
 while not initModem() do
   clearScreen()
@@ -1106,73 +1220,22 @@ end
 
 --Init Computer Screen Object (was defined at top)
 computer = screenClass.new("computer", (parameters.receivechannel and parameters.receivechannel[1]) or (parameters.channel and parameters.channel[1]))--This sets channel, checking if parameter exists
-
-if parameters.auto then --This must go after computer declaration so computer ID is 1
-  autoDetect(parameters.auto)
-  parameters.station = true
+computer.updateNormal = function(self)
+  screenClass.upateNormal(self)
+  computer:displayCommand()
 end
-
-computer.displayCommand = function(self)
-  local sideString = ((defaultSide and " (") or "")..(defaultSide or "")..((defaultSide and ")") or "")
-  if self.size == 1 then
-    self:tryAddRaw(self.dim[2], wrapPrompt("Cmd"..sideString:sub(2,-2)..": ", commandString, self.dim[1]), self.theme.command, true)
-  else
-    self:tryAddRaw(self.dim[2], wrapPrompt("Command"..sideString..": ",commandString, self.dim[1]), self.theme.command, true) --This displays the last part of a string.
-  end
+computer.updateHandshake = function(self) --Not in setHandshake because that func checks object updateHandshake
+  screenClass.updateHandshake(self)
+  computer:displayCommand()
 end
---Technically, you could have any screen be the station, but oh well.
---Initializing the computer screen
-if parameters.station then --This will set the screen update to display stats on all other monitors. For now it does little
-  computer:setChannel() --So it doesn't receive messages
-  computer.isStation = true --For updating
-    
-  computer.updateNormal = function(self)--This gets set in setSize
-    self.toPrint = {}
-    local part = math.floor(self.dim[1]/4)-1
-    self:tryAdd(alignL(" ID",part).."| "..alignL("Side",part).."| "..alignL("Channel",part).."| "..alignL("Theme",part), self.theme.title, false, true, true) --Headings
-    local line = ""
-    for i=1, self.dim[1] do line = line.."-" end
-    self:tryAdd(line, self.theme.title, false, true, true)
-    for a,b in ipairs(screenClass.screens) do
-      if b.side ~= "REMOVED" then
-        self:tryAdd(" "..alignL(b.id,part-1).."| "..alignL(b.side,part).."| "..alignL(b.receive, part).."| "..alignL(b.theme.name,part), self.theme.info, false, true, true) --Prints info about all screens
-      end
-    end
-    self:displayCommand()
-  end
-  computer.setHandshakeDisplay = computer.init --Handshake is same as regular
-  computer.setBrokenDisplay = computer.init
-elseif parameters.coloreditor then
-
-  computer:setChannel() --So it doesn't receive messages
-  computer.isStation = true --So we can't assign a channel
-  
-  computer.updateNormal = function(self) --This is only for editing colors
-    self.toPrint = {}
-    for a,b in pairs(self.theme) do
-      if type(b) == "table" then
-        self:tryAdd(a, b, true)
-      end
-    end
-    self:displayCommand()
-  end
-  computer.updateHandshake = computer.updateNormal
-  computer.updateBroken = computer.updateNormal
-else --If computer is a regular screen
-  computer.updateNormal = function(self)
-    screenClass.updateDisplay(self)
-    computer:displayCommand()
-  end
-  computer.updateHandshake = function(self) --Not in setHandshake because that func checks object updateHandshake
-    screenClass.updateHandshake(self)
-    computer:displayCommand()
-  end
-  computer.updateBroken = function(self)
-    screenClass.updateBroken(self)
-    computer:displayCommand()
-  end
+computer.updateBroken = function(self)
+  screenClass.updateBroken(self)
+  computer:displayCommand()
 end
-computer:setSize() --Update changes made to display functions
+computer.updateStation = function(self)--This gets set in setSize
+  screenClass.updateStation(self)
+  self:displayCommand()
+end
 
 
 for i=1, #parameters do --Do actions for parameters that can be used multiple times
@@ -1188,8 +1251,49 @@ for i=1, #parameters do --Do actions for parameters that can be used multiple ti
       a:setTheme(args[4])
     end
   end
-  
+  if command == "station" then --This will set the screen update to display stats on all other monitors
+    if not args[2] or args[2]:lower() == "computer" then
+      computer:setStationDisplay() --This handles setting updateNormal, setHandshakeDisplay, etc
+    else
+      local a = screenClass.new(args[2], nil, args[3]) --This means syntax is -station [side] [theme]
+      if a then --If the screen actually exists
+        a:setStationDisplay()
+      end
+    end
+  end
 end
+
+if parameters.auto then --This must go after computer declaration so computer ID is 1
+  autoDetect(parameters.auto)
+  addParam("-station") --Set computer as station
+  addParam("computer") --Yes, I'm literally just feeding in more tArgs like from IO
+end
+
+computer.displayCommand = function(self)
+  local sideString = ((defaultSide and " (") or "")..(defaultSide or "")..((defaultSide and ")") or "")
+  if self.size == 1 then
+    self:tryAddRaw(self.dim[2], wrapPrompt("Cmd"..sideString:sub(2,-2)..": ", commandString, self.dim[1]), self.theme.command, true)
+  else
+    self:tryAddRaw(self.dim[2], wrapPrompt("Command"..sideString..": ",commandString, self.dim[1]), self.theme.command, true) --This displays the last part of a string.
+  end
+end
+--Initializing the computer screen
+if parameters.coloreditor then
+
+  computer:removeChannel() --So it doesn't receive messages
+  computer.isStation = true --So we can't assign a channel
+  
+  computer.updateNormal = function(self) --This is only for editing colors
+    self.toPrint = {}
+    for i=1, #requiredColors do
+      self:tryAdd(requiredColors[i], self.theme[requiredColors[i]],true)
+    end
+    self:displayCommand()
+  end
+  computer.updateHandshake = computer.updateNormal
+  computer.updateBroken = computer.updateNormal
+end
+computer:setSize() --Update changes made to display functions
 
 for a,b in pairs(screenClass.sides) do debug(a) end
 
@@ -1228,6 +1332,7 @@ end
         receive [side] [newChannel] --Changes the channel of the selected screen
         send [side] [newChannel]
         auto --Automatically adds screens not connected
+        station --Sets the selected screen as a station (or resets if already a station)
         exit/quit/end
   peripheral_detach
     check what was lost, if modem, set to nil. If screen side, do screen:setSize()
@@ -1246,7 +1351,7 @@ end
 
 --Modes: 1 - Sided, 2 - Not Sided, 3 - Both sided and not
 local validCommands = {command = 1, screen = 2, remove = 1, theme = 3, exit = 2, quit = 2, ["end"] = 2, color = 3, side = 2, set = 2, receive = 1, send = 1, savetheme = 2,
-                       auto = 2, verbose = 2, quiet = 2}
+                       auto = 2, verbose = 2, quiet = 2, station = 1}
 while continue do
   local event, par1, par2, par3, par4, par5 = os.pullEvent()
   ----MESSAGE HANDLING----
@@ -1263,7 +1368,8 @@ while continue do
         flag = true
       end
       
-      if flag then 
+      if flag then
+        screen.isDone = false
         debug("Screen ",screen.side," received a handshake")
         screen.send = par3
         screen:setSize() --Resets update method to proper since channel is set
@@ -1323,12 +1429,12 @@ while continue do
       
     end
     
-    launchQuad(screen.rec) --Launch the Quad!
+    launchQuad(screen.rec) --Launch the Quad! (This only activates when turtle needs it)
     
     screen:updateDisplay() --isDone is queried inside this
     screen:reset(screen.theme.background)
     screen:pushScreenUpdates() --Actually write things to screen
-    
+    if screen.isDone and not autoRestart then screen:removeChannel() end --Don't receive any more messages. Allows turtle to think connected. Done after message sending so no error :)
   
   ----KEY HANDLING----
   elseif event == "key" and keyMap[par1] then
@@ -1385,24 +1491,23 @@ while continue do
             if command == "receive" and not screen.isStation then
               local chan = checkChannel(tonumber(args[3]) or -1)
               if chan and not screenClass.channels[chan] then
-                if screen.receive then --Computer may not have a channel yet
-                  modem.close(screen.receive) 
-                  screenClass.channels[screen.receive] = nil
-                end 
-                modem.open(chan)
-                screen.receive = chan
-                screenClass.channels[chan] = screen
+                screen:setChannel(chan)
                 screen:setSize() --Update broken status
               end
             end
-            
+            if command == "station" then
+              if screen.isStation then screen:init() else screen:setStationDisplay() end
+            end
             if command == "remove" and screen.side ~= "computer" then --We don't want to remove the main display!
               print()
               screen:remove()
             else --Because if removed it does stupid things
               screen:reset()
+              debug("here")
               screen:updateDisplay()
+              debug("Here")
               screen:pushScreenUpdates()
+              debug("Hereer")
             end
           end
         end
@@ -1531,10 +1636,12 @@ while continue do
     continue = flag
   end
   
-  if computer.isStation and event ~= "key" then --So screen is properly updated
-    computer:reset()
-    computer:updateDisplay()
-    computer:pushScreenUpdates()
+  if #stationsList > 0 and event ~= "key" then --So screen is properly updated
+    for a, b in ipairs(stationsList) do
+      b:reset()
+      b:updateDisplay()
+      b:pushScreenUpdates()
+    end
   end
   
   

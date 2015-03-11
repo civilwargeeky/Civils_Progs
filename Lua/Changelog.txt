@@ -9,6 +9,8 @@
   prmoptCompareSlot has a hacky "limit" parameter to allow multiple items in slots
   Added a "eventInsertionPoint" to control where events are inserted
   When doing persistence work for frontChests and things, I discovered that I have no idea how the restore system works so perfectly. It just does... (Just pointing this out)
+  Fixed preciseTotals not actually counting things properly
+  Now prompts for preciseTotals if rednet and turtle.inspect
   New Parameters:
     -testParams [force]: Lists all the parameters you've selected and ends the program
     -lava/lavaBucket/lavaRefuel [slot]: Turtle will check itself and refuel with lava if possible.
@@ -107,6 +109,12 @@
 
 
 ----Quarry Receiver----
+--Version 3.6.4
+  Displays sorted item counts from precise totals now
+  Changed the way that themes are loaded. You can now type "NONE" for a 0 value that just uses a "default" color for text or background
+  added some new parameters and commands (will type tomorrow)
+  Modified how the classes interact with each other.
+  
 --Version 3.6.2
   Fixed bugs for 1.4.7 users
   Added "-channel" parameter: same as "-receiveChannel"

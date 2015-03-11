@@ -102,7 +102,6 @@ Welcome!: Welcome to quarry help. Below are help entries for all parameters. Exa
 -enderChest: [slot] This one is special. If you use "-enderChest true" then it will use an enderChest in the default slot. However, you can also do "-enderChest [slot]" then it will take the ender chest from whatever slot you tell it to. Like 7... or 14... or whatever.
 -fuelChest: [slot] See the above, but for a fueling chest. Reccommend use with -maxFuel and -doCheckFuel false
 -lava: [slot] If using an oreQuarry, will fill itself with lava it finds to maxFuel
--preciseTotals: [t/f] If true, will record a detailed file of everything it mined.
 -GPS: [force] If you use "-GPS" and there is a GPS network, then the turtle will record its first two positions to precisly calculate its position if it has to restart. This will only take two GPS readings
 -quad: [t/f] This forces the use of GPS. Make sure you have a network set up. This will request to be refueled by a quadrotor from Lyqyd's mod if the turtle is out of fuel
 -quadTimeout: [number] The amount of time the turtle will wait for a quadRotor
@@ -121,7 +120,7 @@ Welcome!: Welcome to quarry help. Below are help entries for all parameters. Exa
 -maxTries: [number] This is the number of times the turtle will try to dig before deciding its run into bedrock.
 -forcePrompt: [parameter] Whatever parameter you specify, it will always prompt you, like it does now for invert and dim.
 -logging: [t/f] If true, will record information about its mining run in a folder at the end of the mining run
--preciseTotals: [t/f] If true (and turtle.inspect exists), it will log a detailed record of every block the turtle mines (may eventually send it over rednet)
+-preciseTotals: [t/f] If true (and turtle.inspect exists), it will log a detailed record of every block the turtle mines and send it over rednet
 -doBackup: [t/f] If false, will not back up important information and cannot restore, but will not make an annoying file (Actually I don't really know why anyone would use this...)
 -saveFile: [word] This is what the backup file will be called
 -logFolder: [word] The folder that quarry logs will be stored in
@@ -654,9 +653,9 @@ end
 --Fuel
 addParam("uniqueExtras","Unique Items", "number 0-15")
 addParam("doRefuel", "Refuel from Inventory","boolean", nil, checkFuel() ~= math.huge) --math.huge due to my changes
-addParam("doCheckFuel", "Check Fuel", "boolean", nil, checkFuel() ~= math.huge)
+addParam("doCheckFuel", "Check Fuel", "boolean", doCheckFuel and fuelChest, checkFuel() ~= math.huge) --Will prompt if doCheckFuel and fuelChest are on. Probably don't want
 excessFuelAmount = excessFuelAmount or math.huge --Math.huge apparently doesn't save properly (Without saving, this is the config, on save it is actually set to nil if math.huge)
-addParam("maxFuel", "Max Fuel", "number 1-999999999", nil, checkFuel() ~= math.huge, "excessFuelAmount")
+addParam("maxFuel", "Max Fuel", "number 1-999999999", maxFuel == checkFuelLimit() and fuelChest, checkFuel() ~= math.huge, "excessFuelAmount") --Will prompt if fuel chest and the limit isn't changed
 addParam("fuelMultiplier", "Fuel Multiplier", "float 1-9001", nil, checkFuel() ~= math.huge)
 paramAlias("fuelMultiplier","fuelRequestMultiplier")
 paramAlias("fuelMultiplier","overFuel")
@@ -670,7 +669,7 @@ addParam("maxTries","Tries Before Bedrock", "number 1-9001")
 --Inventory
 addParam("keepOpen", "Slots to Keep Open", "number 1-15")
 addParam("careAboutResources", "Care About Resources","boolean")
-addParam("preciseTotals","Precise Totals","boolean", nil, turtle.getItemDetail ~= nil)
+addParam("preciseTotals","Precise Totals","boolean", rednetEnabled and turtle.inspect, turtle.getItemDetail ~= nil)
 if preciseTotals and not restoreFoundSwitch then
   exactTotals = {} --Don't want to initialize if we aren't using this
 end
@@ -1105,10 +1104,12 @@ function biometrics(isAtBedrock, requestQuad)
   if message == "pause" then
     print("\nTurtle is paused. Send 'resume' or press any character to resume")
     statusString = "Paused"
+    os.startTimer(3)
     repeat
-      sleep(1) --The turtle sends out periodic messages, which will clear the receiver's queue and send a message (if it exists)
       sendMessage(channels.send, channels.receive, toSend) --This may be a bit overkill, sending the whole message again, but whatever.
       local event, idCheck, confirm, _, message, distance = os.pullEvent()
+      if event == "timer" then os.startTimer(3) end --The turtle sends out periodic messages, which will clear the receiver's queue and send a message (if it exists)
+      print("event: ",event)
     until (event == "modem_message" and confirm == channels.receive and (message.message == "resume" or message.message == "unpause" or message.message == "pause")) or (event == "char")
     statusString = nil
   end
@@ -1204,6 +1205,9 @@ function display() --This is just the last screen that displays at the end
     end
     local finalTable = {mined = mined, cobble = totals.cobble, fuelblocks = totals.fuel,
         other = totals.other, fuel = checkFuel(), isDone = true }
+    if preciseTotals then
+      finalTable.preciseTotals = exactTotals --This table doubles as a flag.
+    end
     sendMessage(channels.send,channels.receive, finalTable)
     modem.close(channels.receive)
   end
@@ -1418,10 +1422,10 @@ function count(add) --Done any time inventory dropped and at end, true=add, fals
   end
 
   for i=1,inventoryMax do
-    if not specialSlots[i] then --Do nothing!
-      if exactTotals then
-        local data = turtle.getItemDetail()
-        exactTotals[data.name] = (exactTotals[data.name] or 0) + data.count
+    if not specialSlots[i] then --Do nothing for specialSlots!
+      if exactTotals and slot[i][2] > 0 then
+        local data = turtle.getItemDetail(i)
+        exactTotals[data.name] = (exactTotals[data.name] or 0) + (data.count * mod)
       end
       if slot[i][1] == 1 then totals.cobble = totals.cobble + (slot[i][2] * mod)
       elseif slot[i][1] == 2 then totals.fuel = totals.fuel + (slot[i][2] * mod)
