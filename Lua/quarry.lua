@@ -103,6 +103,7 @@ Welcome!: Welcome to quarry help. Below are help entries for all parameters. Exa
 -enderChest: [slot] This one is special. If you use "-enderChest true" then it will use an enderChest in the default slot. However, you can also do "-enderChest [slot]" then it will take the ender chest from whatever slot you tell it to. Like 7... or 14... or whatever.
 -fuelChest: [slot] See the above, but for a fueling chest. Reccommend use with -maxFuel and -doCheckFuel false
 -lava: [slot] If using an oreQuarry, will fill itself with lava it finds to maxFuel
+-lavaBuffer: [number] The amount of fuel below maxFuel the turtle will wait for before using lava again
 -GPS: [force] If you use "-GPS" and there is a GPS network, then the turtle will record its first two positions to precisly calculate its position if it has to restart. This will only take two GPS readings
 -quad: [t/f] This forces the use of GPS. Make sure you have a network set up. This will request to be refueled by a quadrotor from Lyqyd's mod if the turtle is out of fuel
 -quadTimeout: [number] The amount of time the turtle will wait for a quadRotor
@@ -1255,7 +1256,7 @@ local function pad(str, length, side)
   if side == "right" then
     toRet = str
   end
-  for i=1, length do
+  for i=1, length-#str do
     toRet = toRet.." "
   end
   if side == "left" then

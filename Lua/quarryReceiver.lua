@@ -66,8 +66,7 @@ keyMap[203] = "left"
 keyMap[205] = "right"
 
 local helpResources = { --$$ is a new page
-main = [[$$Hello and welcome to
-Quarry Receiver Help!
+main = [[$$Hello and welcome to Quarry Receiver Help!
 
 This goes over everything there is to know about the receiver
 
@@ -101,76 +100,84 @@ Come back to this computer, and run the program. Follow onscreen directions.
 Check out the other help sections for more parameters
 $$Adding Screens!
 You can add screens with the "-screen" parameter or the "SCREEN" command
-An example would be "SCREEN LEFT" for a screen on the left side.
+An example would be "SCREEN LEFT 2 BLUE" for a screen on the left side with channel 2 and blue theme
 
-You can connect screens over wired modems. Attach a modem to the computer and screen, then right click the modem on the screen.
+You can connect screens over wired modems. Attach a modem to the computer and screen, then right click the modem attached to the screen.
 Then you can say "SCREEN MONITOR_0" or whatever it says
 
 ]],
 [[$$Parameters!
-  note: {} means required, [] means optional
+  note: <> means required, [] means optional
 
 -help/help/-?/?/-usage/usage: That's this!
 
--receiveChannel/channel {channel}: Sets the main screen's receive channel
+-autoRestart [t/f]: If true, the receiver will not exit when all quarries are done and will automagically reconnect to new quarries
+  With no argument, this is set to true.
 
--theme {name}: sets the "default" theme that screens use when they don't have a set theme
+-receiveChannel/channel <channel>: Sets the main screen's receive channel
 
--screen {side} [channel] [theme]: makes a new screen on the given side with channel and theme
+-theme <name>: sets the "default" theme that screens use when they don't have a set theme
 $$Parameters!
-  note: {} means required, [] means optional
+  note: <> means required, [] means optional
 
--station: makes the main computer a "station" that monitors all screens
+-screen <side> [channel] [theme]: makes a new screen on the given side with channel and theme
+  example: -screen left 10 blue    This adds a new screen on the left receiving channel 10 with a blue theme.
+  
+-station [side]: makes the screen a "station" that monitors all screens.
+  if no side, uses computer
  
--auto [channel list]: This finds all attached monitors and initializes them. The channel list assigns channels to screens sequentially
-  example: -auto 1 2 5 9   This looks for screens and automatically gives them channels 1, 2, 5, and 9
-
--colorEditor: makes the main screen a color editor that just prints the current colors. Good for theme making
-current typeColors: title, subtitle, pos, dim, extra, error, info, inverse, command, help, background
+-auto [channel list]: This finds all attached monitors and initializes them (with channels)
+  example: -auto 1 2 5 9   finds screens and gives them channels
 $$Parameters!
--modem {side}: Sets the modem side to side
+  note: <> means required, [] means optional
+  
+-colorEditor: makes the main screen a color editor that just prints the current colors. Good for theme making
+current typeColors: default title, subtitle, pos, dim, extra, error, info, inverse, command, help, background
+
+-modem <side>: Sets the modem side to side
 
 -v/-verbose: turns on debug
 
 -q/-quiet: turns off debug
 ]],
 [[$$Commands!
-  These commands can use the "side" command
 
 COMMAND [screen] [text]: Sends text to the connected turtle. See turtle commands for valid commands
+
+SCREEN [side] [channel] [theme]: Adds a screen. You can also specify the channel and theme of the screen.
 
 REMOVE [screen]: Removes the selected screen (cannot remove the main screen)
 
 THEME [screen] [name]: Sets the theme of the given screen. THEME [screen] resets the screen to default theme
 $$Commands!
-  These commands can use the "side" command
 
-COLOR [screen] [typeName] [textColor] [backColor]: Changes the local theme of the screen. If the screen has no theme, it changes the global default theme. See notes on "colorEditor" parameter for more info
+THEME [name]: Sets the default theme.
 
 RECEIVE [screen] [channel]: Changes the receive channel of the given screen
 
 SEND [screen] [channel]: Changes the send channel of the given screen (for whatever reason)
+ 
+STATION [screen] [channel]: Sets the given screen to/from a station. If changing from a station, will set the screen's channel
 $$Commands!
-  These are regular commands
 
 SET [text]: Sets a default command that can be backspaced. Useful for color editing or command sending
+  Use SET with nothing after to remove text
 
-SIDE [screen]: Sets a default screen for "sided" commands
+SIDE [screen]: Sets a default screen for "sided" commands.
+  Any command that takes a [screen] is sided
 
 EXIT/QUIT: Quits the program gracefully
-
-THEME [name]: Sets the default theme.
 $$Commands!
-  These are regular commands
 
 COLOR [themeName] [typeColor] [textColor] [backColor]: Sets the the text and background colors of the given typeColor of the given theme. See notes on "colorEditor" parameter for more info
 
 SAVETHEME [themeName] [fileName]: Saves the given theme as fileName for later use
 
+SAVETHEME [screen] [fileName]: Same as above but for a screen's theme
+
 AUTO [channelList]: Automatically searches for nearby screens, providing them sequentially with channels if a channel list is given
   Example Use: AUTO 1 2 5 9
 $$Commands!
-  These are regular commands
   
 HELP: Displays this again!
 
@@ -190,6 +197,10 @@ Drop: Turtle will immediately go and drop its inventory
 Pause: Pauses the turtle
 
 Resume: Resumes paused turtles
+
+Refuel: Turtle will schedule an emergency refuel
+  This could take from fuelChest, or quadCopter
+  or fuel in inventory (in that order)
 ]]
 }
 
@@ -261,40 +272,6 @@ local function center(text, xDim)
 end
 local function roundNegative(num) --Rounds numbers up to 0
   if num >= 0 then return num else return 0 end
-end
-local function displayHelp()
-  local tab = {}
-  local indexOuter = "main"
-  local indexInner = 1
-  for key, value in pairs(helpResources) do
-    tab[key] = {}
-    for a in value:gmatch("$$([^$]+)") do
-      table.insert(tab[key], a) --Just inserting pages
-    end
-  end
-  while true do
-    clearScreen()
-    print(tab[indexOuter][indexInner])
-    local text = tostring(indexInner).."/"..tostring(#tab[indexOuter])
-    term.setCursorPos(({term.getSize()})[1]-#text,1)
-    term.write(text) --Print the current page number
-    local event, key = os.pullEvent("key")
-    key = keyMap[key]
-    if tonumber(key) and tab[tonumber(key)] then
-      indexOuter = tonumber(key)
-      indexInner = 1
-    elseif key == "Q" then
-      os.pullEvent("char") --Capture extra event (note: this always works because only q triggers this)
-      return true
-    elseif key == "0" then --Go back to beginning
-      indexOuter, indexInner = "main",1
-    elseif key == "up" and indexInner > 1 then
-      indexInner = indexInner-1
-    elseif key == "down" and indexInner < #tab[indexOuter] then
-      indexInner = indexInner + 1
-    end
-  end
-    
 end
 
 
@@ -390,7 +367,7 @@ local function parseTheme(file)
   return addedTheme
 end
 --This is how adding colors will work
---regex for adding:
+--regex for adding from file:
 --(\w+) (\w+) (\w+)
 --  \:addColor\(\"\1\"\, \2\, \3\)
 
@@ -406,8 +383,8 @@ newTheme("default")
   :addColor("info", colors.blue, colors.lightGray)
   :addColor("inverse", colors.yellow, colors.blue)
   :addColor("command", colors.lightBlue, colors.black)
-  :addColor("help", colors.red, colors.white)
-  :addColor("background", colors.white, colors.black)
+  :addColor("help", colors.cyan, colors.black)
+  :addColor("background", colors.none, colors.none)
   
 newTheme("blue")
   :addColor("default",colors.white, colors.blue)
@@ -464,6 +441,21 @@ newTheme("rainbow")
   :addColor("command", 16, 0)
   :addColor("pos", 16, 0)
   :addColor("help", 2, 0)
+
+newTheme("green")
+ :addColor("dim", 16384, 0)
+ :addColor("background", 0, 0)
+ :addColor("extra", 2048, 0)
+ :addColor("info", 32, 256)
+ :addColor("inverse", 8192, 1)
+ :addColor("subtitle", 1, 0)
+ :addColor("title", 8192, 128)
+ :addColor("error", 16384, 32768)
+ :addColor("default", 1, 8192)
+ :addColor("command", 2048, 32)
+ :addColor("pos", 16, 0)
+ :addColor("help", 512, 32768)
+
   
 --If you modify a theme a bunch and want to save it
 local function saveTheme(theme, fileName)
@@ -1070,6 +1062,49 @@ screenClass.setStationDisplay = function(self)
   self.updateDisplay = self.updateStation
 end
 
+--Help Function. Goes so low so can see screenClass.theme
+local function displayHelp()
+  local dummy = {term = term} --This will be a dummy "screnClass object" for setting color
+  setmetatable(dummy, {__index = screenClass})
+  local theme = dummy.theme
+  local tab = {}
+  local indexOuter = "main"
+  local indexInner = 1
+  for key, value in pairs(helpResources) do
+    tab[key] = {}
+    for a in value:gmatch("$$([^$]+)") do
+      table.insert(tab[key], a) --Just inserting pages
+    end
+  end
+  while true do
+    dummy:setColor(theme.help)
+    clearScreen(1,2)
+    print(tab[indexOuter][indexInner]:match("\n(.+)")) --Print all but first line
+    dummy:setColor(theme.title)
+    dummy.term.setCursorPos(1,1)
+    print(alignL(tab[indexOuter][indexInner]:match("[^\n]+") or "",({dummy.term.getSize()})[1])) --Print first line
+    dummy:setColor(theme.info)
+    local text = tostring(indexInner).."/"..tostring(#tab[indexOuter])
+    term.setCursorPos(({term.getSize()})[1]-#text,1)
+    term.write(text) --Print the current page number
+    local event, key = os.pullEvent("key")
+    key = keyMap[key]
+    if tonumber(key) and tab[tonumber(key)] then
+      indexOuter = tonumber(key)
+      indexInner = 1
+    elseif key == "Q" then
+      os.pullEvent("char") --Capture extra event (note: this always works because only q triggers this)
+      return true
+    elseif key == "0" then --Go back to beginning
+      indexOuter, indexInner = "main",1
+    elseif key == "up" and indexInner > 1 then
+      indexInner = indexInner-1
+    elseif key == "down" and indexInner < #tab[indexOuter] then
+      indexInner = indexInner + 1
+    end
+  end
+    
+end
 
 
 local function wrapPrompt(prefix, str, dim) --Used to wrap the commandString
@@ -1179,14 +1214,22 @@ local function addParam(value)
 end
 
 for a,b in ipairs(tArgs) do
+  addParam(b)
+end
+
+if parameters.theme then --This goes here so help can display in different theme :)
+  screenClass:setTheme(parameters.theme[1])
+end
+
+for a,b in ipairs(tArgs) do
   val = b:lower()
   if val == "help" or val == "-help" or val == "?" or val == "-?" or val == "usage" or val == "-usage" then
     displayHelp() --To make
     error("The End of Help",0)
   end
-  addParam(b)
 end
 
+--Debug parameters
 if parameters.v or parameters.verbose then --Why not
   doDebug = true
 end
@@ -1196,9 +1239,6 @@ for i=1,#parameters do
 end
 
 --Options before screen loads
-if parameters.theme then
-  screenClass:setTheme(parameters.theme[1])
-end
 
 if parameters.modem then
   modemSide = parameters.modem[1]
@@ -1358,6 +1398,7 @@ if parameters.coloreditor then
   end
   computer.updateHandshake = computer.updateNormal
   computer.updateBroken = computer.updateNormal
+  computer.updateStation = computer.updateNormal
 end
 computer:setSize() --Update changes made to display functions
 

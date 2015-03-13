@@ -181,9 +181,6 @@ Random future thoughts: Maybe make more seamless. Have an arg/option to make cal
 Quarry Version 3.6.4:
   General Ideas:
     Maybe in future, option to place torches on walls efficiently
-  
-  
-Things for 3.6.4 (after shell):
 
 Things for 3.6.5:
   Refactoring, I swear
@@ -213,15 +210,11 @@ Quarry Receiver x.x.x (matches current quarry):
     2. Receiver cannot properly display the stop message for old quarries. It was sent in two different messages so it won't work
   ToDo:
     Save file to restart with
-    When a monitor receives final message, have an option for removing screen or restarting and waiting for another message
     Test if themes folder would actually work
-    If only one monitor is being used, computer is automatically a station.
-    "One recommendation I would have for the monitoring program when used with advanced computer or pocket computer is to have clickable buttons to pause/stop the turtle or tell it to return to home and wait." --Javatech
     
   Ideas:
   1. All themes are in files in a "themes" folder.
   11. Fun Idea: If you hit a screen, it briefly flashes in error colors "Quit Touching Meeeee!" :D That would be funny
-  12. Get more default themes
   13. Idea for future: Change the display to accept as a color ranges so like {[1] = {colors.black, colors.white}, [6] = {colors.orange,colors.blue}} etc. This would allow for shnazzy buttons and things
   
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-

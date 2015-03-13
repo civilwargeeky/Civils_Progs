@@ -115,6 +115,10 @@
   Changed the way that themes are loaded. You can now type "NONE" for a 0 value that just uses a "default" color for text or background
   Modified how the classes interact with each other.
   If one or more screens and computer has no channel, make computer a station
+  Help function uses current theme
+  Changed several colors
+  Added new theme: Rainbow, Green
+  There are now clickable buttons! Thanks Javatech
   New Parameter:
     autoRestart [t/f]: If true, instead of ending when screens are done, will just wait for restart. [default false]
   New Commmand:
