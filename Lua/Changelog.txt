@@ -11,6 +11,7 @@
   When doing persistence work for frontChests and things, I discovered that I have no idea how the restore system works so perfectly. It just does... (Just pointing this out)
   Fixed preciseTotals not actually counting things properly
   Now prompts for preciseTotals if rednet and turtle.inspect
+  Added "going to dropoff" message for rednet
   New Parameters:
     -testParams [force]: Lists all the parameters you've selected and ends the program
     -lava/lavaBucket/lavaRefuel [slot]: Turtle will check itself and refuel with lava if possible.
@@ -120,6 +121,8 @@
   Added new theme: Rainbow, Green
   There are now clickable buttons! Thanks Javatech
   Made pocket display a whole lot better :)
+  Removed clicking on screens to "side" select them
+  Clicking on screens without channel adds "RECEIVE [side]" to command string
   New Parameter:
     autoRestart [t/f]: If true, instead of ending when screens are done, will just wait for restart. [default false]
   New Commmand:

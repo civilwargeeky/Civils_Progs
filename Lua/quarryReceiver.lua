@@ -836,7 +836,7 @@ screenClass.updateNormal = function(self) --This is the normal updateDisplay fun
       
       self:tryAdd("-Extra-", theme.subtitle, false, false, true)
       self:tryAdd(alignR(textutils.formatTime(os.time()):gsub(" ","").."", 7), theme.extra, false, false, true) --Adds the current time, formatted, without spaces.
-      self:tryAdd("Open:"..alignR(str(message.openSlots),2), theme.extra, false, false, true)
+      self:tryAdd("Used:"..alignR(str(16-message.openSlots),2), theme.extra, false, false, true)
       self:tryAdd("Dug"..alignR(str(message.mined), 4), theme.extra, false, false, true)
       self:tryAdd("Mvd"..alignR(str(message.moved), 4), theme.extra, false, false, true)
       if message.status then
@@ -916,7 +916,7 @@ screenClass.updateNormal = function(self) --This is the normal updateDisplay fun
         self:tryAdd("Found Bedrock! Please Check!!", theme.error, false, true, true)
       end
       if message.status then
-        self:tryAdd("Turtle Status: "..message.status, theme.info, false, true, true)
+        self:tryAdd("Status: "..message.status, theme.info, false, true, true)
       end
       if message.isAtChest then
         self:tryAdd("Turtle is at home chest", theme.info, false, true, true)
@@ -937,7 +937,7 @@ screenClass.updateNormal = function(self) --This is the normal updateDisplay fun
           self:addButton(button.new(line, part*2, part*3-1, "return","Return"))
           self:addButton(button.new(line, part*3, part*4-1, "refuel","Refuel"))
         end
-        self:tryAddRaw(line, button.makeLine(self.buttons,"|"):sub(1,-2), theme.command, false, true)
+        self:tryAddRaw(line, button.makeLine(self.buttons,"|"):sub(1,self.isPocket and -2 or -1), theme.command, false, true) --Silly code because pocket breaks
       end
   else --If is done
     if self.size[1] == 1 then --Special case for small monitors
@@ -1713,15 +1713,14 @@ while continue do
       if test then
         screen.queuedMessage = test
       else
-        if defaultSide ~= par1 then
-          defaultSide = par1
-        else
-          defaultSide = nil
+        if not screen.receive then
+          commandString = "SCREEN "..par1:upper().." "
         end
       end
     else
       debug("Adding Screen")
       local mon = screenClass.new(par1)
+      commandString = "SCREEN "..mon.side:upper().." "
       mon:reset()
       mon:updateDisplay()
       mon:pushScreenUpdates()

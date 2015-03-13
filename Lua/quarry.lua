@@ -1898,11 +1898,11 @@ function turnTo(num)
     end
   end
 end
-function goto(x,z,y, toFace, destination, updateStatus)
+function goto(x,z,y, toFace, destination)
   --Will first go to desired z pos, then x pos, y pos varies
   x = x or 1; y = y or 1; z = z or 1; toFace = toFace or facing
   gotoDest = destination or "" --This is used by biometrics.
-  statusString = "Going somewhere"
+  statusString = "Going to ".. (destination or "somewhere")
   --Possible destinations: layerStart, quarryStart
   if yPos > y then --Will go up first if below position
     while yPos~=y do up() end
@@ -2063,8 +2063,8 @@ function dropOff() --Not local because called in mine()
   local currX,currZ,currY,currFacing = xPos, zPos, yPos, facing
   if careAboutResources then
     if not enderChest then --Regularly
-      eventAdd("goto", 1,1,currY,2) --Need this step for "-startDown"
-      eventAdd("goto(0,1,1,2)")
+      eventAdd("goto", 1,1,currY,2, "drop off") --Need this step for "-startDown"
+      eventAdd('goto(0,1,1,2,"drop off")')
       eventAdd("drop", dropSide,false)
       eventAdd("turnTo(0)")
       eventAdd("mine",false,false,true,false)
