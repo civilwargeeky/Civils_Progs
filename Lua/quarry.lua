@@ -53,6 +53,7 @@ oreQuarry = false --Enables ore quarry functionality [Default false]
 oreQuarryBlacklistName = "oreQuarryBlacklist.txt" --This is the file that will be parsed for item names [Default "oreQuarryBlacklist"]
 dumpCompareItems = true --If ore quarry, the turtle will dump items compared to (like cobblestone) [Default true]
 frontChest = false --If oreQuarry and chest checking, you can turn this on to make turtle check in front of itself for chests as well [Default false]
+lavaBuffer = 500 --If using a lava bucket, this is the buffer it will wait for before checking for lava [Default 500]
 inventoryMax = 16 --The max number of slots in the turtle inventory [Default 16] (Not assignable by parameter)
 quadEnabled = false --Whether or not to request a quadRotor when out of fuel [Default false]
 quadTimeout = 60 * 5 --How long the turtle will wait for a quadRotor [Default 5 minutes]
@@ -687,6 +688,7 @@ end
 addParam("lavaBucket","Lava Bucket Slot", "slot 14", nil, oreQuarry)
 paramAlias("lavaBucket","lava")
 paramAlias("lavaBucket","lavaRefuel")
+addParam("lavaBuffer","Lava Buffer","number 1-19999", nil, lavaBucket)
 --Old Ore
 addParam("oldOreQuarry", "Old Ore Quarry", "boolean")
 addParam("dumpCompareItems", "Dump Compare Items", "boolean", nil, oldOreQuarry) --Do not dump compare items if not oreQuarry
@@ -1093,7 +1095,11 @@ function biometrics(isAtBedrock, requestQuad)
   until (event == "timer" and idCheck == id) or (event == "modem_message" and confirm == channels.receive and type(received) == "table")
   if event == "modem_message" then connected = true else connected = false end
   local message = received.message:lower()
-  if message == "stop" or message == "quit" or message == "kill" then error("Rednet said to stop...",0) end
+  if message == "stop" or message == "quit" or message == "kill" then
+    count(true)
+    display()
+    error("Rednet said to stop...",0)
+  end
   if message == "return" then
     endingProcedure()
     error('Rednet said go back to start...',0)
@@ -1104,18 +1110,18 @@ function biometrics(isAtBedrock, requestQuad)
   if message == "pause" then
     print("\nTurtle is paused. Send 'resume' or press any character to resume")
     statusString = "Paused"
+    toSend.status = statusString
     os.startTimer(3)
     repeat --The turtle sends out periodic messages, which will clear the receiver's queue and send a message (if it exists)
      --This may be a bit overkill, sending the whole message again, but whatever.
       local event, idCheck, confirm, _, message, distance = os.pullEvent()
       if event == "timer" then os.startTimer(3); sendMessage(channels.send, channels.receive, toSend) end --Only send messages on the timer. This prevents ridiculous spam
-      print("event: ",event)
     until (event == "modem_message" and confirm == channels.receive and (message.message == "resume" or message.message == "unpause" or message.message == "pause")) or (event == "char")
     statusString = nil
   end
   if message == "refuel" then
     print("\nEngaging in emergency refueling")
-    emergencyRefuel()
+    emergencyRefuel(true)
   end
 
 end
@@ -1437,7 +1443,7 @@ function count(add) --Done any time inventory dropped and at end, true=add, fals
 end
 
 --Refuel Functions
-function emergencyRefuel()
+function emergencyRefuel(forceBasic)
   local continueEvac = true --This turns false if more fuel is acquired
   if fuelChest then --This is pretty much the only place that this will be used
     if not fuelChestPhase then --Since I want to do things with return of enderRefuel, I will just make a special system. All of this is for backup safety.
@@ -1505,7 +1511,7 @@ function emergencyRefuel()
       end
       sleep(1)
     end
-  elseif doRefuel then --Attempt an emergency refueling
+  elseif doRefuel or forceBasic then --Attempt an emergency refueling
     screen()
     print("Attempting an emergency refuel")
     print("Fuel Level:    ",checkFuel())
@@ -1535,7 +1541,7 @@ function emergencyRefuel()
 end
 
 function lavaRefuel(suckDir)
-  if checkFuel() + 200 >= checkFuelLimit() then return false end --Magic number, but we don't want to constantly over-fuel the turtle.
+  if checkFuel() + lavaBuffer >= checkFuelLimit() then return false end -- we don't want to constantly over-fuel the turtle.
   local suckFunc
   if suckDir == "up" then suckFunc = turtle.placeUp
   elseif suckDir == "down" then suckFunc = turtle.placeDown

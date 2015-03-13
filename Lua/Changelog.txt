@@ -16,6 +16,7 @@
     -lava/lavaBucket/lavaRefuel [slot]: Turtle will check itself and refuel with lava if possible.
     -compareChest [slot]: This is the chest slot for oldOreQuarry
     -frontChest [t/f]: If true, turtle will also check in front of itself for chests when mining. (May only work on odd rows...)
+    -lavaBuffer [number]: The buffer of fuel before checks for lava again
 
 --Version 3.6.3
   Turtle will attempt to drop "junk" items in oreQuarry before moving to drop stuff off. If two or less stacks changed, will still do full drop
@@ -112,8 +113,12 @@
 --Version 3.6.4
   Displays sorted item counts from precise totals now
   Changed the way that themes are loaded. You can now type "NONE" for a 0 value that just uses a "default" color for text or background
-  added some new parameters and commands (will type tomorrow)
   Modified how the classes interact with each other.
+  If one or more screens and computer has no channel, make computer a station
+  New Parameter:
+    autoRestart [t/f]: If true, instead of ending when screens are done, will just wait for restart. [default false]
+  New Commmand:
+    STATION <screen> [channel]: sets or unsets a monitor as station. If unsetting, screen receive will be channel
   
 --Version 3.6.2
   Fixed bugs for 1.4.7 users

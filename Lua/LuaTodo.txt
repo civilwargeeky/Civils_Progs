@@ -222,6 +222,7 @@ Quarry Receiver x.x.x (matches current quarry):
   1. All themes are in files in a "themes" folder.
   11. Fun Idea: If you hit a screen, it briefly flashes in error colors "Quit Touching Meeeee!" :D That would be funny
   12. Get more default themes
+  13. Idea for future: Change the display to accept as a color ranges so like {[1] = {colors.black, colors.white}, [6] = {colors.orange,colors.blue}} etc. This would allow for shnazzy buttons and things
   
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 Ideas for a Remote Turtle:

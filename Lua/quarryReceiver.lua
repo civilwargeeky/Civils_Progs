@@ -229,11 +229,13 @@ local function checkChannel(num)
   return false
 end
 local function truncate(text, xDim)
-  return text:sub(1,xDim-3).."..."
+  if #text <= xDim then return text end
+  return #text >= 4 and text:sub(1,xDim-3).."..." or text:sub(1,3)
 end
-local function align(text, xDim, direction)
+local function align(text, xDim, direction, trunc)
   text = tostring(text or "None")
-  if #text >= xDim then return truncate(text,xDim) end
+  if trunc == nil then trunc = true end
+  if #text >= xDim and trunc then return truncate(text,xDim) end
   for i=1, xDim-#text do
     if direction == "right" then
       text = " "..text
@@ -243,11 +245,11 @@ local function align(text, xDim, direction)
   end
   return text
 end
-local function alignR(text, xDim)
-  return align(text, xDim, "right")
+local function alignR(text, xDim, trunc)
+  return align(text, xDim, "right", trunc)
 end
-local function alignL(text, xDim)
-  return align(text, xDim, "left")
+local function alignL(text, xDim, trunc)
+  return align(text, xDim, "left", trunc)
 end
 local function center(text, xDim)
   xDim = xDim or dim[1] --Temp fix
@@ -255,7 +257,7 @@ local function center(text, xDim)
   for i=1, a do
     text = " "..text.." "
   end
-  return text  
+  return #text == xDim and text or text.." " --If not full length, add a space
 end
 local function roundNegative(num) --Rounds numbers up to 0
   if num >= 0 then return num else return 0 end
@@ -412,7 +414,7 @@ newTheme("blue")
   :addColor("title", 2048, 8192)
   :addColor("subtitle", 1, 2048)
   :addColor("pos", 16, 2048)
-  :addColor("dim", 4096, 2048)
+  :addColor("dim", colors.lime, 0)
   :addColor("extra", 8, 2048)
   :addColor("error",  8, 16384)
   :addColor("info", 2048, 256)
@@ -478,6 +480,37 @@ local function saveTheme(theme, fileName)
   return true
 end
 
+--BUTTON CLASS
+local button = {}
+
+button.checkPoint = function(buttons, pos) --Returns a command or nil
+  for a, b in pairs(buttons) do
+    if pos[2] == b.line then
+      if pos[1] >= b.xDim[1] and pos[1] <= b.xDim[2] then
+        return b.command
+      end
+    end
+  end
+end
+
+button.makeLine = function(buttons, sep, xDim)
+  local toRet = ""
+  for a, b in ipairs(buttons) do
+    toRet = toRet..center(b.text, (b.xDim[2]-b.xDim[1]))..sep
+  end
+  return toRet:sub(1,-2).."" --Take off the last sep
+end
+
+button.new = function(line, xStart, xEnd, command, display)
+  local toRet = {}
+  setmetatable(toRet, {__index = button})
+  toRet.line = line
+  toRet.xDim = {math.min(xStart, xEnd), math.max(xStart, xEnd)}
+  toRet.command = command
+  toRet.text = display
+  return toRet
+end
+
   
 --==SCREEN CLASS FUNCTIONS==
 local screenClass = {} --This is the class for all monitor/screen objects
@@ -513,6 +546,28 @@ end
 screenClass.themeName = "default" --Setting super for fallback
 screenClass.theme = themes.default
 
+screenClass.rec = { --Initial values for all displayed numbers
+  label = "Quarry Bot",
+  id = 1, 
+  percent = 0,
+  xPos = 0,
+  zPos = 0,
+  layersDone = 0,
+  x = 0,
+  z = 0,
+  layers = 0,
+  openSlots = 0,
+  mined = 0,
+  moved = 0,
+  chestFull = false,
+  isAtChest = false,
+  isGoingToNextLayer = false,
+  foundBedrock = false,
+  fuel = 0,
+  volume = 0,
+  distance = 0,
+  yPos = 0
+}
 
 screenClass.new = function(side, receive, themeFile)
   local self = {}
@@ -552,29 +607,7 @@ screenClass.new = function(side, receive, themeFile)
   self.isPocket = false
   self.acceptsInput = false
   self.legacy = false --Whether it expects tables or strings
-  self.rec = { --Initial values for all displayed numbers
-    label = "Quarry Bot",
-    id = 1, 
-    percent = 0,
-    xPos = 0,
-    zPos = 0,
-    layersDone = 0,
-    x = 0,
-    z = 0,
-    layers = 0,
-    openSlots = 0,
-    mined = 0,
-    moved = 0,
-    chestFull = false,
-    isAtChest = false,
-    isGoingToNextLayer = false,
-    foundBedrock = false,
-    fuel = 0,
-    volume = 0,
-    distance = 0,
-    yPos = 0
-    --Maybe add in some things like if going to then add a field
-  }
+  self.rec = copyTable(screenClass.rec)
   
   screenClass.screens[self.id] = self
   screenClass.sides[self.side] = self
@@ -611,6 +644,7 @@ screenClass.removeChannel = function(self)
     end
     self.receive = nil
   end
+  self:setSize()
 end
 
 screenClass.setChannel = function(self, channel)
@@ -621,6 +655,16 @@ screenClass.setChannel = function(self, channel)
     screenClass.channels[self.receive] = self
     if modem and not modem.isOpen(channel) then modem.open(channel) end
   end
+  self:setSize() --Sets proper draw function
+end
+
+screenClass.setStation = function(self) --Note: This only changes the "set" methods so that "update" methods remain intact per object :)
+  self:removeChannel()
+  if not self.isStation then --Just in case this gets called more than once
+    self.isStation = true
+    table.insert(stationsList,self)
+  end
+  self:setSize()
 end
 
 screenClass.removeStation = function(self)
@@ -630,6 +674,7 @@ screenClass.removeStation = function(self)
     end
   end
   self.isStation = false
+  self:setSize()
 end
   
 screenClass.setSize = function(self) --Sets screen size
@@ -638,6 +683,8 @@ screenClass.setSize = function(self) --Sets screen size
     debug("There is no term...")
     self.updateDisplay = function() end --Do nothing on screen update, overrides class
     return true
+  elseif self.isStation then
+    self:setStationDisplay()
   elseif not self.receive then
     self:setBrokenDisplay() --This will prompt user to set channel
   elseif self.send then --This allows for class inheritance
@@ -645,6 +692,7 @@ screenClass.setSize = function(self) --Sets screen size
   else --If the screen needs to have a handshake display
     self:setHandshakeDisplay()
   end
+  self:resetButtons()
   self.dim = { self.term.getSize()}
   local tab = screenClass.sizes
   for a=1, 2 do --Want x and y dim
@@ -749,6 +797,12 @@ screenClass.pushScreenUpdates = function(self)
   end
   self.term.setCursorPos(1,self.dim[2]) --So we can see errors
 end
+screenClass.resetButtons = function(self)
+  self.buttons = {}
+end
+screenClass.addButton = function(self, button)
+  self.buttons[#self.buttons+1] = button
+end
 
 screenClass.updateNormal = function(self) --This is the normal updateDisplay function
   local str = tostring
@@ -790,6 +844,9 @@ screenClass.updateNormal = function(self) --This is the normal updateDisplay fun
       self:tryAdd("Open:"..alignR(str(message.openSlots),2), theme.extra, false, false, true)
       self:tryAdd("Dug"..alignR(str(message.mined), 4), theme.extra, false, false, true)
       self:tryAdd("Mvd"..alignR(str(message.moved), 4), theme.extra, false, false, true)
+      if message.status then
+        self:tryAdd(alignL(message.status, self.dim[1]), theme.info, false, false, true)
+      end
       if message.chestFull then
         self:tryAdd("ChstFll", theme.error, false, false, true)
       end
@@ -849,7 +906,7 @@ screenClass.updateNormal = function(self) --This is the normal updateDisplay fun
       self:tryAdd("Volume: "..str(message.volume), theme.dim, false, true, true)
       self:tryAdd("",{}, false, false, true)
       self:tryAdd(center("____---- EXTRAS ----____",self.dim[1]), theme.subtitle, false, false, true)
-      self:tryAdd(center("Time:"..alignR(textutils.formatTime(os.time()),8), self.dim[1]), theme.extra, false, true, true)
+      self:tryAdd(center("Time:"..alignR(textutils.formatTime(os.time()),10), self.dim[1]), theme.extra, false, true, true)
       self:tryAdd(center("Current Day: "..str(os.day()), self.dim[1]), theme.extra, false, false, true)
       self:tryAdd("Used Inventory Slots: "..alignR(str(16-message.openSlots),self.dim[1]-22), theme.extra, false, true, true)
       self:tryAdd("Blocks Mined: "..alignR(str(message.mined),self.dim[1]-14), theme.extra, false, true, true)
@@ -872,12 +929,32 @@ screenClass.updateNormal = function(self) --This is the normal updateDisplay fun
       if message.isGoingToNextLayer then
         self:tryAdd("Turtle is going to next layer", theme.info, false, true, true)
       end
+      if self.size[2] >= 2 and self.term.isColor() then
+        local line = self.acceptsInput and self.dim[2]-1 or self.dim[2]
+        local part = math.floor(self.dim[1]/4)
+        if #self.buttons == 0 then
+          self:addButton(button.new(line, part*0, part*1-1, "drop","Drop"))
+          self:addButton(button.new(line, part*1, part*2-1, "pause","Pause"))
+          self:addButton(button.new(line, part*2, part*3-1, "return","Return"))
+          self:addButton(button.new(line, part*3, part*4-1, "refuel","Refuel"))
+        end
+        self:tryAddRaw(line, button.makeLine(self.buttons,"|"), theme.command, false, true)
+      end
+      
+        
+      
     end
   else --If is done
     if self.size[1] == 1 then --Special case for small monitors
       self:tryAdd("Done", theme.title, true)
-      self:tryAdd("Dug"..alignR(str(message.mined),4), theme.pos, true)
-      self:tryAdd("Fuel"..alignR(str(message.fuel),3), theme.pos, true)
+      if not self:tryAdd("Dug"..alignR(str(message.mined),4, false), theme.pos, true) then
+        self:tryAdd("Dug", theme.pos, true)
+        self:tryAdd(alignR(str(message.mined),self.dim[1]), theme.pos, true)
+      end
+      if not self:tryAdd("Fuel"..alignR(str(message.fuel),3, false), theme.pos, true) then
+        self:tryAdd("Fuel", theme.pos, true)
+        self:tryAdd(alignR(str(message.fuel),self.dim[1]), theme.pos, true)
+      end
       self:tryAdd("-------", theme.subtitle, false,true,true)
       self:tryAdd("Turtle", theme.subtitle, false, true, true)
       self:tryAdd(center("is", self.dim[1]), theme.subtitle, false, true, true)
@@ -980,11 +1057,6 @@ end
 screenClass.updateDisplay = screenClass.updateNormal --Update screen method is normally this one
 
 --Misc
-screenClass.init = function(self) --Currently used by computer screen to replace its original method. This is called when instantiated and when unsetting station
-  self.setNormalDisplay, self.setHandshakeDisplay, self.setBrokenDisplay = nil, nil, nil --Resets to super
-  self:removeStation()
-  self:setSize()
-end 
 screenClass.setNormalDisplay = function(self)
   self.updateDisplay = self.updateNormal --This defaults to super if doesn't exist
 end
@@ -994,17 +1066,10 @@ end
 screenClass.setBrokenDisplay = function(self)
   self.updateDisplay = self.updateBroken
 end
-screenClass.setStationDisplay = function(self) --Note: This only changes the "set" methods so that "update" methods remain intact per object :)
-  self:removeChannel()
-  self.setNormalDisplay = function(self) self.updateDisplay = self.updateStation end
-  self.setHandshakeDisplay = self.setNormalDisplay
-  self.setBrokenDisplay = self.setNormalDisplay
-  self:setNormalDisplay()
-  if not self.isStation then --Just in case this gets called more than once
-    self.isStation = true
-    table.insert(stationsList,self)
-  end
+screenClass.setStationDisplay = function(self)
+  self.updateDisplay = self.updateStation
 end
+
 
 
 local function wrapPrompt(prefix, str, dim) --Used to wrap the commandString
@@ -1222,7 +1287,7 @@ end
 --Init Computer Screen Object (was defined at top)
 computer = screenClass.new("computer", (parameters.receivechannel and parameters.receivechannel[1]) or (parameters.channel and parameters.channel[1]))--This sets channel, checking if parameter exists
 computer.updateNormal = function(self)
-  screenClass.upateNormal(self)
+  screenClass.updateNormal(self)
   computer:displayCommand()
 end
 computer.updateHandshake = function(self) --Not in setHandshake because that func checks object updateHandshake
@@ -1253,12 +1318,12 @@ for i=1, #parameters do --Do actions for parameters that can be used multiple ti
     end
   end
   if command == "station" then --This will set the screen update to display stats on all other monitors
-    if not args[2] or args[2]:lower() == "computer" then
-      computer:setStationDisplay() --This handles setting updateNormal, setHandshakeDisplay, etc
+    if not args[2] or args[2]:lower() == "computer" then --Not below because it exists
+      computer:setStation() --This handles setting updateNormal, setHandshakeDisplay, etc
     else
       local a = screenClass.new(args[2], nil, args[3]) --This means syntax is -station [side] [theme]
       if a then --If the screen actually exists
-        a:setStationDisplay()
+        a:setStation()
       end
     end
   end
@@ -1300,11 +1365,14 @@ for a,b in pairs(screenClass.sides) do debug(a) end
 
 --==FINAL CHECKS==
 
+--If only one screen and computer has no channel, make it a station
+if #screenClass.screens > 1 and not computer.receive then
+  debug("Only one screen, no comp channel. Setting station")
+  computer:setStation()
+end
+
 --Updating all screen for first time and making sure channels are open
 for a, b in pairs(screenClass.sides) do
-  if b.receive then --Because may not have channel
-    if not modem.isOpen(b.receive) then modem.open(b.receive); debug("Opening channel ",b.receive) end
-  end
   b:setSize()
   b:updateDisplay()--Finish initialization process
   b:reset()
@@ -1369,8 +1437,9 @@ while continue do
         flag = true
       end
       
-      if flag then
+      if flag and (autoRestart or (not autoRestart and not screen.isDone)) then --We don't accept handshakes when we don't want autorestarts
         screen.isDone = false
+        screen.rec = copyTable(screenClass.rec) --Need to reset this. Existing message from restart doesn't have everything
         debug("Screen ",screen.side," received a handshake")
         screen.send = par3
         screen:setSize() --Resets update method to proper since channel is set
@@ -1404,6 +1473,7 @@ while continue do
           end
           if rec.isDone then
             screen.isDone = true
+            screen.send = nil --So that we can receive handshakes again.
           end
         elseif par4.message == expectedMessage then
           debug("Screen ",screen.side," received mid-run handshake")
@@ -1425,7 +1495,9 @@ while continue do
         else
           toSend = replyMessage
         end
-        transmit(screen.send,screen.receive, toSend, screen.legacy) --Send reply message for turtle
+        if not screen.isDone then --Because then sendChannel doesn't exist
+          transmit(screen.send,screen.receive, toSend, screen.legacy) --Send reply message for turtle
+        end
       end
       
     end
@@ -1435,7 +1507,7 @@ while continue do
     screen:updateDisplay() --isDone is queried inside this
     screen:reset(screen.theme.background)
     screen:pushScreenUpdates() --Actually write things to screen
-    if screen.isDone and not autoRestart then screen:removeChannel() end --Don't receive any more messages. Allows turtle to think connected. Done after message sending so no error :)
+    --if screen.isDone and not autoRestart then screen:removeChannel() end --Don't receive any more messages. Allows turtle to think connected. Done after message sending so no error :)
   
   ----KEY HANDLING----
   elseif event == "key" and keyMap[par1] then
@@ -1497,7 +1569,7 @@ while continue do
               end
             end
             if command == "station" then
-              if screen.isStation then screen:init() else screen:setStationDisplay() end
+              if screen.isStation then screen:removeStation() else screen:setStation() end
             end
             if command == "remove" and screen.side ~= "computer" then --We don't want to remove the main display!
               print()
@@ -1593,10 +1665,15 @@ while continue do
     local screen = screenClass.sides[par1]
     debug("Side: ",par1," touched")
     if screen then --This part is copied from the "side" command
-      if defaultSide ~= par1 then
-        defaultSide = par1
+      local test = button.checkPoint(screen.buttons, {par2, par3})
+      if test then
+        screen.queuedMessage = test
       else
-        defaultSide = nil
+        if defaultSide ~= par1 then
+          defaultSide = par1
+        else
+          defaultSide = nil
+        end
       end
     else
       debug("Adding Screen")
@@ -1605,6 +1682,12 @@ while continue do
       mon:updateDisplay()
       mon:pushScreenUpdates()
       
+    end
+  elseif event == "mouse_click" then
+    screen = computer
+    local test = button.checkPoint(screen.buttons, {par2, par3})
+    if test then
+      screen.queuedMessage = test
     end
 
   elseif event == "peripheral_detach" then
@@ -1620,8 +1703,9 @@ while continue do
     local screen = screenClass.sides[par1]
     if screen then
       screen:setSize()
+    elseif peripheral.getType(par1) == "monitor" then
+      commandString = "SCREEN "..par1:upper().." "
     end
-    --Maybe prompt to add a new screen? I don't know
   
   end
   
@@ -1629,7 +1713,7 @@ while continue do
   local count = 0 --We want it to wait if no screens have channels
   for a,b in pairs(screenClass.channels) do
     count = count + 1
-    if not b.isDone then
+    if autoRestart or not b.isDone then
       flag = true
     end
   end
@@ -1637,7 +1721,7 @@ while continue do
     continue = flag
   end
   
-  if #stationsList > 0 and event ~= "key" then --So screen is properly updated
+  if #stationsList > 0 and event ~= "key" and event ~= "char" then --So screen is properly updated
     for a, b in ipairs(stationsList) do
       b:reset()
       b:updateDisplay()
