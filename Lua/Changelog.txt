@@ -119,6 +119,7 @@
   Changed several colors
   Added new theme: Rainbow, Green
   There are now clickable buttons! Thanks Javatech
+  Made pocket display a whole lot better :)
   New Parameter:
     autoRestart [t/f]: If true, instead of ending when screens are done, will just wait for restart. [default false]
   New Commmand:

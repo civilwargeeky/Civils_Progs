@@ -262,13 +262,17 @@ end
 local function alignL(text, xDim, trunc)
   return align(text, xDim, "left", trunc)
 end
-local function center(text, xDim)
-  xDim = xDim or dim[1] --Temp fix
+local function center(text, xDim, char)
+  if not xDim then error("Center: No dim given",2) end
+  char = char or " "
   local a = (xDim-#text)/2
   for i=1, a do
-    text = " "..text.." "
+    text = char..text..char
   end
-  return #text == xDim and text or text.." " --If not full length, add a space
+  return #text == xDim and text or text..char --If not full length, add a space
+end
+local function leftRight(first, second, dim)
+  return alignL(tostring(first),dim-#tostring(second))..tostring(second)
 end
 local function roundNegative(num) --Rounds numbers up to 0
   if num >= 0 then return num else return 0 end
@@ -388,7 +392,7 @@ newTheme("default")
   
 newTheme("blue")
   :addColor("default",colors.white, colors.blue)
-  :addColor("title", 2048, 8192)
+  :addColor("title", colors.lightBlue, colors.gray)
   :addColor("subtitle", 1, 2048)
   :addColor("pos", 16, 2048)
   :addColor("dim", colors.lime, 0)
@@ -799,8 +803,7 @@ end
 screenClass.updateNormal = function(self) --This is the normal updateDisplay function
   local str = tostring
   self.toPrint = {} --Reset table
-  local message, theme = self.rec, self.theme
-  
+  local message, theme, x = self.rec, self.theme, self.dim[1]
   if not self.isDone then --Normally
     
       
@@ -816,7 +819,7 @@ screenClass.updateNormal = function(self) --This is the normal updateDisplay fun
       
       self:tryAdd("--%%%--", theme.subtitle, false, true, true)
       self:tryAdd(alignR(str(message.percent).."%", 7), theme.pos , false, true, true) --This can be an example. Print (receivedMessage).percent in blue on all different screen sizes
-      self:tryAdd(center(str(message.percent).."%", self.dim[1]), theme.pos, true, false) --I want it to be centered on 1x1
+      self:tryAdd(center(str(message.percent).."%", x), theme.pos, true, false) --I want it to be centered on 1x1
       
       self:tryAdd("--Pos--", theme.subtitle, false, true, true)
       self:tryAdd("X:"..alignR(str(message.xPos), 5), theme.pos, true)
@@ -837,7 +840,7 @@ screenClass.updateNormal = function(self) --This is the normal updateDisplay fun
       self:tryAdd("Dug"..alignR(str(message.mined), 4), theme.extra, false, false, true)
       self:tryAdd("Mvd"..alignR(str(message.moved), 4), theme.extra, false, false, true)
       if message.status then
-        self:tryAdd(alignL(message.status, self.dim[1]), theme.info, false, false, true)
+        self:tryAdd(alignL(message.status, x), theme.info, false, false, true)
       end
       if message.chestFull then
         self:tryAdd("ChstFll", theme.error, false, false, true)
@@ -849,7 +852,7 @@ screenClass.updateNormal = function(self) --This is the normal updateDisplay fun
         self:tryAdd("Quarry!", theme.title, false, false, true)
       end
       
-      self:tryAdd("-------Fuel-------", theme.subtitle , false, true, true)
+      self:tryAdd(center("Fuel",x,"-"), theme.subtitle , false, true, true)
       if not self:tryAdd(str(message.fuel), theme.extra, false, true, true) then --The fuel number may be bigger than the screen
         self.toPrint[#self.toPrint] = nil
         self:tryAdd("A lot", theme.extra, false, true, true)
@@ -857,25 +860,25 @@ screenClass.updateNormal = function(self) --This is the normal updateDisplay fun
       
       self:tryAdd(str(message.percent).."% Complete", theme.pos , true) --This can be an example. Print (receivedMessage).percent in blue on all different screen sizes
       
-      self:tryAdd("-------Pos--------", theme.subtitle, false, true, true)
-      self:tryAdd("X Coordinate:"..alignR(str(message.xPos), 5), theme.pos, true)
-      self:tryAdd("Z Coordinate:"..alignR(str(message.zPos), 5), theme.pos , true)
-      self:tryAdd("On Layer:"..alignR(str(message.layersDone), 9), theme.pos , true)
+      self:tryAdd(center("Pos",x,"-"), theme.subtitle, false, true, true)
+      self:tryAdd(leftRight("X Coordinate:",message.xPos, x), theme.pos, true)
+      self:tryAdd(leftRight("Z Coordinate:",message.zPos, x), theme.pos , true)
+      self:tryAdd(leftRight("On Layer:",message.layersDone, x), theme.pos , true)
       
       if not self:tryAdd("Size: "..str(message.x).."x"..str(message.z).."x"..str(message.layers), theme.dim , true, false) then --This is already here... I may as well give an alternative for those people with 1000^3quarries
         self:tryAdd(str(message.x).."x"..str(message.z).."x"..str(message.layers), theme.dim , true, false)
       end
-      self:tryAdd("-------Dim--------", theme.subtitle, false, true, true)
-      self:tryAdd("Total X:"..alignR(str(message.x), 10), theme.dim, false, true, true)
-      self:tryAdd("Total Z:"..alignR(str(message.z), 10), theme.dim, false, true, true)
-      self:tryAdd("Total Layers:"..alignR(str(message.layers), 5), theme.dim, false, true, true)
-      self:tryAdd("Volume"..alignR(str(message.volume),12), theme.dim, false, false, true)
+      self:tryAdd(center("Dim",x,"-"), theme.subtitle, false, true, true)
+      self:tryAdd(leftRight("Total X:", message.x, x), theme.dim, false, true, true)
+      self:tryAdd(leftRight("Total Z:", message.z, x), theme.dim, false, true, true)
+      self:tryAdd(leftRight("Total Layers:", message.layers, x), theme.dim, false, true, true)
+      self:tryAdd(leftRight("Volume", message.volume, x), theme.dim, false, false, true)
       
-      self:tryAdd("------Extras------", theme.subtitle, false, false, true)
-      self:tryAdd("Time: "..alignR(textutils.formatTime(os.time()):gsub(" ","").."", 12), theme.extra, false, false, true) --Adds the current time, formatted, without spaces.
-      self:tryAdd("Used Slots:"..alignR(str(16-message.openSlots),7), theme.extra, false, false, true)
-      self:tryAdd("Blocks Mined:"..alignR(str(message.mined), 5), theme.extra, false, false, true)
-      self:tryAdd("Spaces Moved:"..alignR(str(message.moved), 5), theme.extra, false, false, true)
+      self:tryAdd(center("Extras",x,"-"), theme.subtitle, false, false, true)
+      self:tryAdd(leftRight("Time: ", textutils.formatTime(os.time()):gsub(" ","").."", x), theme.extra, false, false, true) --Adds the current time, formatted, without spaces.
+      self:tryAdd(leftRight("Used Slots:", 16-message.openSlots, x), theme.extra, false, false, true)
+      self:tryAdd(leftRight("Blocks Mined:", message.mined, x), theme.extra, false, false, true)
+      self:tryAdd(leftRight("Spaces Moved:", message.moved, x), theme.extra, false, false, not self.isPocket)
       if message.status then
         self:tryAdd(message.status, theme.info, false, false, true)
       end
@@ -884,27 +887,27 @@ screenClass.updateNormal = function(self) --This is the normal updateDisplay fun
       end
     end
     if self.size[1] >= 3 then --Large or larger screens
-      if not self:tryAdd(message.label..alignR(" Turtle #"..str(message.id),self.dim[1]-#message.label), theme.title, true) then
+      if not self:tryAdd(message.label..alignR(" Turtle #"..str(message.id),x-#message.label), theme.title, true) then
         self:tryAdd("Your turtle's name is long...", theme.title, true)
       end
-      self:tryAdd("Fuel: "..alignR(str(message.fuel),self.dim[1]-6), theme.extra, true)
+      self:tryAdd("Fuel: "..alignR(str(message.fuel),x-6), theme.extra, true)
       
-      self:tryAdd("Percentage Done: "..alignR(str(message.percent).."%",self.dim[1]-17), theme.pos, true)
+      self:tryAdd("Percentage Done: "..alignR(str(message.percent).."%",x-17), theme.pos, true)
       
       local var1 = math.max(#str(message.x), #str(message.z), #str(message.layers))
-      local var2 = (self.dim[1]-6-var1+3)/3
+      local var2 = (x-6-var1+3)/3
       self:tryAdd("Pos: "..alignR(" X:"..alignR(str(message.xPos),var1),var2)..alignR(" Z:"..alignR(str(message.zPos),var1),var2)..alignR(" Y:"..alignR(str(message.layersDone),var1),var2), theme.pos, true)
       self:tryAdd("Size:"..alignR(" X:"..alignR(str(message.x),var1),var2)..alignR(" Z:"..alignR(str(message.z),var1),var2)..alignR(" Y:"..alignR(str(message.layers),var1),var2), theme.dim, true)
       self:tryAdd("Volume: "..str(message.volume), theme.dim, false, true, true)
       self:tryAdd("",{}, false, false, true)
-      self:tryAdd(center("____---- EXTRAS ----____",self.dim[1]), theme.subtitle, false, false, true)
-      self:tryAdd(center("Time:"..alignR(textutils.formatTime(os.time()),10), self.dim[1]), theme.extra, false, true, true)
-      self:tryAdd(center("Current Day: "..str(os.day()), self.dim[1]), theme.extra, false, false, true)
-      self:tryAdd("Used Inventory Slots: "..alignR(str(16-message.openSlots),self.dim[1]-22), theme.extra, false, true, true)
-      self:tryAdd("Blocks Mined: "..alignR(str(message.mined),self.dim[1]-14), theme.extra, false, true, true)
-      self:tryAdd("Blocks Moved: "..alignR(str(message.moved),self.dim[1]-14), theme.extra, false, true, true)
-      self:tryAdd("Distance to Turtle: "..alignR(str(message.distance), self.dim[1]-20), theme.extra, false, false, true)
-      self:tryAdd("Actual Y Pos (Not Layer): "..alignR(str(message.yPos), self.dim[1]-26), theme.extra, false, false, true)
+      self:tryAdd(center("____---- EXTRAS ----____",x), theme.subtitle, false, false, true)
+      self:tryAdd(center("Time:"..alignR(textutils.formatTime(os.time()),10), x), theme.extra, false, true, true)
+      self:tryAdd(center("Current Day: "..str(os.day()), x), theme.extra, false, false, true)
+      self:tryAdd("Used Inventory Slots: "..alignR(str(16-message.openSlots),x-22), theme.extra, false, true, true)
+      self:tryAdd("Blocks Mined: "..alignR(str(message.mined),x-14), theme.extra, false, true, true)
+      self:tryAdd("Blocks Moved: "..alignR(str(message.moved),x-14), theme.extra, false, true, true)
+      self:tryAdd("Distance to Turtle: "..alignR(str(message.distance), x-20), theme.extra, false, false, true)
+      self:tryAdd("Actual Y Pos (Not Layer): "..alignR(str(message.yPos), x-26), theme.extra, false, false, true)
       
       if message.chestFull then
         self:tryAdd("Dropoff is Full, Please Fix", theme.error, false, true, true)
@@ -921,36 +924,36 @@ screenClass.updateNormal = function(self) --This is the normal updateDisplay fun
       if message.isGoingToNextLayer then
         self:tryAdd("Turtle is going to next layer", theme.info, false, true, true)
       end
-      if self.size[2] >= 2 and self.term.isColor() then
+      
+        
+      
+    end
+    if self.term.isColor() and ((self.size[2] >= 2 and self.size[1] >= 3) or self.isPocket) then
         local line = self.acceptsInput and self.dim[2]-1 or self.dim[2]
-        local part = math.floor(self.dim[1]/4)
+        local part = math.floor(x/4)
         if #self.buttons == 0 then
           self:addButton(button.new(line, part*0, part*1-1, "drop","Drop"))
           self:addButton(button.new(line, part*1, part*2-1, "pause","Pause"))
           self:addButton(button.new(line, part*2, part*3-1, "return","Return"))
           self:addButton(button.new(line, part*3, part*4-1, "refuel","Refuel"))
         end
-        self:tryAddRaw(line, button.makeLine(self.buttons,"|"), theme.command, false, true)
+        self:tryAddRaw(line, button.makeLine(self.buttons,"|"):sub(1,-2), theme.command, false, true)
       end
-      
-        
-      
-    end
   else --If is done
     if self.size[1] == 1 then --Special case for small monitors
       self:tryAdd("Done", theme.title, true)
       if not self:tryAdd("Dug"..alignR(str(message.mined),4, false), theme.pos, true) then
         self:tryAdd("Dug", theme.pos, true)
-        self:tryAdd(alignR(str(message.mined),self.dim[1]), theme.pos, true)
+        self:tryAdd(alignR(str(message.mined),x), theme.pos, true)
       end
       if not self:tryAdd("Fuel"..alignR(str(message.fuel),3, false), theme.pos, true) then
         self:tryAdd("Fuel", theme.pos, true)
-        self:tryAdd(alignR(str(message.fuel),self.dim[1]), theme.pos, true)
+        self:tryAdd(alignR(str(message.fuel),x), theme.pos, true)
       end
       self:tryAdd("-------", theme.subtitle, false,true,true)
       self:tryAdd("Turtle", theme.subtitle, false, true, true)
-      self:tryAdd(center("is", self.dim[1]), theme.subtitle, false, true, true)
-      self:tryAdd(center("Done!", self.dim[1]), theme.subtitle, false, true, true)
+      self:tryAdd(center("is", x), theme.subtitle, false, true, true)
+      self:tryAdd(center("Done!", x), theme.subtitle, false, true, true)
     else
       self:tryAdd("Done!", theme.title, true)
       self:tryAdd("Curr Fuel: "..str(message.fuel), theme.pos, true)
@@ -973,7 +976,7 @@ screenClass.updateNormal = function(self) --This is the normal updateDisplay fun
         end
         for i=1, #tab do --Print all the blocks in order
           local firstPart = "#"..tab[i][1]..": "
-          self:tryAdd(firstPart..alignR(tab[i][2], self.dim[1]-#firstPart), (i%2 == 0) and theme.inverse or theme.info, true, true, true) --Switches the colors every time
+          self:tryAdd(firstPart..alignR(tab[i][2], x-#firstPart), (i%2 == 0) and theme.inverse or theme.info, true, true, true) --Switches the colors every time
         end
       else
         self:tryAdd("Blocks Dug: "..str(message.mined), theme.inverse, true)
