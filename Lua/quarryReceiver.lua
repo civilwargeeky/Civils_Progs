@@ -1714,18 +1714,21 @@ while continue do
         screen.queuedMessage = test
       else
         if not screen.receive then
-          commandString = "SCREEN "..par1:upper().." "
+          commandString = "RECEIVE "..par1:upper().." "
         end
       end
     else
       debug("Adding Screen")
       local mon = screenClass.new(par1)
-      commandString = "SCREEN "..mon.side:upper().." "
+      commandString = "RECEIVE "..mon.side:upper().." "
       mon:reset()
       mon:updateDisplay()
       mon:pushScreenUpdates()
       
     end
+    computer:reset()
+    computer:updateDisplay()
+    computer:pushScreenUpdates() --Need to update computer for command string
   elseif event == "mouse_click" then
     screen = computer
     local test = button.checkPoint(screen.buttons, {par2, par3})
