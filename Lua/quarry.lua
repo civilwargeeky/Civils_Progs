@@ -766,14 +766,14 @@ end
 --oreQuarry blacklist
 local blacklist = { "minecraft:air",  "minecraft:bedrock", "minecraft:cobblestone", "minecraft:dirt", "minecraft:ice", "minecraft:ladder", "minecraft:netherrack", "minecraft:sand", "minecraft:sandstone",
   "minecraft:snow", "minecraft:snow_layer", "minecraft:stone", "minecraft:gravel", "minecraft:grass", "minecraft:torch" }
-for a,b in pairs(blacklist) do
-  blacklist[b], blacklist[b] = true, nil --Switch
+for a,b in pairs(copyTable(blacklist)) do
+  blacklist[b], blacklist[a] = true, nil --Switch
 end
 if fs.exists(oreQuarryBlacklistName) then --Loading user-defined blacklist
   local file = fs.open(oreQuarryBlacklistName, "r")
   blacklist = {}
-  for a in file:readAll():gmatch("[^,]+") do
-    blacklist[a:match("[%w_]+:%[%w_]+")] = true --Grab only the actual characters, not whitespaces
+  for a in file:readAll():gmatch("[^,\n]+") do
+    blacklist[a:match("[%w_]+:[%w_]+")] = true --Grab only the actual characters, not whitespaces
   end
   file:close()
 end
