@@ -10,19 +10,43 @@ window.setDim = function(obj, pt1, pt2)
   obj.xDim = obj.pt2[1]-obj.pt1[1]
   obj.yDim = obj.pt2[2]-obj.pt1[2]
   
-  if obj.xPos > obj.xDim then obj.xPos = obj.xDim end
-  if obj.yPos > obj.yDim then obj.yPos = obj.yDim end
-  obj:setCursorPos(obj.xPos, obj.yPos)
-  return obj
+  if obj.x > obj.xDim then obj.x = obj.xDim end
+  if obj.y > obj.yDim then obj.y = obj.yDim end
+  obj:setCursorPos(obj.x, obj.y)
+
 end
-window.setCursorPos = function(x,y)
-  
-  return obj
+window.write = function(text) --I don't even care about multi-line writing
+  self.term.write(text:sub(1,self.xDim-self.x+1))
 end
+window.setCursorPos = function(self, x, y)
+  self.term.setCursorPos(self.pt1[1]+x, self.pt1[2]+y)
+  self.x, self.y = x, y
+  return self
+end
+window.getCursorPos = function(self)
+  return self.x, self.y
+end
+window.clearLine = function(self)
+  self.setCursorPos(1, self.y)
+  local var = ""
+  for i=1, self.xDim do var = var.." " end
+  self.term.write(var)
+end
+window.clear = function(self)
+  for i=1, self.y do
+    self.setCursorPos(1,i)
+    self:clearLine()
+  end
+end
+
 window.new = function(term, pt1, pt2) --Expects two {x, y}
   local toRet = {}
+  setmetatable(toRet, {__index = function(self, index) return window[index] or self.term[index] end}) --So we can treat the objects like a window
+  toRet.isCivilWindow = true --So I can make things if I need
   toRet.term = term --Could be term, or a monitor or something
-  
+  toRet.x, toRet.y = 1, 1
+  toRet:setDim(pt1, pt2)
+  return toRet
   
 end
 
@@ -71,7 +95,7 @@ function sentenceCaseTable(tab) --Expects a prepared table or sequentially numbe
   return toRet
  end
       
-function prepareTable(tab)
+function prepareTable(tab) --This takes a numerically or key-value pair table and produces a text table
   local toRet = {}
   for a,b in pairs(tab) do
     table.insert(toRet, {key = a, value = makeText(b)})
@@ -121,10 +145,12 @@ function separateLines(text, x)
   return toRet, #toRet
 end
 
-function menu(title, description, textTable, options, incrementFunction)
+function menu(title, description, textTable, options, incrementFunction, term, x, y)
   --in text table, program displays the element.text, and returns the .text, .key, and .value
   --options table contains [isNumbered, titleAlign, textAlign, prefixCharacter, suffixCharacter, spaceCharacter]
+  --term table contains {term, x, y} or a valid window object
   --Initialization
+  if not term.isCivilWindow then term = window.new(term, x, y) end
   local x, y = term.getSize() --Screen size
   local currIndex, scroll = 1, 0 --currIndex is the item from the table it is on, scroll is how many down it should go.
   local titleLines, descriptionLines = 0,0 --How many lines the title and description take up
@@ -151,9 +177,9 @@ function menu(title, description, textTable, options, incrementFunction)
     end
     for i=1, lines do
       local x = align(printTab[i], alignment, x) --Note inside is non-local x
-      term.setCursorPos(x,y+i-1) ---1 because it will always be at least +1
-      term.clearLine()
-      term.write(printTab[i])
+      term:setCursorPos(x,y+i-1) ---1 because it will always be at least +1
+      term:clearLine()
+      term:write(printTab[i])
       --term.write(" Writing to "..tostring(x)..","..tostring(y+i-1).." lines "..tostring(lines)) --Debug
       --os.pullEvent("char")
     end
@@ -178,7 +204,7 @@ function menu(title, description, textTable, options, incrementFunction)
       scroll = scroll + 1
       top, bottom = top + 1, bottom + 1
     end
-    term.clear()
+    term:clear()
     output(title,1, titleAlign) --Print title
     if descriptionLines >= 1 then --Not an else because we don't want to print nothing
       output(description,titleLines+1, titleAlign)
@@ -191,7 +217,7 @@ function menu(title, description, textTable, options, incrementFunction)
         elseif textAlign == "right" then for i=1, #suffixCharacter+1 do suffix  = suffix.." " end --Same as above
       end
       local toPrint = prefix..textTable[i+scroll].text..suffix
-      if #toPrint > x then term.clear(); term.setCursorPos(1,1); error("Menu item "..tostring(i+scroll).." is longer than one line. Cannot Print",2) end
+      if #toPrint > x then term:clear(); term:setCursorPos(1,1); error("Menu item "..tostring(i+scroll).." is longer than one line. Cannot Print",2) end
       output(toPrint, i + upperLines, textAlign, true)
     end
     
