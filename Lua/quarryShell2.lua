@@ -148,7 +148,7 @@ save.changeDataFolder = function(newName) --Actually changes this file so that t
 end
 
 save.items = {}
-save.new = function(saveName, ...)
+save.register = function(saveName, ...)
   local obj = {}
   save.items[saveName] = obj
   obj.saveName = saveName
@@ -297,7 +297,7 @@ end
 
 updating.parseVersion = function(version)
   if type(version) == "number" then return version end
-  local total, i = 0, 3
+  local i, total = 3, 0
   for a in version:gmatch("[^%.]+") do
     total = total + (tonumber(a) or 0) * 100 ^ i --So 3.1.2 would be 30102 and 3.4.0 would be 30400, which is greater
     i = i-1
@@ -305,7 +305,7 @@ updating.parseVersion = function(version)
   return total
 end
 
-updating.parseVersionsFile = function(text) --This returns two tables, one containing versions, the other pastebin ids for download
+updating.parseVersionsFile = function(text) --This returns versions and pastebin ids for download
   local toRet = {}
 
   if text:sub(-1) ~= "\n" then text = text.."\n" end
@@ -341,10 +341,10 @@ end
 --====================MAIN PROGRAM====================
 
 --Loading Initial Configurations
-save.new(initialSave,fc, extensions)
+save.register(initialSave,fc, extensions)
 --save.loadObj(initialSave)
 
-save.new(fc.versions, versions)
+save.register(fc.versions, versions)
 save.loadObj(fc.versions)
 
 local data = updating.parseVersionsFile(updating.pastebinGet(pastebins.default)) --This gets the table of versions and IDs and parses them into tables

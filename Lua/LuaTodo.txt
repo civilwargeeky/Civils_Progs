@@ -178,13 +178,14 @@ Random future thoughts: Maybe make more seamless. Have an arg/option to make cal
 
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
 
-Quarry Version 3.6.4:
+Quarry Version 3.6.5:
   General Ideas:
     Maybe in future, option to place torches on walls efficiently
 
 Things for 3.6.5:
   Refactoring, I swear
   Maybe have a "warn" function in IO for like "you have selected fuel chest but maxFuel == turtle.getFuelLimit()"
+  Turtle has preciseTotals enabled by default if it can support it. Final screen shows same thing as receiver does now.
   Redo Help Paragraph (and function) to be more like receiver's. Have categories. Everything is ridiculously messy right now
   Find out why turtle movement percent is slightly off (???)
   Things to refactor:
