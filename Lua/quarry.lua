@@ -773,7 +773,7 @@ if fs.exists(oreQuarryBlacklistName) then --Loading user-defined blacklist
   local file = fs.open(oreQuarryBlacklistName, "r")
   blacklist = {}
   for a in file:readAll():gmatch("[^,\n]+") do
-    blacklist[a:match("[%w_]+:[%w_]+")] = true --Grab only the actual characters, not whitespaces
+    blacklist[a:match("[%w_.]+:[%w_.]+")] = true --Grab only the actual characters, not whitespaces
   end
   file:close()
 end
