@@ -1,5 +1,5 @@
 --Civilwargeeky's Quarry Program--
-  VERSION = "3.6.4.1"
+  VERSION = "3.6.4.2"
 --[[
 Recent Changes:
   Parameter Files! Create a file of parameters, and use -file to load it!
@@ -802,7 +802,7 @@ end
 
 
 local function saveProgress(extras) --Session persistence
-exclusions = { modem = true, shell = true}
+exclusions = { modem = true, shell = true, _ENV = true}
 if doBackup then
 local toWrite = ""
 for a,b in pairs(getfenv(1)) do

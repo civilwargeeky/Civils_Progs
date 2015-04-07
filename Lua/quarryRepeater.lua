@@ -29,12 +29,6 @@ local function debug(...) if doDebug then return print(...) end end --Debug prin
 local function newID()
   return math.random(1,2000000000) --1 through 2 billion; close enough 
 end
-local function addID(id)
-    sentMessages[id] = true
-    tempCounter = tempCounter + 1
-    counter = counter + 1
-    recentID = id
-end
 local function save()
   debug("Saving File")
   local file = fs.open(saveFile, "w")
@@ -42,6 +36,13 @@ local function save()
   file.writeLine(counter) --Total number of messages received
   file.writeLine(modemSide) --The side the modem is on, helps for old MC
   return file.close()
+end
+local function addID(id)
+    sentMessages[id] = true
+    tempCounter = tempCounter + 1
+    counter = counter + 1
+    recentID = id
+    save()
 end
 local function openChannels()
   for a,b in pairs(channels) do
@@ -79,23 +80,18 @@ local function initModem() --Sets up modem, returns true if modem exists
 end
 local function addChannel(num, doPrint) --Tries to add channel number. Checks if channel not already added. Speaks if doPrint set to true.
   num = tonumber(num)
-  local chExists = false
   for a, b in pairs(channels) do
     if b == num then
-      chExists = true
-      break
+      if doPrint then
+        print("Channel "..num.." already added.")
+      end
+      return false
     end
   end
-  if not chExists then
-    if num >= 1 and num <= 65535 then
-      table.insert(channels, num)
-      if doPrint then
-        print("Channel "..num.." added.")
-      end
-    end
-  else
+  if num >= 1 and num <= 65535 then
+    table.insert(channels, num)
     if doPrint then
-      print("Channel "..num.." already added.")
+      print("Channel "..num.." added.")
     end
   end
 end
@@ -119,10 +115,9 @@ while not initModem() do
     os.pullEvent("peripheral")
   end
 end
-for i=1, #channels do
-  debug("Opening ",channels[i])
-  modem.open(channels[i])
-end
+openChannels()
+
+sleep(2) --Give users a second to read this stuff.
 
 local continue = true
 while continue do
@@ -165,7 +160,7 @@ while continue do
       debug("Purging messages")
       sleep(0.05) --Wait a tick for no good reason
       sentMessages = {} --Completely reset table
-      sentMessages[recentID] = true --Reset last message (not sure if really needed. Oh well.
+      sentMessages[recentID] = true --Reset last message (not sure if really needed. Oh well.)
       tempCounter = 0
     end
     
@@ -182,8 +177,8 @@ while continue do
         sleep(1)
       end
     elseif key == "r" then --Removing Channels
-      print("Enter a comma seperated list of channels to remove")
-      local str = "" --Concantenate all the channels into one, maybe restructure this for sorting?
+      print("Enter a comma separated list of channels to remove")
+      local str = "" --Concatenate all the channels into one, maybe restructure this for sorting?
       for i=1,#channels do
         str = str..tostring(channels[i])..", "
       end
