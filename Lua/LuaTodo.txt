@@ -40,7 +40,12 @@ Quarry Shell 1.0.0:
     Saving configurations and menu states
     Master and Slave program
     Installer
+    Instead of having seperate fileLocation, version, pastebin, etc tables, just have a "program" class that will hold everything and save
   
+  Incremented Release Idea:
+    Work only on filesystem and updating functionality. Everything else will be added later through self-updating.
+    Initially program will just auto-update and pass all arguments to quarry. Will basically be quarry.
+    For updating, make sure to include a parameter for "lastCompatibleVersion" or something.
   
   Features: 
     Program that can read logs and make a configuration file to run quarry from.
