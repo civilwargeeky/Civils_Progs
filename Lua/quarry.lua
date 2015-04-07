@@ -1,5 +1,5 @@
 --Civilwargeeky's Quarry Program--
-  VERSION = "3.6.4"
+  VERSION = "3.6.5"
 --[[
 Recent Changes:
   Parameter Files! Create a file of parameters, and use -file to load it!
@@ -47,7 +47,7 @@ logFolder = "Quarry_Logs" --What folder the turtle will store logs in [Default "
 logExtension = "" --The extension of the file (e.g. ".txt") [Default ""]
 flatBedrock = false --If true, will go down to bedrock to set startDown [Default false]
 startDown = 0 --How many blocks to start down from the top of the mine [Default 0]
-preciseTotals = false --If true, will record exact totals and names for all materials [Default false]
+preciseTotals = true --If true, will record exact totals and names for all materials [Default true]
 goLeftNotRight = false --Quarry to left, not right (parameter is "left") [Default false]
 oreQuarry = false --Enables ore quarry functionality [Default false]
 oreQuarryBlacklistName = "oreQuarryBlacklist.txt" --This is the file that will be parsed for item names [Default "oreQuarryBlacklist"]
@@ -671,13 +671,15 @@ addParam("maxTries","Tries Before Bedrock", "number 1-9001")
 --Inventory
 addParam("keepOpen", "Slots to Keep Open", "number 1-15")
 addParam("careAboutResources", "Care About Resources","boolean")
-addParam("preciseTotals","Precise Totals","boolean", rednetEnabled and turtle.inspect, turtle.getItemDetail ~= nil)
+addParam("preciseTotals","Precise Totals","boolean", turtle.getItemDetail ~= nil)
+if not turtle.inspect then preciseTotals = false end
 if preciseTotals and not restoreFoundSwitch then
   exactTotals = {} --Don't want to initialize if we aren't using this
 end
 --Auto Startup
 addParam("autoResume", "Auto Resume", "boolean", nil, doBackup)
 paramAlias("autoResume","autoRestart")
+paramAlias("autoResume","autoRestore")
 addParam("startupRename", "Startup Rename","string", nil, autoResume)
 addParam("startupName", "Startup File", "string", nil, autoResume)
 --Ore Quarry

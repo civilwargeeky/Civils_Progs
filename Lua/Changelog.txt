@@ -1,6 +1,10 @@
 ====CHANGELOG====
  
 ----Quarry----
+--Version 3.6.5
+  Added param alias autoResume --> autoRestore
+  Changed preciseTotals to be true by default
+  
 --Version 3.6.4
   Added alias for fuelChest: enderRefuel
   Blacklist file parser now matches alpha-numeric characters and "_", but not commas :)
