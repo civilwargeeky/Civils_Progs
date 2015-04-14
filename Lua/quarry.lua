@@ -2054,6 +2054,16 @@ function drop(side, final, compareDump)
     end
   end
 
+  if compareDump then
+    for i=2, maxSlots do
+      select(i)
+      for j=1, i-1 do
+        if turtle.getItemCount(i) == 0 then break end
+        turtle.transferTo(j)
+      end
+    end
+    select(1)
+  end
   if oldOreQuarry or compareDump then count(nil) end--Subtract the items still there if oreQuarry
   resetDumpSlots() --So that slots gone aren't counted as dump slots next
 
