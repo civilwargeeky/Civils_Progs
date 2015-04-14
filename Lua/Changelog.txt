@@ -2,6 +2,7 @@
  
 ----Quarry----
 --Version 3.6.5
+  (from 3.6.4) fixed blacklist file parser and it also allows the use of "."
   Added param alias autoResume --> autoRestore
   Changed preciseTotals to be true by default
   
