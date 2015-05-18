@@ -46,6 +46,7 @@ logging = true --Whether or not the turtle will log mining runs. [Default ...sti
 logFolder = "Quarry_Logs" --What folder the turtle will store logs in [Default "Quarry_Logs"]
 logExtension = "" --The extension of the file (e.g. ".txt") [Default ""]
 flatBedrock = false --If true, will go down to bedrock to set startDown [Default false]
+plugHoles = false --If true, will use "filler" blocks to plug in all mined holes [Default false]
 startDown = 0 --How many blocks to start down from the top of the mine [Default 0]
 preciseTotals = true --If true, will record exact totals and names for all materials [Default true]
 goLeftNotRight = false --Quarry to left, not right (parameter is "left") [Default false]
@@ -632,6 +633,7 @@ addParam("left","Left Quarry","boolean", nil, nil, "goLeftNotRight")
 addParam("chest", "Chest Drop Side", "side front", nil, nil, "dropSide")
 addParam("enderChest","Ender Chest Slot","slot 16") --Note: All slots can be 16 and they will auto-assign, but I feel it is less confusing if they are always the same
 addParam("fuelChest","Fuel Chest Slot","slot 15")
+addParam("plugHoles","Plug Holes", "boolean")
 --Rednet
 addParam("rednet", "Rednet Enabled","boolean",true, supportsRednet, "rednetEnabled")
 addParam("sendChannel", "Rednet Send Channel", "number 1-65535", false, supportsRednet, "channels.send")
@@ -671,7 +673,7 @@ addParam("maxTries","Tries Before Bedrock", "number 1-9001")
 --Inventory
 addParam("keepOpen", "Slots to Keep Open", "number 1-15")
 addParam("careAboutResources", "Care About Resources","boolean")
-addParam("preciseTotals","Precise Totals","boolean", turtle.getItemDetail ~= nil)
+addParam("preciseTotals","Precise Totals","boolean", rednetEnabled and (turtle.getItemDetail ~= nil))
 if not turtle.inspect then preciseTotals = false end
 if preciseTotals and not restoreFoundSwitch then
   exactTotals = {} --Don't want to initialize if we aren't using this
@@ -1401,7 +1403,7 @@ if not restoreFoundSwitch then --We only want this to happen once
   end
 end
 
-function count(add) --Done any time inventory dropped and at end, true=add, false=nothing, nil=subtract
+function count(add) --Done any time inventory dropped and at end, true=add, nil=nothing, false=subtract
   local mod = -1
   if add then mod = 1 end
   if add == false then mod = 0 end
@@ -1443,6 +1445,20 @@ function count(add) --Done any time inventory dropped and at end, true=add, fals
   end
 
   select(1)
+end
+
+local fillerTypesList
+function placeFillerBlocks()
+  if not fillerTypesList then fillerTypesList = assignTypes() end
+  local turtleSlot = getRep(1, fillerTypesList) --Slot being the main list made in count
+  if not turtleSlot then
+    fillerTypesList = assignTypes()
+    return false --Lazy, but it will pick it up next move if succeeded
+  end
+  select(turtleSlot)
+  turtle.placeUp()
+  turtle.placeDown()
+  if turtle.getItemCount(turtleSlot) == 0 then fillerTypesList[turtleSlot] = 0 end
 end
 
 --Refuel Functions
@@ -1520,7 +1536,7 @@ function emergencyRefuel(forceBasic)
     print("Fuel Level:    ",checkFuel())
     print("Distance Back: ",(xPos+zPos+yPos+1))
     print("Categorizing Items")
-    count(false) --Do not add count, but categorize
+    count(nil) --Do not add count, but categorize
     local fuelSwitch, initialFuel = false, checkFuel() --Fuel switch so we don't go over limit (in emergency...)
     print("Going through available fuel slots")
     for i=1, inventoryMax do
@@ -1825,6 +1841,9 @@ function mine(doDigDown, doDigUp, outOfPath,doCheckInv) -- Basic Move Forward
   else --If oldQuarry
     smartDig(doDigUp,doDigDown)
   end
+  if plugHoles and not outOfPath then
+    placeFillerBlocks()
+  end
   percent = math.ceil(moved/moveVolume*100)
   updateDisplay()
   if doCheckInv and careAboutResources then
@@ -2058,7 +2077,7 @@ function drop(side, final, compareDump)
   end
 
   if compareDump then
-    for i=2, maxSlots do
+    for i=2, inventoryMax do
       select(i)
       for j=1, i-1 do
         if turtle.getItemCount(i) == 0 then break end
@@ -2067,7 +2086,7 @@ function drop(side, final, compareDump)
     end
     select(1)
   end
-  if oldOreQuarry or compareDump then count(nil) end--Subtract the items still there if oreQuarry
+  if oldOreQuarry or compareDump then count(false) end--Subtract the items still there if oreQuarry
   resetDumpSlots() --So that slots gone aren't counted as dump slots next
 
   select(1) --For fanciness sake
