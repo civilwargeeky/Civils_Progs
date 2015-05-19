@@ -1,5 +1,5 @@
 --Civilwargeeky's Quarry Program--
-  VERSION = "3.6.5"
+  VERSION = "3.6.5 Beta 3"
 --[[
 Recent Changes:
   Parameter Files! Create a file of parameters, and use -file to load it!
@@ -696,12 +696,12 @@ paramAlias("lavaBucket","lavaRefuel")
 addParam("lavaBuffer","Lava Buffer","number 1-19999", nil, lavaBucket)
 --Old Ore
 addParam("oldOreQuarry", "Old Ore Quarry", "boolean")
-addParam("dumpCompareItems", "Dump Compare Items", "boolean", nil, oldOreQuarry) --Do not dump compare items if not oreQuarry
 addParam("extraDropItems", "", "force", nil, oldOreQuarry) --Prompt for extra dropItems
 paramAlias("extraDropItems","extraDumpItems") --changed to Dump
 addParam("compareChest","Compare Chest Slot","slot 13", nil, oldOreQuarry)
 addParam("frontChest","Front Chest Check","boolean", nil, compareChest or turtle.insepect) --Does not need oreQuarry, but is similar (does need inspect if not compareChest)
 --New Ore
+addParam("dumpCompareItems", "Dump Compare Items", "boolean", nil, oreQuarry or oldOreQuarry) --Can be used for new or old.
 addParam("blacklist","Ore Blacklist", "string", nil, oreQuarry, "oreQuarryBlacklistName")
 paramAlias("blacklist","blacklistFile")
 --Mod Related
