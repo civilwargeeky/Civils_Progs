@@ -1448,7 +1448,7 @@ function count(add) --Done any time inventory dropped and at end, true=add, nil=
 end
 
 local fillerTypesList
-function placeFillerBlocks()
+function placeFillerBlocks(up, down)
   if not fillerTypesList then fillerTypesList = assignTypes() end
   local turtleSlot = getRep(1, fillerTypesList) --Slot being the main list made in count
   if not turtleSlot then
@@ -1456,8 +1456,8 @@ function placeFillerBlocks()
     return false --Lazy, but it will pick it up next move if succeeded
   end
   select(turtleSlot)
-  turtle.placeUp()
-  turtle.placeDown()
+  if up then turtle.placeUp() end
+  if down then turtle.placeDown() end
   if turtle.getItemCount(turtleSlot) == 0 then fillerTypesList[turtleSlot] = 0 end
 end
 
@@ -1842,7 +1842,7 @@ function mine(doDigDown, doDigUp, outOfPath,doCheckInv) -- Basic Move Forward
     smartDig(doDigUp,doDigDown)
   end
   if plugHoles and not outOfPath then
-    placeFillerBlocks()
+    placeFillerBlocks(doDigDown and inverted or doDigUp, doDigUp and inverted or doDigDown)
   end
   percent = math.ceil(moved/moveVolume*100)
   updateDisplay()
