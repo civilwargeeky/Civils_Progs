@@ -671,7 +671,7 @@ addParam("maxTries","Tries Before Bedrock", "number 1-9001")
 --Inventory
 addParam("keepOpen", "Slots to Keep Open", "number 1-15")
 addParam("careAboutResources", "Care About Resources","boolean")
-addParam("preciseTotals","Precise Totals","boolean", turtle.getItemDetail ~= nil)
+addParam("preciseTotals","Precise Totals","boolean", turtle.getItemDetail ~= nil and rednetEnabled)
 if not turtle.inspect then preciseTotals = false end
 if preciseTotals and not restoreFoundSwitch then
   exactTotals = {} --Don't want to initialize if we aren't using this

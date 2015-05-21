@@ -195,6 +195,8 @@ Things for 3.6.5:
   Turtle has preciseTotals enabled by default if it can support it. Final screen shows same thing as receiver does now.
   Redo Help Paragraph (and function) to be more like receiver's. Have categories. Everything is ridiculously messy right now
   Add in feature for "compress" function that happens when it does a junk items drop-off. Will compress like redstone from slot 5 to slot 3 so needs fewer stops :)
+  Add "appliedenergistics2:tile.BlockSkyChest" to a chest detecting list for mining sky stone chests
+  Add in "plugHoles" feature properly once inventory refactoring done
   Find out why turtle movement percent is slightly off (???)
   Things to refactor:
     INVENTORY MANAGEMENT (lots of cool ideas, just need to move everything so they work)
