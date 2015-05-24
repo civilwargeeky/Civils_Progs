@@ -1,10 +1,11 @@
 ====CHANGELOG====
  
 ----Quarry----
---Version 3.6.5
+--Version 3.7.0
   (from 3.6.4) fixed blacklist file parser and it also allows the use of "."
   Added param alias autoResume --> autoRestore
   Changed preciseTotals to be true by default
+  Overhauled help system. Now uses a tagging system and has a search bar
   
 --Version 3.6.4
   Added alias for fuelChest: enderRefuel
