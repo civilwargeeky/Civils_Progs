@@ -182,17 +182,17 @@ Way in future: Add session persistence for setups
 Random future thoughts: Maybe make more seamless. Have an arg/option to make calling the program just start quarry with additional args supplied so like "shell -dim 5 5 5" would do the same as quarry
 
 -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-
+Testing for next version:
+  Help Section
 
-Quarry Version 3.6.5:
+Quarry Version 3.7.0:
   General Ideas:
     Maybe in future, option to place torches on walls efficiently
 
-Things for 3.6.5:
+Things for 3.7.0:
   Refactoring, I swear
   Maybe have a "warn" function in IO for like "you have selected fuel chest but maxFuel == turtle.getFuelLimit()"
-  Allow for a file to load to specified in the config. Maybe separate like "defaultFile = "lol" --User file to load [default nil]"
   There is a bug where on server reloads, turtle doesn't realize it has a modem. Solution is to save side that receiver is on. On resume, find empty slot, equip modem twice before modem opens recieve channel.
-  Turtle has preciseTotals enabled by default if it can support it. Final screen shows same thing as receiver does now.
   Add in feature for "compress" function that happens when it does a junk items drop-off. Will compress like redstone from slot 5 to slot 3 so needs fewer stops :)
   Add "appliedenergistics2:tile.BlockSkyChest" to a chest detecting list for mining sky stone chests
   Add in "plugHoles" feature properly once inventory refactoring done

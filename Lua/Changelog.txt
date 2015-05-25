@@ -5,7 +5,9 @@
   (from 3.6.4) fixed blacklist file parser and it also allows the use of "."
   Added param alias autoResume --> autoRestore
   Changed preciseTotals to be true by default
+  Turtle displays preciseTotals screen at end similar to receiver (if enabled)
   Overhauled help system. Now uses a tagging system and has a search bar
+  Turtle will auto-load "quarryConfig.qc" as a -file param
   
 --Version 3.6.4
   Added alias for fuelChest: enderRefuel

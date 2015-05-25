@@ -10,13 +10,14 @@ New Parameters:
 ]]
 --Defining things
 civilTable = nil; _G.civilTable = {}; setmetatable(civilTable, {__index = getfenv()}); setfenv(1,civilTable)
-originalDay = os.day() --Used in logging
-numResumed = 0 --Number of times turtle has been resumed
+
 -------Defaults for Arguments----------
 --Arguments assignable by text
 x,y,z = 3,3,3 --These are just in case tonumber fails
 inverted = false --False goes from top down, true goes from bottom up [Default false]
 rednetEnabled = false --Default rednet on or off  [Default false]
+--File to auto-load arguments from
+defaultParameterFile = "quarryConfig.qc" --Quarry will auto-load from this file. Same as -file param
 --Arguments assignable by tArgs
 dropSide = "front" --Side it will eject to when full or done [Default "front"]
 careAboutResources = true --Will not stop mining once inventory full if false [Default true]
@@ -67,6 +68,8 @@ fingerprint = "quarry"
 
 --AVERAGE USER: YOU DON'T CARE BELOW THIS POINT
 local function copyTable(tab) local toRet = {}; for a, b in pairs(tab) do toRet[a] = b end; return toRet end --This goes up here because it is a basic utility
+originalDay = os.day() --Used in logging
+numResumed = 0 --Number of times turtle has been resumed
 
 local help_paragraph = [[
 Welcome!: Welcome to quarry help. Below are help entries for all parameters. Examples and tips are at the bottom.
@@ -601,7 +604,9 @@ local function split(str, sep)
   return toRet
 end
 
-if addParam("file","Custom Parameters","string", false, nil, "parameterFile", false) and parameterFile then --This will not load when resuming because there is no "file" parameter when resuming.
+ --This will not load when resuming because there is no "file" parameter when resuming.
+if fs.exists(defaultParameterFile) then parameterFile = defaultParameterFile end
+if (addParam("file","Custom Parameters","string", false, nil, "parameterFile", false) and parameterFile) or parameterFile then --Only run from addParam if set successful
   if not fs.exists(parameterFile) then
     print("WARNING: '"..parameterFile.."' DOES NOT EXIST. FILE NOT LOADED")
     sleep(3)
@@ -1323,9 +1328,37 @@ function display() --This is just the last screen that displays at the end
   screen(1,1)
   print("Total Blocks Mined: "..mined)
   print("Current Fuel Level: "..checkFuel())
-  print("Cobble: "..totals.cobble)
-  print("Usable Fuel: "..totals.fuel)
-  print("Other: "..totals.other)
+  if not preciseTotals then
+    print("Cobble: "..totals.cobble)
+    print("Usable Fuel: "..totals.fuel)
+    print("Other: "..totals.other)
+  else
+    local tab = {} --Sorting section stolen from quarry receiver
+    for a,b in pairs(exactTotals) do --Sorting the table
+      if #tab == 0 then --Have to initialize or rest does nothing :)
+        tab[1] = {a,b}
+      else
+        for i=1, #tab do --This is a really simple sort. Probably not very efficient, but I don't care.
+          if b > tab[i][2] then --Gets the second value from the table, which is the itemCount
+            table.insert(tab, i, {a,b})
+            break
+          elseif i == #tab then --Insert at the end if not bigger than anything
+            table.insert(tab,{a,b})
+          end
+        end
+      end
+    end
+    local x, y = term.getSize()
+    for i=1, math.min(y-(rednetEnabled and 3 or 2), #tab) do --Print all the blocks in order
+      local firstPart = "#"..tab[i][1]..": "
+      local spaces = ""
+      for i=1, x-#firstPart-#tostring(tab[i][2]) do spaces = spaces.." " end
+      term.setTextColor(i%2=0 and colors.white or colors.black) --Swap colors every other for best visibility
+      term.setBackgroundColor(i%2=0 and colors.black or colors.white)
+      print(firstPart,spaces,tab[i][2])
+    end
+    term.setTextColor(colors.white); term.setBackgroundColor(colors.black) --Reset to normal
+  end
   if rednetEnabled then
     print("")
     print("Sent Stop Message")
