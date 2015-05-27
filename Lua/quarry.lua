@@ -72,7 +72,8 @@ originalDay = os.day() --Used in logging
 numResumed = 0 --Number of times turtle has been resumed
 
 local help_paragraph = [[
-Welcome!: Welcome to quarry help. Below are help entries for all parameters. Examples and tips are at the bottom.
+Welcome!: Welcome to quarry help. Below are help entries for all parameters. Examples and tips are at the bottom. 
+  Hit 'TAB' to exit
 -default: This will force no prompts. If you use this and nothing else, only defaults will be used.
 =ui, essential
 -dim: [length] [width] [height] This sets the dimensions for the quarry
@@ -253,6 +254,7 @@ for a in help_paragraph:gmatch("\n?.-\n") do --Matches in between newlines
   else
     i = i + 1
     help[i] = {}
+    help[i].tags = {}
     help[i].title = string.sub(string.match(current, titlePattern),1,-2)..""
     help[i][1] = string.sub(string.match(current,textPattern) or " ",3,-1)
   end
@@ -275,30 +277,35 @@ local function displayHelp()
   while true do
     term.clear() --Update Screen
     term.setCursorPos(1,2)
-    print(filteredHelp[index])
-    for i=1, x do term.write("-") end
-    for a,b in ipairs(filteredHelp[index]) do print(b) end --This prints out all the lines of the help item
+    if #filteredHelp > 0 then
+      print(filteredHelp[index].title) --Prints the title
+      for i=1, x do term.write("-") end
+      for a,b in ipairs(filteredHelp[index]) do print(b) end --This prints out all the lines of the help item
+    else
+      print("No search results")
+    end
     
     term.setCursorPos(1,1) --Update Top and Bottom Bars --Done after so isn't overwritten by anything in the help
     term.clearLine()
     term.write("Result "..tostring(index).."/"..tostring(#filteredHelp))
-    term.setCusrosrPos(x-10-8, 1) --10 Chars for search, 8 chars for "Search: "
-    term.write("Search: "..search)
+    term.setCursorPos(x-11-8, 1) --11 Chars for search, 8 chars for "Search: "
+    term.write("Search:"..search.."_")
     term.setCursorPos(1,y)
-    term.write("Press 'Enter' to change tags | ")
-    term.write("Tags: "..table.concat(tags,",")) 
+    term.write("'Enter' Tags: ")
+    term.write(table.foreach(tags,function(a,b) if b then term.write(a..",") end end)) 
     
     local triggerUpdate = false
     local event, key = os.pullEvent()
-    if event == "key" and (key == keys.up or key == keys.right) and index < #filteredHelp then index = index + 1 end
-    if event == "key" and (key == keys.down or key == keys.left) and index > 1 then index = index - 1 end
-    if event == "char" and #search < 10 then search = search..key; triggerUpdate = true end
+    if event == "key" and (key == keys.down or key == keys.right) and index < #filteredHelp then index = index + 1 end
+    if event == "key" and (key == keys.up or key == keys.left) and index > 1 then index = index - 1 end
+    if event == "key" and key == keys.tab then term.clear(); term.setCursorPos(1,1); return true end
+    if event == "char" and #search < 11 then search = search..key; triggerUpdate = true end
     if event == "key" and key == keys.backspace and #search > 0 then search = search:sub(1,-2); triggerUpdate = true end
     if event == "key" and key == keys.enter and #tagsList > 0 then --Tag dialog
       local index, scroll = 1, 0
       while true do
         term.setCursorPos(1,1); term.clear()
-        print("Arrows=Choose, Enter=Select, Back=Exit")
+        print("Arrows=Choose, Enter=Select, Backspace")
         for i=1, y-1 do
           term.setCursorPos(1,i+1)
           term.write(i+scroll == index and ">" or " ") --Show which is selected
@@ -322,13 +329,14 @@ local function displayHelp()
       index = 1
       filteredHelp = {}
       for i=1, #help do
-        local flag = #tags > 0
-        if not flag then --If there are any tags to search for
+        local flag = true --The foreach below will just return true if there are any values in table. Cannot use # because not [1]
+        if table.foreach(tags,function(_,a) if a then return a end end) then --If there are any tags to search for
+          flag = false
           for j=1, #help[i].tags do
             if tags[help[i].tags[j]] then flag = true end --If it has a tag that we are looking for
           end
         end
-        if help[i].title:lower():match(search) and flag then filteredHelp[#filteredHelp+1] = help[i] end --If it matches search
+        if help[i].title:lower():match(search ~= "" and search or ".") and flag then filteredHelp[#filteredHelp+1] = help[i] end --If it matches search
       end
     end
   end
@@ -1353,8 +1361,8 @@ function display() --This is just the last screen that displays at the end
       local firstPart = "#"..tab[i][1]..": "
       local spaces = ""
       for i=1, x-#firstPart-#tostring(tab[i][2]) do spaces = spaces.." " end
-      term.setTextColor(i%2=0 and colors.white or colors.black) --Swap colors every other for best visibility
-      term.setBackgroundColor(i%2=0 and colors.black or colors.white)
+      term.setTextColor(i%2==0 and colors.white or colors.black) --Swap colors every other for best visibility
+      term.setBackgroundColor(i%2==0 and colors.black or colors.white)
       print(firstPart,spaces,tab[i][2])
     end
     term.setTextColor(colors.white); term.setBackgroundColor(colors.black) --Reset to normal
