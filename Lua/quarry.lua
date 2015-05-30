@@ -2046,7 +2046,7 @@ function drop(side, final, compareDump)
         if not fuelSwitch then --Not in the conditional because we don't want to waitDrop excess fuel. Not a break so we can drop junk
           fuelSwitch = midRunRefuel(i)
         end
-        if fuelSwitch then
+        if fuelSwitch or not doRefuel then
           waitDrop(i, allowedItems[i], dropFunc)
         end
       elseif not compareDump or (compareDump and slot[i][1] == 1) then --This stops all wanted items from being dropped off in a compareDump
