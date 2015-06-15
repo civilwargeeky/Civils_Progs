@@ -2,7 +2,8 @@
  
 ----Quarry----
 --Version 3.7.0
-  (from 3.6.4) fixed blacklist file parser and it also allows the use of "."
+  (from 3.6.4): fixed blacklist file parser and it also allows the use of "."
+                fixed issue where "atChest" would break because shell was removed on resume for some reason.
   Added param alias autoResume --> autoRestore
   Changed preciseTotals to be true by default
   Turtle displays preciseTotals screen at end similar to receiver (if enabled)
