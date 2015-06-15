@@ -939,7 +939,7 @@ end
 
 
 local function saveProgress(extras) --Session persistence
-exclusions = { modem = true, }
+exclusions = { modem = true, shell = true}
 if doBackup then
 local toWrite = ""
 for a,b in pairs(getfenv(1)) do
