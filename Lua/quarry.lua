@@ -525,7 +525,9 @@ if restoreFoundSwitch then
   local test = file.readAll() ~= ""
   file.close()
   if test then
+    local temp = copyTable(shell) --For whatever reason, the shell table doesn't survive resuming
     os.run(getfenv(1),saveFile) --This is where the actual magic happens
+    shell = temp
     numResumed = numResumed + 1
     if checkFuel() ~= math.huge then --If turtle uses fuel
       if fuelLevel - checkFuel() == 1 then
