@@ -795,7 +795,6 @@ if addParam("atChest", "Is at Chest", "force") then --This sets position to 0,1,
     sleep(4)
     neededLayer = 2
   end
-  if ((neededLayer-2)/3) % 2 == 1 then neededLayer = neededLayer - 3 end --Because with weird end of row, just go to last basic row
   xPos, zPos, yPos, facing, rowCheck, layersDone = 0,1,1, 0, true, math.ceil(neededLayer/3)
   doAutoResumeStuff() --This was probably deleted when they hit a key to launch with -atChest
   events = {{"goto",1,1,neededLayer, 0}}
