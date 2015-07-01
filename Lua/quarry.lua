@@ -1,5 +1,9 @@
 --Civilwargeeky's Quarry Program--
+<<<<<<< HEAD
   VERSION = "3.7.0 Beta"
+=======
+  VERSION = "3.6.4.1"
+>>>>>>> master
 --[[
 Recent Changes:
   
@@ -67,7 +71,7 @@ fingerprint = "quarry"
 }
 
 --AVERAGE USER: YOU DON'T CARE BELOW THIS POINT
-local function copyTable(tab) local toRet = {}; for a, b in pairs(tab) do toRet[a] = b end; return toRet end --This goes up here because it is a basic utility
+local function copyTable(tab) if type(tab) ~= "table" then error("copyTable received "..type(tab)..", expected table",2) end local toRet = {}; for a, b in pairs(tab) do toRet[a] = b end; return toRet end --This goes up here because it is a basic utility
 originalDay = os.day() --Used in logging
 numResumed = 0 --Number of times turtle has been resumed
 
@@ -420,7 +424,6 @@ function resetDumpSlots()
       dumpSlots[1] = true
     end
 end
-
 --NOTE: rowCheck is a bit. true = "right", false = "left"
 
 local foundBedrock = false
@@ -659,7 +662,7 @@ if restoreFoundSwitch then
   local test = file.readAll() ~= ""
   file.close()
   if test then
-    local temp = copyTable(shell) --For whatever reason, the shell table doesn't survive resuming
+    local temp = shell and copyTable(shell) --For whatever reason, the shell table doesn't survive resuming. shell and ... so that copyTable doesn't error
     os.run(getfenv(1),saveFile) --This is where the actual magic happens
     shell = temp
     numResumed = numResumed + 1
