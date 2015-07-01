@@ -1,5 +1,5 @@
 --Civilwargeeky's Quarry Program--
-  VERSION = "3.6.4"
+  VERSION = "3.6.4.1"
 --[[
 Recent Changes:
   Parameter Files! Create a file of parameters, and use -file to load it!
@@ -274,7 +274,7 @@ function resetDumpSlots()
     end
 end
 
-local function copyTable(tab) local toRet = {}; for a, b in pairs(tab) do toRet[a] = b end; return toRet end --This goes up here because it is a basic utility
+local function copyTable(tab) if type(tab) ~= "table" then error("copyTable received "..type(tab)..", expected table",2) end local toRet = {}; for a, b in pairs(tab) do toRet[a] = b end; return toRet end --This goes up here because it is a basic utility
 
 --NOTE: rowCheck is a bit. true = "right", false = "left"
 
@@ -525,7 +525,7 @@ if restoreFoundSwitch then
   local test = file.readAll() ~= ""
   file.close()
   if test then
-    local temp = copyTable(shell) --For whatever reason, the shell table doesn't survive resuming
+    local temp = shell and copyTable(shell) --For whatever reason, the shell table doesn't survive resuming. shell and ... so that copyTable doesn't error
     os.run(getfenv(1),saveFile) --This is where the actual magic happens
     shell = temp
     numResumed = numResumed + 1
