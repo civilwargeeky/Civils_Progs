@@ -2049,12 +2049,25 @@ function drop(side, final, compareDump)
         else
           waitDrop(i, allowedItems[i], dropFunc)
         end
+        if fuelSwitch then
+          waitDrop(i, allowedItems[i], dropFunc)
+        end
       elseif not compareDump or (compareDump and slot[i][1] == 1) then --This stops all wanted items from being dropped off in a compareDump
         waitDrop(i, allowedItems[i], dropFunc)
       end
     end
   end
 
+  if compareDump then
+    for i=2, maxSlots do
+      select(i)
+      for j=1, i-1 do
+        if turtle.getItemCount(i) == 0 then break end
+        turtle.transferTo(j)
+      end
+    end
+    select(1)
+  end
   if oldOreQuarry or compareDump then count(nil) end--Subtract the items still there if oreQuarry
   resetDumpSlots() --So that slots gone aren't counted as dump slots next
 
