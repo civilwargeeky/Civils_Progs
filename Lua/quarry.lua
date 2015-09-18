@@ -1,5 +1,5 @@
 --Civilwargeeky's Quarry Program--
-  VERSION = "3.6.4.2"
+  VERSION = "3.6.4.3"
 --[[
 Recent Changes:
   Parameter Files! Create a file of parameters, and use -file to load it!
