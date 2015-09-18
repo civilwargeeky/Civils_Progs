@@ -1,1 +1,0 @@
-#This file will procedurally generate a minecraft install package and installer batch file
