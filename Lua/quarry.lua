@@ -2059,7 +2059,7 @@ function drop(side, final, compareDump)
   end
 
   if compareDump then
-    for i=2, maxSlots do
+    for i=2, inventoryMax do
       select(i)
       for j=1, i-1 do
         if turtle.getItemCount(i) == 0 then break end
