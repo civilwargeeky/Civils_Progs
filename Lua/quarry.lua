@@ -1,5 +1,5 @@
 --Civilwargeeky's Quarry Program--
-  VERSION = "3.7.0 Beta"
+VERSION = "3.7.0 Beta"
 --[[
 Recent Changes:
   
@@ -937,7 +937,7 @@ end
 
 
 local function saveProgress(extras) --Session persistence
-exclusions = { modem = true, shell = true}
+exclusions = { modem = true, shell = true, _ENV = true}
 if doBackup then
 local toWrite = ""
 for a,b in pairs(getfenv(1)) do
@@ -2223,10 +2223,12 @@ function drop(side, final, compareDump)
 
   if compareDump then
     for i=2, inventoryMax do
-      select(i)
-      for j=1, i-1 do
-        if turtle.getItemCount(i) == 0 then break end
-        turtle.transferTo(j)
+      if not specialSlots[i] then --We don't want to move buckets and things into earlier slots
+        select(i)
+        for j=1, i-1 do
+          if turtle.getItemCount(i) == 0 then break end
+          turtle.transferTo(j)
+        end
       end
     end
     select(1)
