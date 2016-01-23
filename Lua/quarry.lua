@@ -1,5 +1,5 @@
 --Civilwargeeky's Quarry Program--
-  VERSION = "3.6.4.3"
+  VERSION = "3.6.4.5"
 --[[
 Recent Changes:
   Parameter Files! Create a file of parameters, and use -file to load it!
@@ -2060,10 +2060,12 @@ function drop(side, final, compareDump)
 
   if compareDump then
     for i=2, inventoryMax do
-      select(i)
-      for j=1, i-1 do
-        if turtle.getItemCount(i) == 0 then break end
-        turtle.transferTo(j)
+      if not specialSlots[i] then --We don't want to move buckets and things into earlier slots
+        select(i)
+        for j=1, i-1 do
+          if turtle.getItemCount(i) == 0 then break end
+          turtle.transferTo(j)
+        end
       end
     end
     select(1)
