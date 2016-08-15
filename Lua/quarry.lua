@@ -91,14 +91,13 @@ Welcome!: Welcome to quarry help. Below are help entries for all parameters. Exa
 -oreQuarry: [t/f] If you are using a newer version of CC, you won't have to put in any compare blocks. (CC 1.64+)
 =functionality, oreQuarry
 -blacklist: [file name] If using oreQuarry, this is the blacklist file it will read. Example --
-=oreQuarry
   minecraft:stone
   minecraft:sand
   ThermalExpansion:Sponge
   ThermalFoundation:Storage
-  
   Note: If you have bspkrsCore, look 
   for "UniqueNames.txt" in your config
+=oreQuarry
 -file: [file name] Will load a file of parameters. One parameter per line. # is a comment line (See the forum thread for more detailed directions)
 =functionality, ui
 -atChest: [force] This is for use with "-restore," this will tell the restarting turtle that it is at its home chest, so that if it had gotten lost, it now knows where it is.
@@ -189,7 +188,8 @@ Welcome!: Welcome to quarry help. Below are help entries for all parameters. Exa
 =ui
 -listParams: This will list out all your selected parameters and end quarry. Good for testing
 =ui, debug
--manualPos: [xPos] [zPos] [yPos] [facing] This is for advanced use. If the server reset when the turtle was in the middle of a 100x100x100 quarry, fear not, you can now manually set the position of the turtle. yPos is always positive. The turtle's starting position is 0, 1, 1, 0. Facing is measured 0 - 3. 0 is forward, and it progresses clockwise. Example- "-manualPos 65 30 30 2"
+-manualPos: [xPos] [zPos] [yPos] [facing] This is for advanced use. If the server reset during a quarry you can manually set the position of the turtle. yPos is always positive. The turtle's starting position is 0, 1, 1, 0. Facing is measured 0 - 3. 0 is forward, and it progresses clockwise.
+  Example - "-manualPos 65 30 30 2"
 =saving, debug
 -version: Displays the current quarry version and stops the program
 =ui
@@ -310,10 +310,22 @@ local function displayHelp()
           term.setCursorPos(1,i+1)
           term.write(i+scroll == index and ">" or " ") --Show which is selected
           term.write(tags[tagsList[i+scroll]] and "#" or " ") --Show if it is already selected
-          term.write(tagsList[i+scroll].." ("..tostring(tagsList[tagsList[i+scroll]])..")") --Second part gets number of items in tag and displays in ()
+          if scroll == 0 and i == 1 then
+            term.write("Clear All")
+          else
+            term.write(tagsList[i+scroll-1].." ("..tostring(tagsList[tagsList[i+scroll-1]])..")") --Second part gets number of items in tag and displays in ()
+          end
         end
         local event, key = os.pullEvent("key")
-        if key == keys.enter then tags[tagsList[index]] = not tags[tagsList[index]]; triggerUpdate = true end
+        if key == keys.enter then 
+          if index == 1 then --If it is the first tag: "Clear All"
+            for a in pairs(tags) do --Set all to false
+              tags[a] = false
+            end
+          else 
+            tags[tagsList[index]] = not tags[tagsList[index]]; triggerUpdate = true
+          end
+        end
         if key == keys.backspace then break end --Just return to regular function
         if key == keys.up or key == keys.left then
           if index > 1 then index = index - 1 end

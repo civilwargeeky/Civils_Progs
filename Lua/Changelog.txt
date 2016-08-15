@@ -8,6 +8,7 @@
   Changed preciseTotals to be true by default
   Turtle displays preciseTotals screen at end similar to receiver (if enabled)
   Overhauled help system. Now uses a tagging system and has a search bar
+    Added "clear all" to tagging
   Turtle will auto-load "quarryConfig.qc" as a -file param
   
 --Version 3.6.4
