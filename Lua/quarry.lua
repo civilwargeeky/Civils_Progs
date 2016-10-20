@@ -1,28 +1,25 @@
 --Civilwargeeky's Quarry Program--
-  VERSION = "3.6.5 Beta 3"
+VERSION = "3.7.0 Beta 1 - PlugHoles"
 --[[
 Recent Changes:
-  Parameter Files! Create a file of parameters, and use -file to load it!
-    Works will with -forcePrompt
-  Quarry no longer goes to start at end of row!
-  Turtle can go left!
-  QuadCopters! Check Lyqyd's thread
+Added -plugHoles code i hope
+Made plugholes better!
+  
 New Parameters:
     -overfuel/fuelMultiplier [number]: This number is is what neededFuel is multiplied by when fuel is low.
     -version: This will display the current version number and end the program
     -file [fileName]: This will load a custom configuration file (basically a list of parameters). "##" starts comment lines. In the future "#" will start programs to run (but only through shell)
-    -preciseTotals [t/f]: If true, turtle will write exactly what it mined to the logs. It may also transmit it over rednet.
-    -forcePrompt [param]: This will add to a list of parameters to force prompt for. So if you say "-forcePrompt doRefuel" it will prompt you "Length","Width","Height","Invert","Do Refuel" etc.
 ]]
 --Defining things
 civilTable = nil; _G.civilTable = {}; setmetatable(civilTable, {__index = getfenv()}); setfenv(1,civilTable)
-originalDay = os.day() --Used in logging
-numResumed = 0 --Number of times turtle has been resumed
+
 -------Defaults for Arguments----------
 --Arguments assignable by text
 x,y,z = 3,3,3 --These are just in case tonumber fails
 inverted = false --False goes from top down, true goes from bottom up [Default false]
 rednetEnabled = false --Default rednet on or off  [Default false]
+--File to auto-load arguments from
+defaultParameterFile = "quarryConfig.qc" --Quarry will auto-load from this file. Same as -file param
 --Arguments assignable by tArgs
 dropSide = "front" --Side it will eject to when full or done [Default "front"]
 careAboutResources = true --Will not stop mining once inventory full if false [Default true]
@@ -73,18 +70,31 @@ fingerprint = "quarry"
 }
 
 --AVERAGE USER: YOU DON'T CARE BELOW THIS POINT
+local function copyTable(tab) if type(tab) ~= "table" then error("copyTable received "..type(tab)..", expected table",2) end local toRet = {}; for a, b in pairs(tab) do toRet[a] = b end; return toRet end --This goes up here because it is a basic utility
+originalDay = os.day() --Used in logging
+numResumed = 0 --Number of times turtle has been resumed
 
 local help_paragraph = [[
-Welcome!: Welcome to quarry help. Below are help entries for all parameters. Examples and tips are at the bottom.
+Welcome!: Welcome to quarry help. Below are help entries for all parameters. Examples and tips are at the bottom. 
+  Hit 'TAB' to exit
 -default: This will force no prompts. If you use this and nothing else, only defaults will be used.
+=ui, essential
 -dim: [length] [width] [height] This sets the dimensions for the quarry
+=functionality, essential, default
 -invert: [t/f] If true, quarry will be inverted (go up instead of down)
+=functionality, essential, default
 -rednet: [t/f] If true and you have a wireless modem on the turtle, will attempt to make a rednet connection for sending important information to a screen
+=functionality, rednet, essential, default
 -restore / -resume: If your quarry stopped in the middle of its run, use this to resume at the point where the turtle was. Not guarenteed to work properly. For more accurate location finding, check out the -GPS parameter
+=essential, saving
 -autoResume / autoRestore: Turtle will automatically resume if stopped. Replaces startup
+=saving
 -oreQuarry: [t/f] If true, the turtle will use ore quarry mode. It will not mine the blocks that are placed in the turtle initially. So if you put in stone, it will ignore stone blocks and only mine ores.
+=functionality, oreQuarry
 -oreQuarry: [t/f] If you are using a newer version of CC, you won't have to put in any compare blocks. (CC 1.64+)
+=functionality, oreQuarry
 -blacklist: [file name] If using oreQuarry, this is the blacklist file it will read. Example --
+=oreQuarry
   minecraft:stone
   minecraft:sand
   ThermalExpansion:Sponge
@@ -93,44 +103,83 @@ Welcome!: Welcome to quarry help. Below are help entries for all parameters. Exa
   Note: If you have bspkrsCore, look 
   for "UniqueNames.txt" in your config
 -file: [file name] Will load a file of parameters. One parameter per line. # is a comment line (See the forum thread for more detailed directions)
+=functionality, ui
 -atChest: [force] This is for use with "-restore," this will tell the restarting turtle that it is at its home chest, so that if it had gotten lost, it now knows where it is.
+=saving
 -doRefuel: [t/f] If true, the turtle will refuel itself with coal and planks it finds on its mining run
+=fuel, essential, inventory
 -doCheckFuel: [t/f] If you for some reason don't want the program to check fuel usage, set to false. This is honestly a hold-over from when the refueling algorithm was awful...
+=fuel
 -overfuel: [number] When fuel is below required, fuel usage is multiplied by this. Large numbers permit more quarries without refueling
+=fuel
 -fuelMultiplier: [number] See overfuel
+=fuel
 -uniqueExtras: [number] The expected number of slots filled with low-stacking items like ore. Higher numbers request more fuel.
+=inventory, fuel
 -maxFuel: [number] How much the turtle will fuel to max (limited by turtle in most cases)
+=fuel
 -chest: [side] This specifies what side the chest at the end will be on. You can say "top", "bottom", "front", "left", or "right"
+=inventory, essential
 -enderChest: [slot] This one is special. If you use "-enderChest true" then it will use an enderChest in the default slot. However, you can also do "-enderChest [slot]" then it will take the ender chest from whatever slot you tell it to. Like 7... or 14... or whatever.
+=inventory, specialslot
 -fuelChest: [slot] See the above, but for a fueling chest. Reccommend use with -maxFuel and -doCheckFuel false
+=inventory, specialslot, fuel
 -lava: [slot] If using an oreQuarry, will fill itself with lava it finds to maxFuel
+=fuel, specialslot
 -lavaBuffer: [number] The amount of fuel below maxFuel the turtle will wait for before using lava again
+=fuel, specialslot
 -GPS: [force] If you use "-GPS" and there is a GPS network, then the turtle will record its first two positions to precisly calculate its position if it has to restart. This will only take two GPS readings
+=saving, rednet, gps
 -quad: [t/f] This forces the use of GPS. Make sure you have a network set up. This will request to be refueled by a quadrotor from Lyqyd's mod if the turtle is out of fuel
+=rednet, inventory, gps, fuel
 -quadTimeout: [number] The amount of time the turtle will wait for a quadRotor
+=rednet, inventory, gps, fuel
 -sendChannel: [number] This is what channel your turtle will send rednet messages on
+=rednet
 -receiveChannel: [number] This is what channel your turtle will receive rednet messages on
+=rednet
 -legacyRednet: [t/f] Check true if using 1.4.7
+=rednet, legacy
 -startY: [current Y coord] Randomly encountering bedrock? This is the parameter for you! Just give it what y coordinate you are at right now. If it is not within bedrock range, it will never say it found bedrock
+=functionality, legacy
 -startupRename: [file name] What to rename any existing startup to.
+=saving
 -startupName: [file name] What the turtle will save its startup file to.
+=saving
 -extraDropItems: [force] If oreQuarry then this will prompt the user for extra items to drop, but not compare to (like cobblestone)
+=oreQuarry, ui, legacy, inventory
 -dumpCompareItems: [t/f] If oreQuarry and this is true, the turtle will dump off compare blocks instead of storing them in a chest
+=oreQuarry, inventory
 -oldOreQuarry: [t/f] If you are using new CC versions, you can use this to use the old oreQuarry.
+=oreQuarry, legacy
 -compareChest: [slot] If using oldOreQuarry, this will allow you to check for dungeon chests and suck from them.
+=oreQuarry, inventory, specialslot, legacy
 -frontChest: [t/f] If using oreQuarry/oldOreQuarry, this will check in front of itself for chests as well.
+=oreQuarry, inventory
 -left: [t/f] If true, turtle will quarry to the left instead of the right
+=functionality, essential
 -maxTries: [number] This is the number of times the turtle will try to dig before deciding its run into bedrock.
+=functionality
 -forcePrompt: [parameter] Whatever parameter you specify, it will always prompt you, like it does now for invert and dim.
+=ui, saving
 -logging: [t/f] If true, will record information about its mining run in a folder at the end of the mining run
+=saving
 -preciseTotals: [t/f] If true (and turtle.inspect exists), it will log a detailed record of every block the turtle mines and send it over rednet
+=rednet, saving
 -doBackup: [t/f] If false, will not back up important information and cannot restore, but will not make an annoying file (Actually I don't really know why anyone would use this...)
+=saving
 -saveFile: [word] This is what the backup file will be called
+=saving
 -logFolder: [word] The folder that quarry logs will be stored in
+=saving
 -logExtension: [word] The extension given to each quarry log (e.g. ".txt" or ".notepad" or whatever)
+=saving
 -keepOpen: [number] This is the number of the slots the turtle will make sure are open. It will check every time it mines
+=inventory
 -careAboutResources: [t/f] Who cares about the materials! If set to false, it will just keep mining when its inventory is full
+=inventory, legacy
 -startDown: [number] If you set this, the turtle will go down this many blocks from the start before starting its quarry
+=functionality, essential
   =
   C _ |
       |
@@ -138,36 +187,50 @@ Welcome!: Welcome to quarry help. Below are help entries for all parameters. Exa
       |
       |_ _ _ _ >
 -flatBedrock: [t/f] If true, turtle will find bedrock and "zero" itself so it ends on bedrock level
+=functionality
 -promptAll: This is the opposite of -Default, it prompts for everything
+=ui
 -listParams: This will list out all your selected parameters and end quarry. Good for testing
+=ui, debug
 -manualPos: [xPos] [zPos] [yPos] [facing] This is for advanced use. If the server reset when the turtle was in the middle of a 100x100x100 quarry, fear not, you can now manually set the position of the turtle. yPos is always positive. The turtle's starting position is 0, 1, 1, 0. Facing is measured 0 - 3. 0 is forward, and it progresses clockwise. Example- "-manualPos 65 30 30 2"
+=saving, debug
 -version: Displays the current quarry version and stops the program
+=ui
 -help: Thats what this is :D
+=ui
 Examples: Everything below is examples and tips for use
 Important Note:
+=note
   None of the above parameters are necessary. They all have default values, and the above are just if you want to change them.
 Examples [1]:
+=note
   Want to just start a quarry from the interface, without going through menus? It's easy! Just use some parameters. Assume you called the program "quarry." To start a 10x6x3 quarry, you just type in "quarry -dim 10 6 3 -default".
   You just told it to start a quarry with dimensions 10x6x3, and "-default" means it won't prompt you about invert or rednet. Wasn't that easy?
 Examples [2]:
+=note
   Okay, so you've got the basics of this now, so if you want, you can type in really long strings of stuff to make the quarry do exactly what you want. Now, say you want a 40x20x9, but you want it to go down to diamond level, and you're on the surface (at y = 64). You also want it to send rednet messages to your computer so you can see how its doing.
 Examples [2] [cont.]:
+=note
   Oh yeah! You also want it to use an ender chest in slot 12 and restart if the server crashes. Yeah, you can do that. You would type
   "quarry -dim 40x20x9 -invert false -startDown 45 -rednet true -enderChest 12 -restore"
   BAM. Now you can just let that turtle do it's thing
 Tips:
+=note
   The order of the parameters doesn't matter. "quarry -invert false -rednet true" is the same as "quarry -rednet true -invert false"
   
   Capitalization doesn't matter. "quarry -iNVErt FALSe" does the same thing as "quarry -invert false"
 Tips [cont.]:
+=note
   For [t/f] parameters, you can also use "yes" and "no" so "quarry -invert yes"
   
   For [t/f] parameters, it only cares about the first letter. So you can use "quarry -invert t" or "quarry -invert y"
 Tips [cont.]:
+=note
   If you are playing with fuel turned off, the program will automatically change settings for you so you don't have to :D
   
   If you want, you can load this program onto a computer, and use "quarry -help" so you can have help with the parameters whenever you want.
 Internal Config:
+=note
   At the top of this program is an internal configuration file. If there is some setup that you use all the time, you can just change the config value at the top and run "quarry -default" for a quick setup.
   
   You can also use this if there are settings that you don't like the default value of.
@@ -186,13 +249,99 @@ local titlePattern = ".-%:" --Find the beginning of the line, then characters, t
 local textPattern = "%:.+" --Find a ":", then characters until the end of the line
 for a in help_paragraph:gmatch("\n?.-\n") do --Matches in between newlines
   local current = string.sub(a,1,-2).."" --Concatenate Trick
-  if string.sub(current,1,1) ~= " " then
+  local firstChar = string.sub(current,1,1)
+  if firstChar == "=" then
+    for a in current:gmatch("%w+") do table.insert(help[i].tags, a) end --Add in all non-whitespace tags
+  elseif firstChar == " " then
+    table.insert(help[i], string.sub(current,2, -1).."")
+  else
     i = i + 1
     help[i] = {}
+    help[i].tags = {}
     help[i].title = string.sub(string.match(current, titlePattern),1,-2)..""
     help[i][1] = string.sub(string.match(current,textPattern) or " ",3,-1)
-  elseif string.sub(current,1,1) == " " then
-    table.insert(help[i], string.sub(current,2, -1).."")
+  end
+end
+
+local function displayHelp()
+  local x, y = term.getSize()
+  local search = ""
+  local index = 1
+  local filteredHelp = copyTable(help)
+  local tags = {}
+  local tagsList = {}
+  for i=1, #help do --Generating the tags list
+    for j=1, #help[i].tags do
+      local val = help[i].tags[j]:lower()
+      tagsList[val] = (tagsList[val] or 0) + 1 --Every tag is added. Then counted
+    end
+  end
+  for a in pairs(tagsList) do tagsList[#tagsList+1] = a end --Also make numeric for listing
+  while true do
+    term.clear() --Update Screen
+    term.setCursorPos(1,2)
+    if #filteredHelp > 0 then
+      print(filteredHelp[index].title) --Prints the title
+      for i=1, x do term.write("-") end
+      for a,b in ipairs(filteredHelp[index]) do print(b) end --This prints out all the lines of the help item
+    else
+      print("No search results")
+    end
+    
+    term.setCursorPos(1,1) --Update Top and Bottom Bars --Done after so isn't overwritten by anything in the help
+    term.clearLine()
+    term.write("Result "..tostring(index).."/"..tostring(#filteredHelp))
+    term.setCursorPos(x-11-8, 1) --11 Chars for search, 8 chars for "Search: "
+    term.write("Search:"..search.."_")
+    term.setCursorPos(1,y)
+    term.write("'Enter' Tags: ")
+    term.write(table.foreach(tags,function(a,b) if b then term.write(a..",") end end)) 
+    
+    local triggerUpdate = false
+    local event, key = os.pullEvent()
+    if event == "key" and (key == keys.down or key == keys.right) and index < #filteredHelp then index = index + 1 end
+    if event == "key" and (key == keys.up or key == keys.left) and index > 1 then index = index - 1 end
+    if event == "key" and key == keys.tab then term.clear(); term.setCursorPos(1,1); return true end
+    if event == "char" and #search < 11 then search = search..key; triggerUpdate = true end
+    if event == "key" and key == keys.backspace and #search > 0 then search = search:sub(1,-2); triggerUpdate = true end
+    if event == "key" and key == keys.enter and #tagsList > 0 then --Tag dialog
+      local index, scroll = 1, 0
+      while true do
+        term.setCursorPos(1,1); term.clear()
+        print("Arrows=Choose, Enter=Select, Backspace")
+        for i=1, y-1 do
+          term.setCursorPos(1,i+1)
+          term.write(i+scroll == index and ">" or " ") --Show which is selected
+          term.write(tags[tagsList[i+scroll]] and "#" or " ") --Show if it is already selected
+          term.write(tagsList[i+scroll].." ("..tostring(tagsList[tagsList[i+scroll]])..")") --Second part gets number of items in tag and displays in ()
+        end
+        local event, key = os.pullEvent("key")
+        if key == keys.enter then tags[tagsList[index]] = not tags[tagsList[index]]; triggerUpdate = true end
+        if key == keys.backspace then break end --Just return to regular function
+        if key == keys.up or key == keys.left then
+          if index > 1 then index = index - 1 end
+          if index <= scroll then scroll = scroll - 1 end
+        end
+        if key == keys.down or key == keys.right then
+          if index < #tagsList then index = index + 1 end
+          if index > scroll + y - 1 then scroll = scroll + 1 end
+        end
+      end
+    end
+    if triggerUpdate then --Generate new list based on tags and search
+      index = 1
+      filteredHelp = {}
+      for i=1, #help do
+        local flag = true --The foreach below will just return true if there are any values in table. Cannot use # because not [1]
+        if table.foreach(tags,function(_,a) if a then return a end end) then --If there are any tags to search for
+          flag = false
+          for j=1, #help[i].tags do
+            if tags[help[i].tags[j]] then flag = true end --If it has a tag that we are looking for
+          end
+        end
+        if help[i].title:lower():match(search ~= "" and search or ".") and flag then filteredHelp[#filteredHelp+1] = help[i] end --If it matches search
+      end
+    end
   end
 end
 
@@ -274,9 +423,6 @@ function resetDumpSlots()
       dumpSlots[1] = true
     end
 end
-
-local function copyTable(tab) local toRet = {}; for a, b in pairs(tab) do toRet[a] = b end; return toRet end --This goes up here because it is a basic utility
-
 --NOTE: rowCheck is a bit. true = "right", false = "left"
 
 local foundBedrock = false
@@ -447,20 +593,7 @@ if not(turtle or tArgs["help"] or tArgs["-help"] or tArgs["-?"] or tArgs["?"]) t
 end
 
 if tArgs["help"] or tArgs["-help"] or tArgs["-?"] or tArgs["?"] then
-  print("You have selected help, press any key to continue"); print("Use arrow keys to navigate, q to quit"); os.pullEvent("key")
-  local pos = 1
-  local key = 0
-  while pos <= #help and key ~= keys.q do
-    if pos < 1 then pos = 1 end
-    screen(1,1)
-    print(help[pos].title)
-    for a=1, #help[pos] do print(help[pos][a]) end
-    repeat
-      _, key = os.pullEvent("key")
-    until key == 200 or key == 208 or key == keys.q
-    if key == 200 then pos = pos - 1 end
-    if key == 208 then pos = pos + 1 end
-  end
+  displayHelp()
   error("",0)
 end
 
@@ -481,7 +614,9 @@ local function split(str, sep)
   return toRet
 end
 
-if addParam("file","Custom Parameters","string", false, nil, "parameterFile", false) and parameterFile then --This will not load when resuming because there is no "file" parameter when resuming.
+ --This will not load when resuming because there is no "file" parameter when resuming.
+if fs.exists(defaultParameterFile) then parameterFile = defaultParameterFile end
+if (addParam("file","Custom Parameters","string", false, nil, "parameterFile", false) and parameterFile) or parameterFile then --Only run from addParam if set successful
   if not fs.exists(parameterFile) then
     print("WARNING: '"..parameterFile.."' DOES NOT EXIST. FILE NOT LOADED")
     sleep(3)
@@ -526,7 +661,9 @@ if restoreFoundSwitch then
   local test = file.readAll() ~= ""
   file.close()
   if test then
+    local temp = shell and copyTable(shell) --For whatever reason, the shell table doesn't survive resuming. shell and ... so that copyTable doesn't error
     os.run(getfenv(1),saveFile) --This is where the actual magic happens
+    shell = temp
     numResumed = numResumed + 1
     if checkFuel() ~= math.huge then --If turtle uses fuel
       if fuelLevel - checkFuel() == 1 then
@@ -673,7 +810,7 @@ addParam("maxTries","Tries Before Bedrock", "number 1-9001")
 --Inventory
 addParam("keepOpen", "Slots to Keep Open", "number 1-15")
 addParam("careAboutResources", "Care About Resources","boolean")
-addParam("preciseTotals","Precise Totals","boolean", rednetEnabled and (turtle.getItemDetail ~= nil))
+addParam("preciseTotals","Precise Totals","boolean", turtle.getItemDetail ~= nil and rednetEnabled)
 if not turtle.inspect then preciseTotals = false end
 if preciseTotals and not restoreFoundSwitch then
   exactTotals = {} --Don't want to initialize if we aren't using this
@@ -696,12 +833,12 @@ paramAlias("lavaBucket","lavaRefuel")
 addParam("lavaBuffer","Lava Buffer","number 1-19999", nil, lavaBucket)
 --Old Ore
 addParam("oldOreQuarry", "Old Ore Quarry", "boolean")
+addParam("dumpCompareItems", "Dump Compare Items", "boolean", nil, oldOreQuarry) --Do not dump compare items if not oreQuarry
 addParam("extraDropItems", "", "force", nil, oldOreQuarry) --Prompt for extra dropItems
 paramAlias("extraDropItems","extraDumpItems") --changed to Dump
 addParam("compareChest","Compare Chest Slot","slot 13", nil, oldOreQuarry)
 addParam("frontChest","Front Chest Check","boolean", nil, compareChest or turtle.insepect) --Does not need oreQuarry, but is similar (does need inspect if not compareChest)
 --New Ore
-addParam("dumpCompareItems", "Dump Compare Items", "boolean", nil, oreQuarry or oldOreQuarry) --Can be used for new or old.
 addParam("blacklist","Ore Blacklist", "string", nil, oreQuarry, "oreQuarryBlacklistName")
 paramAlias("blacklist","blacklistFile")
 --Mod Related
@@ -754,7 +891,6 @@ if fs.exists("]]..saveFile..[[") then
   if event == "timer" then
     os.run({},"]]..shell.getRunningProgram()..[[","-resume")
   else
-
     deleteStuff()
   end
 else
@@ -797,7 +933,6 @@ if addParam("atChest", "Is at Chest", "force") then --This sets position to 0,1,
     sleep(4)
     neededLayer = 2
   end
-  if ((neededLayer-2)/3) % 2 == 1 then neededLayer = neededLayer - 3 end --Because with weird end of row, just go to last basic row
   xPos, zPos, yPos, facing, rowCheck, layersDone = 0,1,1, 0, true, math.ceil(neededLayer/3)
   doAutoResumeStuff() --This was probably deleted when they hit a key to launch with -atChest
   events = {{"goto",1,1,neededLayer, 0}}
@@ -805,7 +940,7 @@ end
 
 
 local function saveProgress(extras) --Session persistence
-exclusions = { modem = true, }
+exclusions = { modem = true, shell = true, _ENV = true}
 if doBackup then
 local toWrite = ""
 for a,b in pairs(getfenv(1)) do
@@ -1204,9 +1339,37 @@ function display() --This is just the last screen that displays at the end
   screen(1,1)
   print("Total Blocks Mined: "..mined)
   print("Current Fuel Level: "..checkFuel())
-  print("Cobble: "..totals.cobble)
-  print("Usable Fuel: "..totals.fuel)
-  print("Other: "..totals.other)
+  if not preciseTotals then
+    print("Cobble: "..totals.cobble)
+    print("Usable Fuel: "..totals.fuel)
+    print("Other: "..totals.other)
+  else
+    local tab = {} --Sorting section stolen from quarry receiver
+    for a,b in pairs(exactTotals) do --Sorting the table
+      if #tab == 0 then --Have to initialize or rest does nothing :)
+        tab[1] = {a,b}
+      else
+        for i=1, #tab do --This is a really simple sort. Probably not very efficient, but I don't care.
+          if b > tab[i][2] then --Gets the second value from the table, which is the itemCount
+            table.insert(tab, i, {a,b})
+            break
+          elseif i == #tab then --Insert at the end if not bigger than anything
+            table.insert(tab,{a,b})
+          end
+        end
+      end
+    end
+    local x, y = term.getSize()
+    for i=1, math.min(y-(rednetEnabled and 3 or 2), #tab) do --Print all the blocks in order
+      local firstPart = "#"..tab[i][1]..": "
+      local spaces = ""
+      for i=1, x-#firstPart-#tostring(tab[i][2]) do spaces = spaces.." " end
+      term.setTextColor(i%2==0 and colors.white or colors.black) --Swap colors every other for best visibility
+      term.setBackgroundColor(i%2==0 and colors.black or colors.white)
+      print(firstPart,spaces,tab[i][2])
+    end
+    term.setTextColor(colors.white); term.setBackgroundColor(colors.black) --Reset to normal
+  end
   if rednetEnabled then
     print("")
     print("Sent Stop Message")
@@ -1403,7 +1566,7 @@ if not restoreFoundSwitch then --We only want this to happen once
   end
 end
 
-function count(add) --Done any time inventory dropped and at end, true=add, nil=nothing, false=subtract
+function count(add) --Done any time inventory dropped and at end, true=add, false=nothing, nil=subtract
   local mod = -1
   if add then mod = 1 end
   if add == false then mod = 0 end
@@ -1447,20 +1610,24 @@ function count(add) --Done any time inventory dropped and at end, true=add, nil=
   select(1)
 end
 
-local fillerTypesList
-function placeFillerBlocks(up, down)
-  if not fillerTypesList then fillerTypesList = assignTypes() end
-  local turtleSlot = getRep(1, fillerTypesList) --Slot being the main list made in count
-  if not turtleSlot then
-    fillerTypesList = assignTypes()
-    return false --Lazy, but it will pick it up next move if succeeded
+local currFillerSlot
+function placeFillerBlocks(up, down, recursed)
+  if not currFillerSlot then 
+    for i=1, inventoryMax do
+      if turtle.getItemCount(i) > 0 and blacklist[turtle.getItemDetail(i).name] then
+       currFillerSlot = i
+      end
+    end
   end
-  select(turtleSlot)
-  if up then turtle.placeUp() end
-  if down then turtle.placeDown() end
-  if turtle.getItemCount(turtleSlot) == 0 then fillerTypesList[turtleSlot] = 0 end
+  if currFillerSlot and turtle.getItemCount(currFillerSlot) > 0 then
+    select(currFillerSlot)
+    if up then turtle.placeUp() end
+    if down then turtle.placeDown() end
+  elseif not recursed then
+    currFillerSlot = nil --If no more items, we no longer have a filler slot
+    return placeFillerBlocks(up, down, true) --If we don't have a filler block to place, try checking again (but only once)
+  end
 end
-
 --Refuel Functions
 function emergencyRefuel(forceBasic)
   local continueEvac = true --This turns false if more fuel is acquired
@@ -1536,7 +1703,7 @@ function emergencyRefuel(forceBasic)
     print("Fuel Level:    ",checkFuel())
     print("Distance Back: ",(xPos+zPos+yPos+1))
     print("Categorizing Items")
-    count(nil) --Do not add count, but categorize
+    count(false) --Do not add count, but categorize
     local fuelSwitch, initialFuel = false, checkFuel() --Fuel switch so we don't go over limit (in emergency...)
     print("Going through available fuel slots")
     for i=1, inventoryMax do
@@ -2055,6 +2222,7 @@ function drop(side, final, compareDump)
   end
   chestFull = false
 
+  local plugHolesQuota = 32
   local fuelSwitch = false --If doRefuel, this can switch so it won't overfuel
   for i=1,inventoryMax do
     --if final then allowedItems[i] = 0 end --0 items allowed in all slots if final ----It is already set to 1, so just remove comment if want change
@@ -2063,30 +2231,40 @@ function drop(side, final, compareDump)
       else turnTo(properFacing) --Turn back to proper position... or do nothing if already there
       end
       select(i)
-      if doRefuel and slot[i][1] == 2 then --Intelligently refuels to fuel limit
-        if not fuelSwitch then --Not in the conditional because we don't want to waitDrop excess fuel. Not a break so we can drop junk
+      local currAllowed = allowedItems[i]
+      if plugHoles and plugHolesQuota > 0 and blacklist[turtle.getItemDetail(i).name] then
+        currAllowed = plugHolesQuota
+        plugHolesQuota = plugHolesQuota - turtle.getItemCount(i)
+      end
+        
+      if slot[i][1] == 2 then --Intelligently refuels to fuel limit
+        if doRefuel and not fuelSwitch then --Not in the conditional because we don't want to waitDrop excess fuel. Not a break so we can drop junk
           fuelSwitch = midRunRefuel(i)
+        else
+          waitDrop(i, currAllowed, dropFunc)
         end
         if fuelSwitch then
-          waitDrop(i, allowedItems[i], dropFunc)
+          waitDrop(i, currAllowed, dropFunc)
         end
       elseif not compareDump or (compareDump and slot[i][1] == 1) then --This stops all wanted items from being dropped off in a compareDump
-        waitDrop(i, allowedItems[i], dropFunc)
+        waitDrop(i, currAllowed, dropFunc)
       end
     end
   end
 
   if compareDump then
     for i=2, inventoryMax do
-      select(i)
-      for j=1, i-1 do
-        if turtle.getItemCount(i) == 0 then break end
-        turtle.transferTo(j)
+      if not specialSlots[i] then --We don't want to move buckets and things into earlier slots
+        select(i)
+        for j=1, i-1 do
+          if turtle.getItemCount(i) == 0 then break end
+          turtle.transferTo(j)
+        end
       end
     end
     select(1)
   end
-  if oldOreQuarry or compareDump then count(false) end--Subtract the items still there if oreQuarry
+  if oldOreQuarry or compareDump then count(nil) end--Subtract the items still there if oreQuarry
   resetDumpSlots() --So that slots gone aren't counted as dump slots next
 
   select(1) --For fanciness sake
