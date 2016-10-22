@@ -845,7 +845,7 @@ paramAlias("lavaBucket","lavaRefuel")
 addParam("lavaBuffer","Lava Buffer","number 1-19999", nil, lavaBucket)
 --Old Ore
 addParam("oldOreQuarry", "Old Ore Quarry", "boolean")
-addParam("dumpCompareItems", "Dump Compare Items", "boolean", nil, oldOreQuarry) --Do not dump compare items if not oreQuarry
+addParam("dumpCompareItems", "Dump Compare Items", "boolean") --Do not dump compare items if not oreQuarry
 addParam("extraDropItems", "", "force", nil, oldOreQuarry) --Prompt for extra dropItems
 paramAlias("extraDropItems","extraDumpItems") --changed to Dump
 addParam("compareChest","Compare Chest Slot","slot 13", nil, oldOreQuarry)
