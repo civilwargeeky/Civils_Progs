@@ -1,8 +1,8 @@
---Quarry Receiver Version 3.6.4
+--Quarry Receiver Version 3.6.5
 --Made by Civilwargeeky
 --[[
 Recent Changes:
-  Completely Remade!
+  Fixed bugs with hardcoded keys for CC: Tweaked
 ]]
 
 
@@ -45,25 +45,41 @@ for i=1, #tArgs do --Parameters that must be set before rest of program for prop
   end
 end
 
-local keyMap = {[57] = " ", [11] = "0", [12] = "_", [52] = ".", [82] = "0", [83] = "."} --This is for command string
-for i=2,10 do keyMap[i] = tostring(i-1) end --Add top numbers
-for a=0,2 do --All the numpad numbers
-  for b=0,2 do
-    keyMap[79-(4*a)+b] = tostring(b + 1 + a*3) --Trust me, this just works
-  end
-end
+local keyMap = {[keys.space] = " ", [keys.minus] = "_", [keys.period] = ".", [keys.numPadDecimal] = "."} --This is for command string
+keyMap[keys.numPad0] = "0"
+keyMap[keys.numPad1] = "1"
+keyMap[keys.numPad2] = "2"
+keyMap[keys.numPad3] = "3"
+keyMap[keys.numPad4] = "4"
+keyMap[keys.numPad5] = "5"
+keyMap[keys.numPad6] = "6"
+keyMap[keys.numPad7] = "7"
+keyMap[keys.numPad8] = "8"
+keyMap[keys.numPad9] = "9"
+
+keyMap[keys.zero] = "0"
+keyMap[keys.one] = "1"
+keyMap[keys.two] = "2"
+keyMap[keys.three] = "3"
+keyMap[keys.four] = "4"
+keyMap[keys.five] = "5"
+keyMap[keys.six] = "6"
+keyMap[keys.seven] = "7"
+keyMap[keys.eight] = "8"
+keyMap[keys.nine] = "9"
+
 for a,b in pairs(keys) do --Add all letters from keys api
   if #a == 1 then
     keyMap[b] = a:upper()
   end
 end
 keyMap[keys.enter] = "enter"
-keyMap[156] = "enter" --Numpad enter
+keyMap[keys.numPadEnter] = "enter"
 keyMap[keys.backspace] = "backspace"
-keyMap[200] = "up"
-keyMap[208] = "down"
-keyMap[203] = "left"
-keyMap[205] = "right"
+keyMap[keys.up] = "up"
+keyMap[keys.down] = "down"
+keyMap[keys.left] = "left"
+keyMap[keys.right] = "right"
 
 local helpResources = { --$$ is a new page
 main = [[$$Hello and welcome to Quarry Receiver Help!
